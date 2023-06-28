@@ -24,14 +24,14 @@
 # ==============================================================================
 
 import time
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from dimples import ID
 
 from dimples.utils import CacheManager
 from dimples.common import GroupDBI
-from dimples.database import GroupStorage
 
+from .dos import GroupStorage
 from .redis import GroupCache
 
 
@@ -47,6 +47,7 @@ class GroupTable(GroupDBI):
         self.__redis = GroupCache()
         man = CacheManager()
         self.__cache = man.get_pool(name='members')  # ID => List[ID]
+        self.__cache_keys = man.get_pool(name='group_keys')  # (sender, group) => Dict[str, str]  # member => key
 
     def show_info(self):
         self.__dos.show_info()
@@ -136,3 +137,56 @@ class GroupTable(GroupDBI):
     def assistants(self, group: ID) -> List[ID]:
         # TODO: get assistants
         pass
+
+    """
+        Encrypted keys
+        ~~~~~~~~~~~~~~
+
+        redis key: 'mkm.group.{GID}.encrypted-keys'
+    """
+
+    def load_keys(self, sender: ID, group: ID) -> Optional[Dict[str, str]]:
+        now = time.time()
+        cache_key = (sender, group)
+        # 1. check memory cache
+        value, holder = self.__cache_keys.fetch(key=group, now=now)
+        if value is None:
+            # cache empty
+            if holder is None:
+                # keys not load yet, wait to load
+                self.__cache_keys.update(key=cache_key, life_span=self.CACHE_REFRESHING, now=now)
+            else:
+                if holder.is_alive(now=now):
+                    # keys not exists
+                    return {}
+                # cache expired, wait to reload
+                holder.renewal(duration=self.CACHE_REFRESHING, now=now)
+            # 2. check redis server
+            value = self.__redis.load_keys(sender=sender, group=group)
+            if len(value) == 0:
+                # 3. check local storage
+                value = self.__dos.load_keys(sender=sender, group=group)
+                if value is None:
+                    value = {}  # placeholder
+                # update redis server
+                self.__redis.save_keys(keys=value, sender=sender, group=group)
+            # update memory cache
+            self.__cache_keys.update(key=cache_key, value=value, life_span=self.CACHE_EXPIRES, now=now)
+        # OK, return cached value
+        return value
+
+    def save_keys(self, keys: Dict[str, str], sender: ID, group: ID) -> bool:
+        # old = self.load_keys(sender=sender, group=group)
+        # if old is not None:
+        #     # update old keys
+        #     for member in keys:
+        #         old[member] = keys.get(member)
+        #     keys = old
+        #     # FIXME: what about members that has been expelled?
+        cache_key = (sender, group)
+        # 1. store into memory cache
+        self.__cache.update(key=cache_key, value=keys, life_span=self.CACHE_EXPIRES)
+        # 2. store into redis server
+        self.__redis.save_keys(keys=keys, sender=sender, group=group)
+        # 3. store into local storage
+        return self.__dos.save_keys(keys=keys, sender=sender, group=group)

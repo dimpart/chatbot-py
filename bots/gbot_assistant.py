@@ -49,25 +49,21 @@ sys.path.append(rootPath)
 
 from libs.client import ClientProcessor
 
-from bots.shared import start_bot
-
-
-# 'sender -> group' => keys
-g_group_keys = {}
+from bots.shared import GlobalVariable, start_bot
 
 
 def get_group_key(sender: ID, member: ID, group: ID) -> Optional[str]:
-    # TODO: get group key from database
-    direction = '%s => %s' % (sender, group)
-    keys = g_group_keys.get(direction)
+    """ get group key from database """
+    shared = GlobalVariable()
+    keys = shared.database.load_keys(sender=sender, group=group)
     if keys is not None:
         return keys.get(str(member))
 
 
 def update_group_keys(keys: Dict[str, str], sender: ID, group: ID):
-    # TODO: save group keys into database
-    direction = '%s -> %s' % (sender, group)
-    g_group_keys[direction] = keys
+    """ save group keys into database """
+    shared = GlobalVariable()
+    shared.database.save_keys(keys=keys, sender=sender, group=group)
 
 
 def forward_group_message(msg: ReliableMessage) -> bool:
@@ -177,7 +173,7 @@ def process_group_message(msg: ReliableMessage) -> Optional[ReliableMessage]:
                 cmd = GroupCommand.expel(group=receiver, members=expel_list)
                 messenger.send_content(sender=None, receiver=sender,
                                        content=cmd, priority=DeparturePriority.NORMAL)
-            # TODO: update key map
+            # update key map
             update_group_keys(keys=keys, sender=sender, group=receiver)
         # split and forward group message,
         # respond receipt with success or failed list

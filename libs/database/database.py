@@ -29,7 +29,7 @@
 
 """
 
-from typing import Optional, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from dimples import SymmetricKey, PrivateKey, SignKey, DecryptKey
 from dimples import ID, Meta, Document
@@ -263,6 +263,12 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
     # Override
     def save_assistants(self, assistants: List[ID], group: ID) -> bool:
         return self.__group_table.save_assistants(assistants=assistants, group=group)
+
+    def load_keys(self, sender: ID, group: ID) -> Optional[Dict[str, str]]:
+        return self.__group_table.load_keys(sender=sender, group=group)
+
+    def save_keys(self, keys: Dict[str, str], sender: ID, group: ID) -> bool:
+        return self.__group_table.save_keys(keys=keys, sender=sender, group=group)
 
     """
         Reliable message for Receivers
