@@ -33,7 +33,10 @@ restart ling "bots/chatbot_ling.py"
 restart xiao "bots/chatbot_xiao.py"
 
 title "DIM Chat Room"
-restart chatroom "robots/chatroom_admin.py"
+restart chatroom "bots/chatroom_admin.py"
+
+title "DIM Group Assistant"
+restart group "bots/gbot_assistant.py"
 
 echo ""
 echo "    >>> Done <<<"

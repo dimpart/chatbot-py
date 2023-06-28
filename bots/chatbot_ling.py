@@ -83,7 +83,7 @@ class BotMessageProcessor(ClientProcessor):
 Log.LEVEL = Log.DEVELOP
 
 
-DEFAULT_CONFIG = '/etc/dim/config.ini'
+DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
 if __name__ == '__main__':

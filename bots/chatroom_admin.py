@@ -444,7 +444,7 @@ class ChatRoom(Logging):
 Log.LEVEL = Log.DEVELOP
 
 
-DEFAULT_CONFIG = '/etc/dim/config.ini'
+DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 APP_ID = 'chat.dim.room'
 GRP_ID = ID.create(name='chatroom', address=EVERYWHERE)  # 'chatroom@everywhere'
