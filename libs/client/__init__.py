@@ -43,7 +43,6 @@ __all__ = [
     #
     'HandshakeCommandProcessor',
     'LoginCommandProcessor',
-    'ReceiptCommandProcessor',
 
     'ChatTextContentProcessor',
 

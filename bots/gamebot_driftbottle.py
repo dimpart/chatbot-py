@@ -29,13 +29,14 @@
     ~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 
 from dimples import ID
 from dimples import ContentType
 from dimples import ContentProcessor, ContentProcessorCreator
 from dimples import ReliableMessage
-from dimples import Content, TextContent, CustomizedContent, AppCustomizedContent
+from dimples import Content, CustomizedContent, AppCustomizedContent
+from dimples import ReceiptCommand
 from dimples import CustomizedContentProcessor, CustomizedContentHandler
 from dimples import TwinsHelper
 from dimples.client import ClientContentProcessorCreator
@@ -57,22 +58,29 @@ class AppContentHandler(TwinsHelper, CustomizedContentHandler):
     # Application ID for customized content
     APP_ID = 'chat.dim.sechat'
 
-    FMT_ACT_NOT_SUPPORT = CustomizedContentProcessor.FMT_ACT_NOT_SUPPORT
-    # FMT_ACT_NOT_SUPPORT = 'Customized Content (app: %s, mod: %s, act: %s) not support yet!'
-
     # Override
     def handle_action(self, act: str, sender: ID, content: CustomizedContent, msg: ReliableMessage) -> List[Content]:
         """ Override for customized actions """
         app = content.application
         mod = content.module
-        text = self.FMT_ACT_NOT_SUPPORT % (app, mod, act)
-        return self._respond_text(text=text)
+        return self._respond_receipt(text='Content not support.', msg=msg, group=content.group, extra={
+            'template': 'Customized content (app: ${app}, mod: ${mod}, act: ${act}) not support yet!',
+            'replacements': {
+                'app': app,
+                'mod': mod,
+                'act': act,
+            }
+        })
 
     # noinspection PyMethodMayBeStatic
-    def _respond_text(self, text: str, group: Optional[ID] = None) -> List[Content]:
-        res = TextContent.create(text=text)
+    def _respond_receipt(self, text: str, msg: ReliableMessage = None,
+                         group: Optional[ID] = None, extra: Dict = None) -> List[Content]:
+        res = ReceiptCommand.create(text=text, msg=msg)
         if group is not None:
             res.group = group
+        if extra is not None:
+            for key in extra:
+                res[key] = extra[key]
         return [res]
 
     @classmethod
@@ -162,9 +170,9 @@ class BotContentProcessorCreator(ClientContentProcessorCreator):
     # Override
     def create_content_processor(self, msg_type: Union[int, ContentType]) -> Optional[ContentProcessor]:
         # application customized
-        if msg_type == ContentType.APPLICATION.value:
+        if msg_type == ContentType.APPLICATION:
             return AppContentProcessor(facebook=self.facebook, messenger=self.messenger)
-        # elif msg_type == ContentType.CUSTOMIZED.value:
+        # elif msg_type == ContentType.CUSTOMIZED:
         #     return AppContentProcessor(facebook=self.facebook, messenger=self.messenger)
         # others
         return super().create_content_processor(msg_type=msg_type)

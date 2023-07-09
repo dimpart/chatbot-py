@@ -129,8 +129,10 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
         self.debug(msg='received text message from %s: %s' % (nickname, content))
         res = self._query(content=content, sender=sender)
         if res is None:
+            # the client messenger will respond receipt 'Message received.' automatically,
+            # so nothing is need to respond here.
             return []
-        assert isinstance(res, TextContent)
+        assert isinstance(res, TextContent), 'response error: %s' % res
         question = content.text
         answer = res.text
         group = content.group
@@ -147,7 +149,7 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
                 text = 'Group message responded'
             else:
                 text = 'Group message respond failed'
-            return self._respond_text(text=text)
+            return self._respond_receipt(text=text, msg=msg, group=group)
 
 
 def get_name(identifier: ID, facebook: CommonFacebook) -> str:
