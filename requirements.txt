@@ -9,6 +9,8 @@ redis      # 3.5.3
 greenlet   # 1.1.2
 gevent     # 21.8.0
 
+requests   # 2.21.0
+
 startrek==0.4.1
 tcp==0.4.1
 
@@ -17,4 +19,4 @@ dkd==0.12.7
 dimp==0.12.9
 dimsdk==0.8.7
 dimplugins==0.1.4
-dimples==0.2.2
+dimples==0.2.4

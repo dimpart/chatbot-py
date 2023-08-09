@@ -279,8 +279,8 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
     """
 
     # Override
-    def reliable_messages(self, receiver: ID, start: int = 0, limit: int = 1024) -> Tuple[List[ReliableMessage], int]:
-        return [], 0
+    def reliable_messages(self, receiver: ID, limit: int = 1024) -> List[ReliableMessage]:
+        return []
 
     # Override
     def cache_reliable_message(self, msg: ReliableMessage, receiver: ID) -> bool:
