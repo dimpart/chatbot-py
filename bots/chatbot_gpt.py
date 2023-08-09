@@ -45,14 +45,13 @@ from dimples import CommonFacebook
 from dimples.utils import Log, Logging
 from dimples.utils import Path
 
-from libs.chat_gpt.client import ChatRequest
-
 path = Path.abs(path=__file__)
 path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.chat_gpt import ChatClient, ChatCallback
+from libs.chat_gpt import ChatCallback, ChatRequest
+from libs.chat_gpt import ChatClient
 from libs.client import ClientMessenger
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 
@@ -83,7 +82,11 @@ class GPTHandler(ChatCallback, Logging):
 
     def get_name(self, identifier: ID) -> str:
         doc = self.facebook.document(identifier=identifier)
-        name = None if doc is None else doc.name
+        if doc is None:
+            name = None
+            self.messenger.query_document(identifier=identifier)
+        else:
+            name = doc.name
         return str(identifier) if name is None else '%s (%s)' % (identifier, name)
 
     def __touch(self, identifier: ID, now: float = None):
