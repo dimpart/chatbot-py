@@ -34,10 +34,9 @@ from dimples.database.dos import PrivateKeyStorage
 from dimples.database.dos import MetaStorage
 from dimples.database.dos import DocumentStorage
 from dimples.database.dos import UserStorage
+from dimples.database.dos import GroupStorage
 from dimples.database.dos import LoginStorage
 from dimples.database.dos import StationStorage
-
-from .group import GroupStorage
 
 __all__ = [
 

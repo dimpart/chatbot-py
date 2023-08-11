@@ -31,8 +31,8 @@ from dimples import ID, Document
 from dimples.utils import CacheManager
 from dimples.common import DocumentDBI
 from dimples.common.dbi import is_expired
-from dimples.database import DocumentStorage
 
+from .dos import DocumentStorage
 from .redis import DocumentCache
 
 

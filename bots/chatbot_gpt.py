@@ -39,9 +39,11 @@ from dimples import EntityType, ID
 from dimples import ReliableMessage
 from dimples import ContentType, Content, TextContent
 from dimples import ContentProcessor, ContentProcessorCreator
-from dimples import CustomizedContent, CustomizedContentProcessor
+from dimples import CustomizedContent, CustomizedContentProcessor, CustomizedContentHandler
 from dimples import BaseContentProcessor
-from dimples import CommonFacebook
+from dimples import TwinsHelper
+from dimples import CommonFacebook, CommonMessenger
+from dimples.utils import Singleton
 from dimples.utils import Log, Logging
 from dimples.utils import Path
 
@@ -50,108 +52,175 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.chat_gpt import ChatCallback, ChatRequest
-from libs.chat_gpt import ChatClient
-from libs.client import ClientMessenger
+from libs.utils.gpt import ChatCallback, ChatRequest
+from libs.utils.gpt import ChatClient
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 
-from bots.shared import GlobalVariable
 from bots.shared import start_bot
 
 
-class GPTHandler(ChatCallback, Logging):
+@Singleton
+class Footprint:
 
-    EXPIRES = 36000  # say hi after 10 hours
+    EXPIRES = 36000  # vanished after 10 hours
 
     def __init__(self):
         super().__init__()
         self.__active_times = {}  # ID => float
 
-    @property
-    def facebook(self) -> CommonFacebook:
-        shared = GlobalVariable()
-        return shared.facebook
-
-    @property
-    def messenger(self) -> ClientMessenger:
-        return g_terminal.messenger
-
-    @property
-    def hi_text(self) -> str:
-        return random.choice(['Hello!', 'Hi!'])
-
-    def get_name(self, identifier: ID) -> str:
-        doc = self.facebook.document(identifier=identifier)
-        if doc is None:
-            name = None
-            self.messenger.query_document(identifier=identifier)
-        else:
-            name = doc.name
-        return str(identifier) if name is None else '%s (%s)' % (identifier, name)
-
-    def __touch(self, identifier: ID, now: float = None):
+    def touch(self, identifier: ID, now: float = None):
         if now is None:
             now = time.time()
         else:
             last_time = self.__active_times.get(identifier)
             if last_time is not None and last_time >= now:
+                # ignore old time
                 return False
         self.__active_times[identifier] = now
         return True
 
-    def __is_expired(self, identifier: ID, now: float = None):
+    def is_vanished(self, identifier: ID, now: float = None) -> bool:
         last_time = self.__active_times.get(identifier)
         if last_time is None:
             return True
         if now is None:
             now = time.time()
-        return last_time < (now - self.EXPIRES)
+        return now > (last_time + self.EXPIRES)
 
-    def say_hi(self, identifier: ID, now: float = None) -> bool:
+
+def replace_at(text: str, name: str) -> str:
+    at = '@%s' % name
+    if text.endswith(at):
+        text = text[:-len(at)]
+    at = '@%s ' % name
+    return text.replace(at, '')
+
+
+class ChatHelper(TwinsHelper, ChatCallback, Logging):
+
+    @property
+    def facebook(self) -> CommonFacebook:
+        return super().facebook
+
+    @property
+    def messenger(self) -> CommonMessenger:
+        return super().messenger
+
+    @property
+    def my_name(self) -> Optional[str]:
+        current = self.facebook.current_user
+        if current is not None:
+            return self.get_name(identifier=current.identifier)
+
+    def get_name(self, identifier: ID) -> Optional[str]:
+        doc = self.facebook.document(identifier=identifier)
+        if doc is None:
+            # document not found, query from station
+            self.messenger.query_document(identifier=identifier)
+            return identifier.name
+        name = doc.name
+        if name is None or len(name) == 0:
+            return identifier.name
+        else:
+            return name
+
+    def ask(self, question: str, sender: ID, group: Optional[ID], now: float = None) -> bool:
+        s_name = self.get_name(identifier=sender)
+        g_name = None if group is None else self.get_name(identifier=group)
+        # 1. update active time
         if now is None:
             now = time.time()
-        if self.__is_expired(identifier=identifier, now=now):
-            # update active time
-            self.__touch(identifier=identifier, now=now)
-            # request to say hi
-            text = self.hi_text
-            name = self.get_name(identifier=identifier)
-            self.info(msg='[Dialog] ChatGPT <<< %s: say hi' % name)
-            g_client.request(question=text, identifier=identifier, callback=self)
-            return True
-
-    def ask(self, question: str, sender: ID, group: Optional[ID], now: float = None):
-        # update active time
-        if now is None:
-            now = time.time()
-        self.__touch(identifier=sender, now=now)
-        # request for question
-        text = question.strip()
-        if len(text) > 0:
-            name = self.get_name(identifier=sender)
-            self.info(msg='[Dialog] ChatGPT <<< %s: "%s"' % (name, text))
-            identifier = sender if group is None else group
-            g_client.request(question=text, identifier=identifier, callback=self)
+        elif now < (time.time() - 600):
+            self.warning(msg='question timeout from %s (%s): %s' % (sender, s_name, question))
+            return False
+        fp = Footprint()
+        fp.touch(identifier=sender, now=now)
+        # 2. check for group message
+        if group is None:
+            identifier = sender
+        else:
+            identifier = group
+            # received group message, check '@xxx' for message to this bot
+            my_name = self.my_name
+            if my_name is None or len(my_name) == 0:
+                self.error(msg='failed to get the bot name')
+                return False
+            naked = replace_at(text=question, name=my_name)
+            if len(naked) == question:
+                self.debug(msg='ignore group message from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
+                return False
+            else:
+                question = naked.strip()
+        # 3. request with question text
+        if len(question) == 0:
+            self.warning(msg='drop empty question from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
+            return False
+        self.info(msg='[Dialog] ChatGPT <<< %s (%s): "%s"' % (sender, s_name, question))
+        g_client.request(question=question, identifier=identifier, callback=self)
+        return True
 
     # Override
     def chat_response(self, answer: str, request: ChatRequest):
         identifier = request.identifier
         name = self.get_name(identifier=identifier)
-        self.info(msg='[Dialog] ChatGPT >>> %s: "%s"' % (name, answer))
+        self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
         content = TextContent.create(text=answer)
         self.messenger.send_content(sender=None, receiver=identifier, content=content)
 
 
+class ActiveUsersHandler(ChatHelper, CustomizedContentHandler):
+
+    @property
+    def hi_text(self) -> str:
+        return random.choice(['Hello!', 'Hi!'])
+
+    # Override
+    def handle_action(self, act: str, sender: ID, content: CustomizedContent, msg: ReliableMessage) -> List[Content]:
+        users = content.get('users')
+        self.info(msg='received users: %s' % users)
+        if isinstance(users, List):
+            self.__say_hi(users=users, when=content.time)
+        else:
+            self.error(msg='content error: %s, sender: %s' % (content, sender))
+        return []
+
+    def __say_hi(self, users: List[dict], when: Optional[float]):
+        if when is None:
+            when = time.time()
+        elif when < (time.time() - 300):
+            self.warning(msg='users timeout %f: %s' % (when, users))
+            return False
+        fp = Footprint()
+        for item in users:
+            identifier = ID.parse(identifier=item.get('U'))
+            if identifier is None or identifier.type != EntityType.USER:
+                self.warning(msg='ignore user: %s' % item)
+            elif not fp.is_vanished(identifier=identifier, now=when):
+                self.info(msg='footprint not vanished yet: %s' % identifier)
+            elif self.ask(question=self.hi_text, sender=identifier, group=None, now=when):
+                self.info(msg='say hi for %s' % identifier)
+
+
 class BotTextContentProcessor(BaseContentProcessor, Logging):
+    """ Process text content """
+
+    def __init__(self, facebook, messenger):
+        super().__init__(facebook=facebook, messenger=messenger)
+        # Module(s) for customized contents
+        self.__helper = ChatHelper(facebook=facebook, messenger=messenger)
 
     # Override
     def process(self, content: Content, msg: ReliableMessage) -> List[Content]:
         assert isinstance(content, TextContent), 'text content error: %s' % content
-        when = content.time
-        if when is None or when > (time.time() - 300):
-            g_handler.ask(question=content.text, sender=msg.sender, group=content.group, now=when)
+        sender = msg.sender
+        group = content.group
+        text = content.text.strip()
+        if sender.type != EntityType.USER:
+            self.debug(msg='ignore message from %s, group: %s' % (sender, group))
+        elif len(text) == 0:
+            self.warning(msg='empty text content from %s, group: %s' % (sender, group))
         else:
-            self.warning(msg='drop expired message from %s: %s' % (msg.sender, content))
+            self.__helper.ask(question=text, sender=sender, group=group, now=content.time)
         # text = 'Text message received'
         # group = content.group
         # return self._respond_receipt(text=text, msg=msg, group=group)
@@ -159,55 +228,31 @@ class BotTextContentProcessor(BaseContentProcessor, Logging):
 
 
 class BotCustomizedContentProcessor(CustomizedContentProcessor, Logging):
-    """ Process customized stat content """
+    """ Process customized content """
 
-    # Override
-    def process(self, content: Content, msg: ReliableMessage) -> List[Content]:
-        assert isinstance(content, CustomizedContent), 'stat content error: %s' % content
-        app = content.application
-        mod = content.module
-        act = content.action
-        sender = msg.sender
-        self.debug(msg='received content from %s: %s, %s, %s' % (sender, app, mod, act))
-        return super().process(content=content, msg=msg)
+    def __init__(self, facebook, messenger):
+        super().__init__(facebook=facebook, messenger=messenger)
+        # Module(s) for customized contents
+        self.__handler = ActiveUsersHandler(facebook=facebook, messenger=messenger)
 
     # Override
     def _filter(self, app: str, content: CustomizedContent, msg: ReliableMessage) -> Optional[List[Content]]:
         if app == 'chat.dim.monitor':
-            # app ID matched
+            # App ID match
+            # return None to fetch module handler
             return None
         # unknown app ID
         return super()._filter(app=app, content=content, msg=msg)
 
     # Override
-    def handle_action(self, act: str, sender: ID, content: CustomizedContent, msg: ReliableMessage) -> List[Content]:
-        mod = content.module
+    def _fetch(self, mod: str, content: CustomizedContent, msg: ReliableMessage) -> Optional[CustomizedContentHandler]:
+        assert mod is not None, 'module name empty: %s' % content
         if mod == 'users':
-            users = content.get('users')
-            self.info(msg='received users: %s' % users)
-            when = content.time
-            if when is None or when > (time.time() - 300):
-                if isinstance(users, List):
-                    self.__say_hi(users=users, when=when)
-                else:
-                    self.error(msg='content error: %s, sender: %s' % (content, sender))
-            else:
-                self.warning(msg='drop expired message from %s: %s' % (msg.sender, content))
-        else:
-            self.error(msg='unknown module: %s, action: %s, content: %s' % (mod, act, content))
-        # respond nothing
-        return []
-
-    def __say_hi(self, users: List[dict], when: Optional[float]):
-        if when is None:
-            when = time.time()
-        for item in users:
-            identifier = ID.parse(identifier=item.get('U'))
-            if identifier is None or identifier.type != EntityType.USER:
-                self.warning(msg='ignore user: %s' % item)
-                continue
-            if g_handler.say_hi(identifier=identifier, now=when):
-                self.info(msg='say hi for %s' % identifier)
+            # customized module: "users"
+            return self.__handler
+        # TODO: define your modules here
+        # ...
+        return super()._fetch(mod=mod, content=content, msg=msg)
 
 
 class BotContentProcessorCreator(ClientContentProcessorCreator):
@@ -240,9 +285,6 @@ Log.LEVEL = Log.DEVELOP
 DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
-# chat gpt handler
-g_handler = GPTHandler()
-
 # start chat gpt
 g_client = ChatClient()
 g_client.start()
@@ -251,5 +293,5 @@ if __name__ == '__main__':
     # start chat bot
     g_terminal = start_bot(default_config=DEFAULT_CONFIG,
                            app_name='ChatBot: GPT',
-                           ans_name='chat_gpt',
+                           ans_name='gigi',
                            processor_class=BotMessageProcessor)

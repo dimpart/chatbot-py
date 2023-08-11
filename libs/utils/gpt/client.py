@@ -31,6 +31,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Set
 
 from dimples import ID
+from dimples.utils import Singleton
 from dimples.utils import Runner, Logging
 
 
@@ -206,6 +207,7 @@ class ChatBoxPool(Logging):
         return True
 
 
+@Singleton
 class ChatClient(Runner, Logging):
 
     BASE_URL = 'https://chat-shared.zhile.io'

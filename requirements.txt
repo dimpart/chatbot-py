@@ -11,7 +11,7 @@ gevent     # 21.8.0
 
 requests   # 2.21.0
 
-ipx==0.2.2
+urllib3    # 1.24.1
 
 startrek==0.4.1
 tcp==0.4.1
