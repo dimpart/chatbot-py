@@ -43,6 +43,7 @@ from libs.database import Database
 from libs.client import ClientSession, ClientMessenger
 from libs.client import ClientProcessor, ClientPacker
 from libs.client import Terminal
+from libs.client import Emitter
 
 
 @Singleton
@@ -223,6 +224,9 @@ def start_bot(default_config: str, app_name: str, ans_name: str, processor_class
     port = config.station_port
     session = create_session(facebook=facebook, database=db, host=host, port=port)
     messenger = create_messenger(facebook=facebook, database=db, session=session, processor_class=processor_class)
+    # set messenger to emitter
+    emitter = Emitter()
+    emitter.messenger = messenger
     # create & start terminal
     terminal = Terminal(messenger=messenger)
     thread = threading.Thread(target=terminal.run, daemon=False)

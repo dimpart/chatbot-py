@@ -214,7 +214,7 @@ class ChatClient(Runner, Logging):
     TOKEN_URL = 'https://chat-shared.zhile.io/api/loads'
 
     def __init__(self):
-        super().__init__()
+        super().__init__(interval=Runner.INTERVAL_SLOW)
         self.__session = HttpSession(long_connection=True)
         # tokens
         self.__loads = SharedToken(url=self.TOKEN_URL, session=self.__session)

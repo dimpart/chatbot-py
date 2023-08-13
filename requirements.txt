@@ -13,7 +13,7 @@ requests   # 2.21.0
 
 urllib3    # 1.24.1
 
-startrek==0.4.1
+startrek==0.4.2
 tcp==0.4.1
 
 mkm==0.12.7
@@ -21,4 +21,4 @@ dkd==0.12.7
 dimp==0.12.9
 dimsdk==0.8.7
 dimplugins==0.1.4
-dimples==0.2.4
+dimples==0.2.5
