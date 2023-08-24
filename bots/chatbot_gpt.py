@@ -210,9 +210,9 @@ class BotTextContentProcessor(BaseContentProcessor, Logging):
         self.__helper = ChatHelper(facebook=facebook, messenger=messenger)
 
     # Override
-    def process(self, content: Content, msg: ReliableMessage) -> List[Content]:
+    def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
         assert isinstance(content, TextContent), 'text content error: %s' % content
-        sender = msg.sender
+        sender = r_msg.sender
         group = content.group
         text = content.text.strip()
         if sender.type != EntityType.USER:

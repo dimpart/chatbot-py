@@ -29,15 +29,14 @@
 
 """
 
-from typing import Optional, List, Tuple
+from typing import Optional, Tuple, List, Dict
 
 from dimples import SymmetricKey, PrivateKey, SignKey, DecryptKey
 from dimples import ID, Meta, Document
 from dimples import ReliableMessage
-
-from dimples import LoginCommand
+from dimples import LoginCommand, ResetCommand
 from dimples import AccountDBI, MessageDBI, SessionDBI
-from dimples.common.dbi import ProviderInfo, StationInfo
+from dimples import ProviderInfo, StationInfo
 from dimples.database.t_private import PrivateKeyTable
 from dimples.database.t_cipherkey import CipherKeyTable
 
@@ -45,6 +44,7 @@ from dimples.database.t_cipherkey import CipherKeyTable
 from .t_meta import MetaTable
 from .t_document import DocumentTable
 from .t_group import GroupTable
+from .t_grp_reset import ResetGroupTable
 
 
 class Database(AccountDBI, MessageDBI, SessionDBI):
@@ -58,7 +58,9 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
         self.__meta_table = MetaTable(root=root, public=public, private=private)
         self.__document_table = DocumentTable(root=root, public=public, private=private)
         self.__group_table = GroupTable(root=root, public=public, private=private)
-        self.__msg_key_table = CipherKeyTable(root=root, public=public, private=private)
+        self.__grp_reset_table = ResetGroupTable(root=root, public=public, private=private)
+        # Message
+        self.__cipherkey_table = CipherKeyTable(root=root, public=public, private=private)
         # # ANS
         # self.__ans_table = AddressNameTable(root=root, public=public, private=private)
 
@@ -68,7 +70,9 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
         self.__meta_table.show_info()
         self.__document_table.show_info()
         self.__group_table.show_info()
-        self.__msg_key_table.show_info()
+        self.__grp_reset_table.show_info()
+        # Message
+        self.__cipherkey_table.show_info()
         # # ANS
         # self.__ans_table.show_info()
 
@@ -229,14 +233,6 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
     """
 
     # Override
-    def founder(self, group: ID) -> Optional[ID]:
-        return self.__group_table.founder(group=group)
-
-    # Override
-    def owner(self, group: ID) -> Optional[ID]:
-        return self.__group_table.owner(group=group)
-
-    # Override
     def members(self, group: ID) -> List[ID]:
         return self.__group_table.members(group=group)
 
@@ -245,24 +241,30 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
         return self.__group_table.save_members(members=members, group=group)
 
     # Override
-    def add_member(self, member: ID, group: ID) -> bool:
-        return self.__group_table.add_member(member=member, group=group)
-
-    # Override
-    def remove_member(self, member: ID, group: ID) -> bool:
-        return self.__group_table.remove_member(member=member, group=group)
-
-    # Override
-    def remove_group(self, group: ID) -> bool:
-        return self.__group_table.remove_group(group=group)
-
-    # Override
     def assistants(self, group: ID) -> List[ID]:
         return self.__group_table.assistants(group=group)
 
     # Override
     def save_assistants(self, assistants: List[ID], group: ID) -> bool:
         return self.__group_table.save_assistants(assistants=assistants, group=group)
+
+    # Override
+    def administrators(self, group: ID) -> List[ID]:
+        return self.__group_table.administrators(group=group)
+
+    # Override
+    def save_administrators(self, administrators: List[ID], group: ID) -> bool:
+        return self.__group_table.save_administrators(administrators=administrators, group=group)
+
+    #
+    #   Reset Group DBI
+    #
+
+    def reset_command_message(self, group: ID) -> Tuple[Optional[ResetCommand], Optional[ReliableMessage]]:
+        return self.__grp_reset_table.reset_command_message(group=group)
+
+    def save_reset_command_message(self, group: ID, content: ResetCommand, msg: ReliableMessage) -> bool:
+        return self.__grp_reset_table.save_reset_command_message(group=group, content=content, msg=msg)
 
     """
         Reliable message for Receivers
@@ -274,14 +276,17 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
 
     # Override
     def reliable_messages(self, receiver: ID, limit: int = 1024) -> List[ReliableMessage]:
+        # TODO: get cached reliable messages
         return []
 
     # Override
     def cache_reliable_message(self, msg: ReliableMessage, receiver: ID) -> bool:
+        # TODO: cache reliable messages
         return True
 
     # Override
     def remove_reliable_message(self, msg: ReliableMessage, receiver: ID) -> bool:
+        # TODO: remove sent reliable message
         return True
 
     """
@@ -293,11 +298,21 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
 
     # Override
     def cipher_key(self, sender: ID, receiver: ID, generate: bool = False) -> Optional[SymmetricKey]:
-        return self.__msg_key_table.cipher_key(sender=sender, receiver=receiver, generate=generate)
+        return self.__cipherkey_table.cipher_key(sender=sender, receiver=receiver, generate=generate)
 
     # Override
     def cache_cipher_key(self, key: SymmetricKey, sender: ID, receiver: ID):
-        return self.__msg_key_table.cache_cipher_key(key=key, sender=sender, receiver=receiver)
+        return self.__cipherkey_table.cache_cipher_key(key=key, sender=sender, receiver=receiver)
+
+    # Override
+    def group_keys(self, group: ID, sender: ID) -> Optional[Dict[str, str]]:
+        # TODO: get group keys
+        pass
+
+    # Override
+    def save_group_keys(self, group: ID, sender: ID, keys: Dict[str, str]) -> bool:
+        # TODO: save group keys
+        pass
 
     # """
     #     Address Name Service
@@ -325,10 +340,12 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
 
     # Override
     def login_command_message(self, user: ID) -> Tuple[Optional[LoginCommand], Optional[ReliableMessage]]:
+        # TODO: get login command & messages
         return None, None
 
     # Override
     def save_login_command_message(self, user: ID, content: LoginCommand, msg: ReliableMessage) -> bool:
+        # TODO: save login command & messages
         return True
 
     #
@@ -342,33 +359,41 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
 
     # Override
     def add_provider(self, identifier: ID, chosen: int = 0) -> bool:
+        # TODO: get ISP
         return True
 
     # Override
     def update_provider(self, identifier: ID, chosen: int) -> bool:
+        # TODO: update ISP
         return True
 
     # Override
     def remove_provider(self, identifier: ID) -> bool:
+        # TODO: remove ISP
         return True
 
     # Override
     def all_stations(self, provider: ID) -> List[StationInfo]:
         """ get list of (host, port, SP_ID, chosen) """
+        # TODO: get stations of ISP
         return []
 
     # Override
     def add_station(self, identifier: Optional[ID], host: str, port: int, provider: ID, chosen: int = 0) -> bool:
+        # TODO: add station for ISP
         return True
 
     # Override
     def update_station(self, identifier: Optional[ID], host: str, port: int, provider: ID, chosen: int = None) -> bool:
+        # TODO: update station for ISP
         return True
 
     # Override
     def remove_station(self, host: str, port: int, provider: ID) -> bool:
+        # TODO: remove station for ISP
         return True
 
     # Override
     def remove_stations(self, provider: ID) -> bool:
+        # TODO: remove all stations for ISP
         return True

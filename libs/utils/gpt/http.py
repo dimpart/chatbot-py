@@ -42,6 +42,7 @@ def fetch_cookies(response: Response) -> Optional[dict]:
 def show_response(response: Response):
     status_code = response.status_code
     text = response.text
+    Log.info(msg='[HTTP]\t> response: code=%d, len=%d' % (status_code, len(text)))
     Log.debug(msg='[HTTP]\t> response: %d, %s' % (status_code, text))
     Log.debug(msg='[HTTP]\t> cookies: %s' % fetch_cookies(response=response))
 
@@ -106,14 +107,14 @@ class HttpClient(Logging):
 
     def http_get(self, url: str, headers: dict = None) -> Response:
         url = self._get_url(url=url)
-        self.debug(msg='GET %s' % url)
+        self.info(msg='GET %s' % url)
         response = self.__session.http_get(url=url, headers=headers, cookies=self.cookies)
         self._update_cookies(response=response)
         return response
 
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
         url = self._get_url(url=url)
-        self.debug(msg='POST %s' % url)
+        self.info(msg='POST %s' % url)
         response = self.__session.http_post(url=url, data=data, headers=headers, cookies=self.cookies)
         self._update_cookies(response=response)
         return response

@@ -118,13 +118,13 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
         content.text = text
 
     # Override
-    def process(self, content: Content, msg: ReliableMessage) -> List[Content]:
+    def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
         assert isinstance(content, TextContent), 'text content error: %s' % content
-        sender = msg.sender
+        sender = r_msg.sender
         facebook = self.facebook
         assert isinstance(facebook, CommonFacebook), 'facebook error: %s' % facebook
         nickname = get_name(identifier=sender, facebook=facebook)
-        if self.__ignored(content=content, sender=sender, msg=msg):
+        if self.__ignored(content=content, sender=sender, msg=r_msg):
             return []
         self.debug(msg='received text message from %s: %s' % (nickname, content))
         res = self._query(content=content, sender=sender)
@@ -149,7 +149,7 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
                 text = 'Group message responded'
             else:
                 text = 'Group message respond failed'
-            return self._respond_receipt(text=text, msg=msg, group=group)
+            return self._respond_receipt(text=text, msg=r_msg, group=group)
 
 
 def get_name(identifier: ID, facebook: CommonFacebook) -> str:

@@ -45,14 +45,6 @@ class GroupCache(Cache):
     def tbl_name(self) -> str:
         return 'group'
 
-    def founder(self, identifier: ID) -> ID:
-        # TODO: get founder
-        pass
-
-    def owner(self, identifier: ID) -> ID:
-        # TODO: get owner
-        pass
-
     """
         Group members
         ~~~~~~~~~~~~~
