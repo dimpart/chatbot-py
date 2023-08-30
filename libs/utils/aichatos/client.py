@@ -106,14 +106,10 @@ class ChatTaskPool:
 
 class ChatBox(Logging):
 
-    BASE_URL = 'https://api.binjie.fun'
-    REFERER_URL = 'https://chat.aichatos.top'
-
     EXPIRES = 36000  # seconds
 
-    def __init__(self, http_session: HttpSession, user_id: int):
+    def __init__(self, gpt: AIChatOS, user_id: int):
         super().__init__()
-        gpt = AIChatOS(base_url=self.BASE_URL, referer=self.REFERER_URL, http_session=http_session)
         self.__gpt = gpt
         self.__user_id = user_id
         self.__expired = time.time() + self.EXPIRES
@@ -145,19 +141,30 @@ class ChatBox(Logging):
 
 class ChatBoxPool(Logging):
 
+    BASE_URL = 'https://api.binjie.fun'
+    REFERER_URL = 'https://chat.aichatos.top'
+
     def __init__(self):
         super().__init__()
         self.__map = weakref.WeakValueDictionary()  # ID => ChatBox
         self.__boxes: Set[ChatBox] = set()          # Set[ChatBox]
         self.__lock = threading.Lock()
         self.__next_purge_time = 0
+        self.__gpt = None
 
-    @classmethod
-    def __new_box(cls, user_id: str, http_session: HttpSession) -> Optional[ChatBox]:
+    def get_gpt(self, http_session: HttpSession):
+        gpt = self.__gpt
+        if gpt is None:
+            gpt = AIChatOS(base_url=self.BASE_URL, referer=self.REFERER_URL, http_session=http_session)
+            self.__gpt = gpt
+        return gpt
+
+    def __new_box(self, user_id: str, http_session: HttpSession) -> Optional[ChatBox]:
         if len(user_id) > 8:
             user_id = user_id[-8:]
         user_id = int(user_id, base=16)
-        return ChatBox(http_session=http_session, user_id=user_id)
+        gpt = self.get_gpt(http_session=http_session)
+        return ChatBox(gpt=gpt, user_id=user_id)
 
     def get_box(self, identifier: ID, http_session: HttpSession = None) -> Optional[ChatBox]:
         with self.__lock:
