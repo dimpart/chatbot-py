@@ -159,9 +159,12 @@ class SharedGPT(HttpClient):
         show_response(response=response)
         info = response.json()
         token = info.get('accessToken')
-        self.info(msg='accessToken: %s' % token)
-        self.__access_token = token
-        self.set_cookie(key='credential', value=token)
+        if token is None:
+            self.error(msg='failed to get accessToken: %s' % info)
+        else:
+            self.info(msg='accessToken: %s' % token)
+            self.__access_token = token
+            self.set_cookie(key='credential', value=token)
 
     def accounts_check(self, v_date: str = 'v4-2023-04-27'):
         """ fetch 'account_id' """
@@ -171,16 +174,24 @@ class SharedGPT(HttpClient):
         show_response(response=response)
         info = response.json()
         accounts = info.get('accounts')
-        if accounts is not None:
+        if accounts is None:
+            self.warning(msg='failed to get accounts: %s' % info)
+        else:
             default_account = accounts.get('default')
-            if default_account is not None:
+            if default_account is None:
+                self.warning(msg='default account not found: %s' % accounts)
+            else:
                 account = default_account.get('account')
-                if account is not None:
+                if account is None:
+                    self.error(msg='default account error: %s' % default_account)
+                else:
                     aid = account.get('account_id')
                     self.info(msg='account id: %s' % aid)
                     self.__account_id = aid
                 subs = default_account.get('last_active_subscription')
-                if subs is not None:
+                if subs is None:
+                    self.info(msg='last_active_subscription not found: %s' % default_account)
+                else:
                     sid = subs.get('subscription_id')
                     self.info(msg='subscription id: %s' % sid)
                     # self.__conversation_id = sid
@@ -194,11 +205,15 @@ class SharedGPT(HttpClient):
         show_response(response=response)
         info = response.json()
         categories = info.get('categories')
-        if categories is not None and len(categories) > 0:
+        if categories is None or len(categories) == 0:
+            self.error(msg='failed to get model: %s' % info)
+        else:
             default_cat = categories[0]
             default_model = default_cat.get('default_model')
             self.info(msg='default model: %s' % default_model)
-            if default_model is not None:
+            if default_model is None:
+                self.error(msg='failed to get default_model: %s' % categories)
+            else:
                 self.__default_model = default_model
 
     def conversations(self):
@@ -210,7 +225,9 @@ class SharedGPT(HttpClient):
         show_response(response=response)
         info = response.json()
         items = info.get('items')
-        if items is not None and len(items) > 0:
+        if items is None or len(items) == 0:
+            self.warning(msg='failed to get conversations: %s' % info)
+        else:
             cid = items[0].get('id')
             self.info(msg='last conversation: %s, total count: %d' % (items[0], len(items)))
             self.__conversation_id = cid
@@ -250,7 +267,9 @@ class SharedGPT(HttpClient):
         }, data=data)
         # show_response(response=response)
         response = parse_response(text=response.text)
-        if response is not None:
+        if response is None:
+            self.error(msg='failed to parse response: %s' % response.text)
+        else:
             cid = response.get('conversation_id')
             if cid is not None:
                 self.__conversation_id = cid
@@ -281,8 +300,12 @@ def parse_response(text: str) -> Optional[dict]:
             continue
         info = json_decode(string=line)
         msg = info.get('message')
-        if msg is not None and 'id' in msg and 'author' in msg and 'content' in msg:
+        if msg is None:
+            Log.error(msg='error line: %s' % item)
+        elif 'id' in msg and 'author' in msg and 'content' in msg:
             response = info
             text = line
+        else:
+            Log.warning(msg='skip message: %s' % item)
     Log.debug(msg='pick last message data: %s' % text)
     return response

@@ -44,7 +44,7 @@ def show_response(response: Response):
     text = response.text
     Log.info(msg='[HTTP]\t> response: code=%d, len=%d' % (status_code, len(text)))
     Log.debug(msg='[HTTP]\t> response: %d, %s' % (status_code, text))
-    Log.debug(msg='[HTTP]\t> cookies: %s' % fetch_cookies(response=response))
+    Log.info(msg='[HTTP]\t> cookies: %s' % fetch_cookies(response=response))
 
 
 class HttpSession:

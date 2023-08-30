@@ -28,7 +28,8 @@ from typing import Optional, Dict
 from dimples import md5, hex_encode
 from dimples import SymmetricKey, ID
 from dimples import InstantMessage
-from dimples import Content, TextContent, FileContent
+from dimples import Envelope, Content
+from dimples import TextContent, FileContent
 from dimples.client import ClientMessenger
 
 from ..utils import Singleton, Log, Logging
@@ -102,12 +103,16 @@ class Emitter(Logging):
 
     def send_content(self, content: Content, receiver: ID):
         messenger = self.messenger
-        i_msg, r_msg = messenger.send_content(sender=None, receiver=receiver, content=content)
-        if r_msg is None:
-            self.warning(msg='not send yet (type=%d): %s' % (content.type, receiver))
-            return
-        # save instant message
-        self._save_instant_message(msg=i_msg)
+        facebook = messenger.facebook
+        current = facebook.current_user
+        assert current is not None, 'current user not set'
+        sender = current.identifier
+        env = Envelope.create(sender=sender, receiver=receiver)
+        i_msg = InstantMessage.create(head=env, body=content)
+        if receiver.is_group:
+            # TODO: pack group message for bot
+            pass
+        self._send_instant_message(msg=i_msg)
 
     #
     #   File Message

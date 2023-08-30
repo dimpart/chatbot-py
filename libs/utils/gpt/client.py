@@ -249,7 +249,7 @@ class ChatClient(Runner, Logging):
         answer = box.ask(question=question)
         if answer is None:
             self.error(msg='failed to get answer, drop request from %s: "%s"' % (identifier, question))
-            return False
+            answer = '{"code": 404, "error": "No response, please try again later."}'
         # OK
         task.chat_response(answer=answer, request=request)
         return True
