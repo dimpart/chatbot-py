@@ -64,11 +64,11 @@ class HttpSession:
 
     def http_get(self, url: str, headers: dict = None, cookies: dict = None) -> Response:
         network = self.session if self.__long_connection else requests
-        return network.request(method='GET', url=url, headers=headers, cookies=cookies)
+        return network.request(method='GET', url=url, headers=headers, cookies=cookies, verify=False)
 
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None, cookies: dict = None) -> Response:
         network = self.session if self.__long_connection else requests
-        return network.request(method='POST', url=url, data=data, headers=headers, cookies=cookies)
+        return network.request(method='POST', url=url, data=data, headers=headers, cookies=cookies, verify=False)
 
 
 class HttpClient(Logging):

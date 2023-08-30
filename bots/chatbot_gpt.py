@@ -52,8 +52,8 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.utils.gpt import ChatCallback, ChatRequest
-from libs.utils.gpt import ChatClient
+from libs.utils.aichatos import ChatCallback, ChatRequest
+from libs.utils.aichatos import ChatClient
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 
 from bots.shared import start_bot
