@@ -27,12 +27,13 @@
 from typing import Optional
 
 from dimples.utils import utf8_encode, utf8_decode, json_encode
+from dimples.utils import Logging
 
 
-from ..gpt.http import HttpClient, HttpSession, show_response
+from ..http import HttpClient, show_response
 
 
-class AIChatOS(HttpClient):
+class AIChatOS(Logging):
     """
         AI Chat OS
         ~~~~~~~~~~
@@ -40,22 +41,27 @@ class AIChatOS(HttpClient):
         https://chat.aichatos.top/
     """
 
-    def __init__(self, base_url: str, referer: str, http_session: HttpSession = None):
-        super().__init__(session=http_session, long_connection=True, base=base_url)
+    def __init__(self, user_id: int, referer: str, http_client: HttpClient):
+        super().__init__()
+        self.__client = http_client
         self.__referer = referer
+        self.__user_id = user_id
+
+    def get_cookie(self, key: str) -> Optional[str]:
+        return self.__client.get_cookie(key=key)
 
     def auth_session(self):
-        response = self.http_get(url='/api/generateStream', headers={
+        response = self.__client.http_get(url='/api/generateStream', headers={
             # 'Content-Type': 'application/json',
             'Origin': self.__referer,
             'Referer': self.__referer,
         })
         show_response(response=response)
 
-    def ask(self, question: str, user_id: int) -> Optional[str]:
+    def ask(self, question: str) -> Optional[str]:
         info = {
             'prompt': question,
-            'userId': '#/chat/%d' % user_id,
+            'userId': '#/chat/%d' % self.__user_id,
             'network': True,
             'system': '',
             'withoutContext': False,
@@ -63,7 +69,7 @@ class AIChatOS(HttpClient):
         }
         self.info(msg='sending message: %s' % info)
         data = utf8_encode(string=json_encode(obj=info))
-        response = self.http_post(url='/api/generateStream', headers={
+        response = self.__client.http_post(url='/api/generateStream', headers={
             'Content-Type': 'application/json',
             'Origin': self.__referer,
             'Referer': self.__referer,

@@ -31,7 +31,7 @@ from typing import Optional, List
 from mkm.types import Converter
 
 
-from .http import HttpClient, HttpSession, show_response
+from ..http import HttpClient, HttpSession, show_response
 
 
 class SharedToken(HttpClient):

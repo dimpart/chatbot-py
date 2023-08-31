@@ -27,77 +27,32 @@
 import threading
 import time
 import weakref
-from abc import ABC, abstractmethod
 from typing import Optional, Set
 
+from dimsdk import hex_decode, base58_decode
 from dimples import ID
 from dimples.utils import Singleton
 from dimples.utils import Runner, Logging
 
 
-from .http import HttpSession
-from .token import SharedToken
-from .gpt35 import SharedGPT
+from ..http import HttpClient
+from ..chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
+
+from .gpt35 import AIChatOS
 
 
-#
-#   Chat Task
-#
-
-class ChatRequest:
-
-    def __init__(self, question: str, identifier: ID):
-        super().__init__()
-        self.__question = question
-        self.__identifier = identifier
-
-    @property
-    def question(self) -> str:
-        return self.__question
-
-    @property
-    def identifier(self) -> ID:
-        return self.__identifier
-
-
-class ChatCallback(ABC):
-
-    @abstractmethod
-    def chat_response(self, answer: str, request: ChatRequest):
-        raise NotImplemented
-
-
-class ChatTask(ChatCallback):
-
-    def __init__(self, request: ChatRequest, callback: ChatCallback):
-        super().__init__()
-        self.__request = request
-        self.__callback = callback
-
-    @property
-    def request(self) -> ChatRequest:
-        return self.__request
-
-    # Override
-    def chat_response(self, answer: str, request: ChatRequest):
-        self.__callback.chat_response(answer=answer, request=request)
-
-
-class ChatTaskPool:
-
-    def __init__(self):
-        super().__init__()
-        self.__tasks = []
-        self.__lock = threading.Lock()
-
-    def add_task(self, task: ChatTask):
-        with self.__lock:
-            self.__tasks.append(task)
-
-    def pop_task(self) -> Optional[ChatTask]:
-        with self.__lock:
-            if len(self.__tasks) > 0:
-                return self.__tasks.pop(0)
+def check_code(identifier: ID) -> int:
+    address = str(identifier.address)
+    if address.startswith('0x'):
+        # ETH address
+        data = hex_decode(string=address[2:])
+    else:
+        # BTC address
+        data = base58_decode(string=address)
+    # convert last 4 bytes to int
+    if len(data) > 4:
+        data = data[-4:]
+    return int.from_bytes(data, byteorder='big', signed=False)
 
 
 #
@@ -109,10 +64,9 @@ class ChatBox(Logging):
 
     EXPIRES = 36000  # seconds
 
-    def __init__(self, base_url: str, session_key: str, data_token: str, http_session: HttpSession):
+    def __init__(self, user_id: int, referer: str, http_client: HttpClient):
         super().__init__()
-        gpt = SharedGPT(base_url=base_url, session_key=session_key, data_token=data_token, http_session=http_session)
-        self.__gpt = gpt
+        self.__gpt = AIChatOS(user_id=user_id, referer=referer, http_client=http_client)
         self.__expired = time.time() + self.EXPIRES
 
     def is_expired(self, now: float) -> bool:
@@ -122,38 +76,18 @@ class ChatBox(Logging):
         self.__expired = time.time() + self.EXPIRES
         gpt = self.__gpt
         # check cookies
-        if gpt.get_cookie(key='credential') is None:
-            # 1. login and update 'credential' into cookies
-            gpt.auth_login()
-            # 2. fetch 'accessToken'
+        acw_tc = gpt.get_cookie(key='acw_tc')
+        cdn_sec_tc = gpt.get_cookie(key='cdn_sec_tc')
+        if acw_tc is None or cdn_sec_tc is None:
+            # get cookies
             gpt.auth_session()
-            if gpt.get_cookie(key='credential') is None:
-                self.error(msg='failed to fetch access token')
+            acw_tc = gpt.get_cookie(key='acw_tc')
+            cdn_sec_tc = gpt.get_cookie(key='cdn_sec_tc')
+            if acw_tc is None or cdn_sec_tc is None:
+                self.error(msg='failed to get cookies')
                 return False
-        # check account
-        if gpt.account_id is None:
-            # 3. fetch 'account_id'
-            gpt.accounts_check()
-            if gpt.account_id is None:
-                self.warning(msg='failed to fetch account id')
-                # return False
-        # check model
-        if gpt.default_model is None:
-            # 4. fetch 'default_model'
-            gpt.models()
-            if gpt.default_model is None:
-                self.error(msg='failed to fetch model name')
-                return False
-            # 5. fetch conversations
-            gpt.conversations()
-            if gpt.conversation_id is None:
-                self.warning(msg='failed to fetch conversations')
-                # return False
         # OK
-        aid = gpt.account_id
-        model = gpt.default_model
-        session_key = gpt.session_key
-        self.info(msg='ChatGPT is ready (%s): %s, session key: %s' % (model, aid, session_key))
+        self.info(msg='ChatGPT is ready: %s, %s' % (acw_tc, cdn_sec_tc))
         return True
 
     def ask(self, question: str) -> Optional[str]:
@@ -163,8 +97,6 @@ class ChatBox(Logging):
 
 class ChatBoxPool(Logging):
 
-    BASE_URL = 'https://chat-shared.zhile.io'
-
     def __init__(self):
         super().__init__()
         self.__map = weakref.WeakValueDictionary()  # ID => ChatBox
@@ -172,21 +104,16 @@ class ChatBoxPool(Logging):
         self.__lock = threading.Lock()
         self.__next_purge_time = 0
 
-    def __new_box(self, session_key: str, token: dict, http_session: HttpSession) -> Optional[ChatBox]:
-        token_id = token.get('token_id')
-        if token_id is None:
-            self.error(msg='failed to create GPT client without token id')
-            return None
-        if len(session_key) > 16:
-            session_key = session_key[-16:]
-        base_url = self.BASE_URL
-        return ChatBox(base_url=base_url, session_key=session_key, data_token=token_id, http_session=http_session)
+    @classmethod
+    def __new_box(cls, identifier: ID, referer: str, http_client: HttpClient) -> Optional[ChatBox]:
+        user_id = check_code(identifier=identifier)
+        return ChatBox(user_id=user_id, referer=referer, http_client=http_client)
 
-    def get_box(self, identifier: ID, token: dict = None, http_session: HttpSession = None) -> Optional[ChatBox]:
+    def get_box(self, identifier: ID, http_client: HttpClient, referer: str) -> Optional[ChatBox]:
         with self.__lock:
             box = self.__map.get(identifier)
-            if box is None and token is not None and http_session is not None:
-                box = self.__new_box(session_key=str(identifier), token=token, http_session=http_session)
+            if box is None:
+                box = self.__new_box(identifier=identifier, referer=referer, http_client=http_client)
                 if box is not None:
                     self.__map[identifier] = box
                     self.__boxes.add(box)
@@ -210,20 +137,15 @@ class ChatBoxPool(Logging):
 @Singleton
 class ChatClient(Runner, Logging):
 
-    BASE_URL = 'https://chat-shared.zhile.io'
-    TOKEN_URL = 'https://chat-shared.zhile.io/api/loads'
+    BASE_URL = 'https://api.binjie.fun'
+    REFERER_URL = 'https://chat.aichatos.top'
 
     def __init__(self):
         super().__init__(interval=Runner.INTERVAL_SLOW)
-        self.__session = HttpSession(long_connection=True)
-        # tokens
-        self.__loads = SharedToken(url=self.TOKEN_URL, session=self.__session)
+        self.__client = HttpClient(long_connection=True, verify=False, base_url=self.BASE_URL)
         # pools
         self.__box_pool = ChatBoxPool()
         self.__task_pool = ChatTaskPool()
-
-    def get_box(self, identifier: ID) -> Optional[ChatBox]:
-        return self.__box_pool.get_box(identifier=identifier)
 
     def request(self, question: str, identifier: ID, callback: ChatCallback):
         request = ChatRequest(question=question, identifier=identifier)
@@ -240,9 +162,9 @@ class ChatClient(Runner, Logging):
         request = task.request
         question = request.question
         identifier = request.identifier
-        any_token = self.__loads.any
-        http_session = self.__session
-        box = self.__box_pool.get_box(identifier=identifier, token=any_token, http_session=http_session)
+        http_client = self.__client
+        referer = self.REFERER_URL
+        box = self.__box_pool.get_box(identifier=identifier, http_client=http_client, referer=referer)
         if box is None:
             self.error(msg='failed to get chat box, drop request from %s: "%s"' % (identifier, question))
             return False

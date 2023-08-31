@@ -49,10 +49,11 @@ def show_response(response: Response):
 
 class HttpSession:
 
-    def __init__(self, long_connection: bool = False):
+    def __init__(self, long_connection: bool = False, verify: bool = True):
         super().__init__()
         self.__long_connection = long_connection
         self.__session = None
+        self.__verify = verify
 
     @property
     def session(self) -> Session:
@@ -64,20 +65,25 @@ class HttpSession:
 
     def http_get(self, url: str, headers: dict = None, cookies: dict = None) -> Response:
         network = self.session if self.__long_connection else requests
-        return network.request(method='GET', url=url, headers=headers, cookies=cookies, verify=False)
+        verify = self.__verify
+        return network.request(method='GET', url=url, headers=headers, cookies=cookies, verify=verify)
 
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None, cookies: dict = None) -> Response:
         network = self.session if self.__long_connection else requests
-        return network.request(method='POST', url=url, data=data, headers=headers, cookies=cookies, verify=False)
+        verify = self.__verify
+        return network.request(method='POST', url=url, data=data, headers=headers, cookies=cookies, verify=verify)
 
 
 class HttpClient(Logging):
 
-    def __init__(self, session: HttpSession = None, long_connection: bool = False, base: str = None):
+    def __init__(self, session: HttpSession = None, long_connection: bool = False, verify: bool = True,
+                 base_url: str = None):
         super().__init__()
-        self.__session = HttpSession(long_connection=long_connection) if session is None else session
+        if session is None:
+            session = HttpSession(long_connection=long_connection, verify=verify)
+        self.__session = session
         self.__cookies = {}
-        self.__base = base
+        self.__base = base_url
 
     @property
     def cookies(self) -> dict:

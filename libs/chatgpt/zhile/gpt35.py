@@ -31,7 +31,7 @@ from dimples.utils import random_bytes
 from dimples.utils import Log
 
 
-from .http import HttpClient, HttpSession, show_response
+from ..http import HttpClient, HttpSession, show_response
 
 
 def random_hex(size: int) -> str:
@@ -106,7 +106,7 @@ class SharedGPT(HttpClient):
     """
 
     def __init__(self, base_url: str, session_key: str, data_token: str, http_session: HttpSession = None):
-        super().__init__(session=http_session, long_connection=True, base=base_url)
+        super().__init__(session=http_session, long_connection=True, base_url=base_url)
         self.set_cookie(key='session_password', value=session_key)
         self.__session_key = session_key
         self.__data_token = data_token
