@@ -52,7 +52,7 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.chatgpt.aichatos import ChatClient
+from libs.chatgpt.fakeopen import ChatClient
 from libs.chatgpt import ChatCallback, ChatRequest
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 

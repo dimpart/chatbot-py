@@ -266,14 +266,14 @@ class SharedGPT(HttpClient):
             'X-Authorization': self.access_token,
         }, data=data)
         # show_response(response=response)
-        response = parse_response(text=response.text)
-        if response is None:
+        res = parse_response(text=response.text)
+        if res is None:
             self.error(msg='failed to parse response: %s' % response.text)
         else:
-            cid = response.get('conversation_id')
+            cid = res.get('conversation_id')
             if cid is not None:
                 self.__conversation_id = cid
-            msg = response['message']
+            msg = res['message']
             mid = msg['id']
             self.__last_message_id = mid
             self.__message_queue.push(msg=msg, trim=True)
