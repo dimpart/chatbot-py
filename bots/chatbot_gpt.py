@@ -68,16 +68,21 @@ class Footprint:
         super().__init__()
         self.__active_times = {}  # ID => float
 
+    def __get_time(self, identifier: ID, now: Optional[float]) -> Optional[float]:
+        current = time.time()
+        if now is None or now <= 0 or now >= current:
+            return current
+        elif now > self.__active_times.get(identifier, 0):
+            return now
+        # else:
+        #     # time expired, drop it
+        #     return None
+
     def touch(self, identifier: ID, now: float = None):
-        if now is None:
-            now = time.time()
-        else:
-            last_time = self.__active_times.get(identifier)
-            if last_time is not None and last_time >= now:
-                # ignore old time
-                return False
-        self.__active_times[identifier] = now
-        return True
+        now = self.__get_time(identifier=identifier, now=now)
+        if now is not None:
+            self.__active_times[identifier] = now
+            return True
 
     def is_vanished(self, identifier: ID, now: float = None) -> bool:
         last_time = self.__active_times.get(identifier)

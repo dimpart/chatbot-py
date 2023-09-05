@@ -114,10 +114,22 @@ class ChatClient(Runner, Logging):
 
     def __init__(self):
         super().__init__(interval=Runner.INTERVAL_SLOW)
-        self.__session = HttpSession(long_connection=True)
+        self.__client_ref: Optional[weakref.ReferenceType] = None
+        self.__client_expired = 0
         # pools
         self.__box_pool = ChatBoxPool()
         self.__task_pool = ChatTaskPool()
+
+    @property
+    def http_session(self) -> HttpSession:
+        client = None if self.__client_ref is None else self.__client_ref()
+        now = time.time()
+        if client is None or now > self.__client_expired:
+            self.warning(msg='create http session: %s' % self.BASE_URL)
+            client = HttpSession(long_connection=True)
+            self.__client_ref = weakref.ref(client)
+            self.__client_expired = now + ChatBox.EXPIRES
+        return client
 
     def request(self, question: str, identifier: ID, callback: ChatCallback):
         request = ChatRequest(question=question, identifier=identifier)
@@ -134,7 +146,7 @@ class ChatClient(Runner, Logging):
         request = task.request
         question = request.question
         identifier = request.identifier
-        http_session = self.__session
+        http_session = self.http_session
         base = self.BASE_URL
         referer = self.REFERER_URL
         box = self.__box_pool.get_box(identifier=identifier, base_url=base, referer=referer, http_session=http_session)
