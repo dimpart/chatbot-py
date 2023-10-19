@@ -23,14 +23,14 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
 from typing import Optional
 
+from dimples import DateTime
 from dimples import ID, Document
 
+from dimples.utils import is_before
 from dimples.utils import CacheManager
 from dimples.common import DocumentDBI
-from dimples.common.dbi import is_expired
 
 from .dos import DocumentStorage
 from .redis import DocumentCache
@@ -52,6 +52,20 @@ class DocumentTable(DocumentDBI):
     def show_info(self):
         self.__dos.show_info()
 
+    def _is_expired(self, document: Document) -> bool:
+        """ check old record with document time """
+        new_time = document.time
+        if new_time is None or new_time <= 0:
+            return False
+        doc_type = document.type
+        if doc_type is None:
+            doc_type = '*'
+        # check old record
+        old = self.document(identifier=document.identifier, doc_type=doc_type)
+        if old is not None and is_before(old_time=old.time, new_time=new_time):
+            # cache expired, drop it
+            return True
+
     #
     #   Document DBI
     #
@@ -59,15 +73,11 @@ class DocumentTable(DocumentDBI):
     # Override
     def save_document(self, document: Document) -> bool:
         assert document.valid, 'document invalid: %s' % document
-        identifier = document.identifier
-        doc_type = document.type
-        if doc_type is None or len(doc_type) == 0:
-            doc_type = '*'
-        # 0. check old record with time
-        old = self.document(identifier=identifier, doc_type=doc_type)
-        if old is not None and is_expired(old_time=old.time, new_time=document.time):
+        # 0. check document time
+        if self._is_expired(document=document):
             # document expired, drop it
             return False
+        identifier = document.identifier
         # 1. store into memory cache
         self.__cache.update(key=identifier, value=document, life_span=self.CACHE_EXPIRES)
         # 2. store into redis server
@@ -77,7 +87,7 @@ class DocumentTable(DocumentDBI):
 
     # Override
     def document(self, identifier: ID, doc_type: Optional[str] = '*') -> Optional[Document]:
-        now = time.time()
+        now = DateTime.now()
         # 1. check memory cache
         value, holder = self.__cache.fetch(key=identifier, now=now)
         if value is None:

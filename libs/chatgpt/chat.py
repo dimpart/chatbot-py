@@ -29,6 +29,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from dimples import ID
+from dimples.utils import Logging
 
 
 #
@@ -58,7 +59,7 @@ class ChatCallback(ABC):
         raise NotImplemented
 
 
-class ChatTask(ChatCallback):
+class ChatTask(Logging, ChatCallback):
 
     def __init__(self, request: ChatRequest, callback: ChatCallback):
         super().__init__()
@@ -71,7 +72,10 @@ class ChatTask(ChatCallback):
 
     # Override
     def chat_response(self, answer: str, request: ChatRequest):
-        self.__callback.chat_response(answer=answer, request=request)
+        try:
+            self.__callback.chat_response(answer=answer, request=request)
+        except Exception as error:
+            self.error(msg='failed to response: %s' % error)
 
 
 class ChatTaskPool:

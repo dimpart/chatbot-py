@@ -32,12 +32,12 @@
 from .meta import MetaCache
 from .document import DocumentCache
 from .group import GroupCache
-from .grp_reset import ResetGroupCache
+from .grp_history import GroupHistoryCache
 
 
 __all__ = [
 
     'MetaCache',
     'DocumentCache',
-    'GroupCache', 'ResetGroupCache',
+    'GroupCache', 'GroupHistoryCache',
 ]

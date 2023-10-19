@@ -32,7 +32,7 @@ from dimples import ID
 from dimples import Station
 from dimples import CommonFacebook
 from dimples import AccountDBI, MessageDBI, SessionDBI
-from dimples import Config
+from dimples.utils import Config
 from dimples.common import ProviderInfo
 from dimples.database import Storage
 

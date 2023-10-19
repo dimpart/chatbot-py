@@ -43,6 +43,7 @@ from dimples import CustomizedContent, CustomizedContentProcessor, CustomizedCon
 from dimples import BaseContentProcessor
 from dimples import TwinsHelper
 from dimples import CommonFacebook, CommonMessenger
+from dimples import Anonymous
 from dimples.utils import Singleton
 from dimples.utils import Log, Logging
 from dimples.utils import Path
@@ -68,20 +69,20 @@ class Footprint:
         super().__init__()
         self.__active_times = {}  # ID => float
 
-    def __get_time(self, identifier: ID, now: Optional[float]) -> Optional[float]:
-        current = time.time()
-        if now is None or now <= 0 or now >= current:
-            return current
-        elif now > self.__active_times.get(identifier, 0):
+    def __get_time(self, identifier: ID, when: Optional[float]) -> Optional[float]:
+        now = time.time()
+        if when is None or when <= 0 or when >= now:
             return now
+        elif when > self.__active_times.get(identifier, 0):
+            return when
         # else:
         #     # time expired, drop it
         #     return None
 
-    def touch(self, identifier: ID, now: float = None):
-        now = self.__get_time(identifier=identifier, now=now)
-        if now is not None:
-            self.__active_times[identifier] = now
+    def touch(self, identifier: ID, when: float = None):
+        when = self.__get_time(identifier=identifier, when=when)
+        if when is not None:
+            self.__active_times[identifier] = when
             return True
 
     def is_vanished(self, identifier: ID, now: float = None) -> bool:
@@ -105,11 +106,15 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
 
     @property
     def facebook(self) -> CommonFacebook:
-        return super().facebook
+        barrack = super().facebook
+        assert isinstance(barrack, CommonFacebook), 'facebook error: %s' % barrack
+        return barrack
 
     @property
     def messenger(self) -> CommonMessenger:
-        return super().messenger
+        transceiver = super().messenger
+        assert isinstance(transceiver, CommonMessenger), 'messenger error: %s' % transceiver
+        return transceiver
 
     @property
     def my_name(self) -> Optional[str]:
@@ -124,10 +129,9 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             self.messenger.query_document(identifier=identifier)
             return identifier.name
         name = doc.name
-        if name is None or len(name) == 0:
-            return identifier.name
-        else:
+        if name is not None and len(name) > 0:
             return name
+        return Anonymous.get_name(identifier=identifier)
 
     def ask(self, question: str, sender: ID, group: Optional[ID], now: float = None) -> bool:
         s_name = self.get_name(identifier=sender)
@@ -139,7 +143,7 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             self.warning(msg='question timeout from %s (%s): %s' % (sender, s_name, question))
             return False
         fp = Footprint()
-        fp.touch(identifier=sender, now=now)
+        fp.touch(identifier=sender, when=now)
         # 2. check for group message
         if group is None:
             identifier = sender
@@ -228,7 +232,7 @@ class BotTextContentProcessor(BaseContentProcessor, Logging):
             self.__helper.ask(question=text, sender=sender, group=group, now=content.time)
         # text = 'Text message received'
         # group = content.group
-        # return self._respond_receipt(text=text, msg=msg, group=group)
+        # return self._respond_receipt(text=text, content=content, envelope=r_msg.envelope)
         return []
 
 

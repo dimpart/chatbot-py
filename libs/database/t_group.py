@@ -23,9 +23,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
-from typing import List
+from typing import Optional, List
 
+from dimples import DateTime
 from dimples import ID
 
 from dimples.utils import CacheManager
@@ -56,6 +56,14 @@ class GroupTable(GroupDBI):
     #
 
     # Override
+    def founder(self, group: ID) -> Optional[ID]:
+        pass
+
+    # Override
+    def owner(self, group: ID) -> Optional[ID]:
+        pass
+
+    # Override
     def save_members(self, members: List[ID], group: ID) -> bool:
         # 1. store into memory cache
         self.__cache.update(key=group, value=members, life_span=self.CACHE_EXPIRES)
@@ -66,7 +74,7 @@ class GroupTable(GroupDBI):
 
     # Override
     def members(self, group: ID) -> List[ID]:
-        now = time.time()
+        now = DateTime.now()
         # 1. check memory cache
         value, holder = self.__cache.fetch(key=group, now=now)
         if value is None:
@@ -96,7 +104,7 @@ class GroupTable(GroupDBI):
     # Override
     def assistants(self, group: ID) -> List[ID]:
         # TODO: get assistants
-        pass
+        return []
 
     # Override
     def save_assistants(self, assistants: List[ID], group: ID) -> bool:
@@ -105,7 +113,7 @@ class GroupTable(GroupDBI):
 
     def administrators(self, group: ID) -> List[ID]:
         # TODO: get administrators
-        pass
+        return []
 
     def save_administrators(self, administrators: List[ID], group: ID) -> bool:
         # TODO: save administrators

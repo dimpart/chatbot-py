@@ -42,11 +42,8 @@ class ClientPacker(ClientMessagePacker):
         content = msg.content
         if isinstance(content, FileContent):
             if content.get('data') is not None:  # and content.get('URL') is not None:
-                sender = msg.sender
-                receiver = msg.receiver
-                messenger = self.messenger
-                key = messenger.cipher_key(sender=sender, receiver=receiver, generate=True)
-                assert key is not None, 'failed to get msg key for: %s -> %s' % (sender, receiver)
+                key = self.messenger.get_encrypt_key(msg=msg)
+                assert key is not None, 'failed to get msg key for: %s -> %s' % (msg.sender, msg.receiver)
                 # call emitter to encrypt & upload file data before send out
                 send_file_message(msg=msg, password=key)
                 return None
@@ -55,13 +52,13 @@ class ClientPacker(ClientMessagePacker):
         except Exception as error:
             self.error(msg='failed to encrypt message: %s' % error)
             return None
-        receiver = msg.receiver
-        if receiver.is_group:
-            # reuse group message keys
-            messenger = self.messenger
-            key = messenger.cipher_key(sender=msg.sender, receiver=receiver)
-            key['reused'] = True
-        # TODO: reuse personal message key?
+        # receiver = msg.receiver
+        # if receiver.is_group:
+        #     # reuse group message keys
+        #     messenger = self.messenger
+        #     key = messenger.cipher_key(sender=msg.sender, receiver=receiver)
+        #     key['reused'] = True
+        # # TODO: reuse personal message key?
         return s_msg
 
     # Override
@@ -71,11 +68,8 @@ class ClientPacker(ClientMessagePacker):
             content = i_msg.content
             if isinstance(content, FileContent):
                 if content.get('data') is None and content.get('URL') is not None:
-                    sender = i_msg.sender
-                    receiver = i_msg.receiver
-                    messenger = self.messenger
-                    key = messenger.cipher_key(sender=sender, receiver=receiver)
-                    assert key is not None, 'failed to get password: %s -> %s' % (sender, receiver)
+                    key = self.messenger.get_decrypt_key(msg=msg)
+                    assert key is not None, 'failed to get password: %s -> %s' % (i_msg.sender, i_msg.receiver)
                     # keep password to decrypt data after downloaded
                     content.password = key
         return i_msg

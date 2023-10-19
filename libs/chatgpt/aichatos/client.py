@@ -91,8 +91,11 @@ class ChatBox(Logging):
         return True
 
     def ask(self, question: str) -> Optional[str]:
-        if self.__prepare():
-            return self.__gpt.ask(question=question)
+        try:
+            if self.__prepare():
+                return self.__gpt.ask(question=question)
+        except Exception as error:
+            self.error(msg='failed to ask question: %s, %s' % (question, error))
 
 
 class ChatBoxPool(Logging):
@@ -183,7 +186,11 @@ class ChatClient(Runner, Logging):
         answer = box.ask(question=question)
         if answer is None:
             self.error(msg='failed to get answer, drop request from %s: "%s"' % (identifier, question))
-            answer = '{"code": 404, "error": "No response, please try again later."}'
+            answer = '{\n\t"code": 404,\n\t"error": "No response, please try again later."\n}'
+        elif answer.startswith('sorry') and answer.find('(vpn)') > 0:
+            answer = '{\n\t"code": 403,\n\t"error": "Request forbidden, please contact the web-master."\n}'
+        elif answer.find('binjie') >= 0:
+            answer = answer.replace('binjie', ' Gigi ')
         # OK
         task.chat_response(answer=answer, request=request)
         return True

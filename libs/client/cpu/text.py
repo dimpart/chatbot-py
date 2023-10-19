@@ -149,7 +149,7 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
                 text = 'Group message responded'
             else:
                 text = 'Group message respond failed'
-            return self._respond_receipt(text=text, msg=r_msg, group=group)
+            return self._respond_receipt(text=text, content=content, envelope=r_msg.envelope)
 
 
 def get_name(identifier: ID, facebook: CommonFacebook) -> str:

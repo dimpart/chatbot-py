@@ -93,4 +93,4 @@ class SharedToken(HttpClient):
 
 def comp(item: dict) -> int:
     count = item.get('count')
-    return Converter.get_int(value=count)
+    return Converter.get_int(value=count, default=0)

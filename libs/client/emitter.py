@@ -26,7 +26,8 @@
 from typing import Optional, Dict
 
 from dimples import md5, hex_encode
-from dimples import SymmetricKey, ID
+from dimples import TransportableData
+from dimples import EncryptKey, ID
 from dimples import InstantMessage
 from dimples import Envelope, Content
 from dimples import TextContent, FileContent
@@ -118,7 +119,7 @@ class Emitter(Logging):
     #   File Message
     #
 
-    def send_file_message(self, msg: InstantMessage, password: SymmetricKey):
+    def send_file_message(self, msg: InstantMessage, password: EncryptKey):
         """
         Send file content message with password
 
@@ -139,7 +140,7 @@ class Emitter(Logging):
         content.data = None
         self._save_instant_message(msg=msg)
         # 3. add upload task with encrypted data
-        encrypted = password.encrypt(data=data)
+        encrypted = password.encrypt(data=data, extra=msg.dictionary)
         filename = filename_from_data(data=encrypted, filename=filename)
         sender = msg.sender
         url = upload_encrypted_data(data=encrypted, filename=filename, sender=sender)
@@ -162,7 +163,8 @@ class Emitter(Logging):
         :param receiver:  destination
         """
         filename = '%s.jpeg' % hex_encode(data=md5(data=image))
-        content = FileContent.image(filename=filename, data=image)
+        ted = TransportableData.create(data=image)
+        content = FileContent.image(filename=filename, data=ted)
         content['length'] = len(image)
         content.thumbnail = thumbnail
         self.send_content(content=content, receiver=receiver)
