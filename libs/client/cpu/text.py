@@ -33,16 +33,15 @@ import time
 from typing import Optional, Union, List
 from urllib.error import URLError
 
-from startrek import DeparturePriority
-
 from dimples import EntityType, ID
 from dimples import ReliableMessage
 from dimples import Content, TextContent
 from dimples import BaseContentProcessor
-from dimples import CommonFacebook, CommonMessenger
+from dimples import CommonFacebook
 
 from ...utils import Logging
 from ...utils.nlp import ChatBot, Dialog
+from ..emitter import Emitter
 
 
 class ChatTextContentProcessor(BaseContentProcessor, Logging):
@@ -143,9 +142,9 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
         else:
             # group message
             self.debug(msg='Group Dialog > %s(%s)@%s: "%s" -> "%s"' % (nickname, sender, group.name, question, answer))
-            messenger = self.messenger
-            assert isinstance(messenger, CommonMessenger), 'messenger error: %s' % facebook
-            if messenger.send_content(sender=None, receiver=group, content=res, priority=DeparturePriority.NORMAL):
+            emitter = Emitter()
+            _, r_msg = emitter.send_content(content=content, receiver=group)
+            if r_msg is not None:
                 text = 'Group message responded'
             else:
                 text = 'Group message respond failed'

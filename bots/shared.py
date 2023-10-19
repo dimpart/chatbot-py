@@ -44,6 +44,7 @@ from libs.client import ClientSession, ClientMessenger
 from libs.client import ClientProcessor, ClientPacker
 from libs.client import Terminal
 from libs.client import Emitter
+from libs.client import SharedGroupManager
 
 
 @Singleton
@@ -150,6 +151,9 @@ def create_facebook(database: AccountDBI, current_user: ID) -> CommonFacebook:
     assert msg_keys is not None and len(msg_keys) > 0, 'failed to get msg keys: %s' % current_user
     print('set current user: %s' % current_user)
     facebook.current_user = facebook.user(identifier=current_user)
+    # set for group manager
+    g_man = SharedGroupManager()
+    g_man.facebook = facebook
     return facebook
 
 
@@ -176,6 +180,9 @@ def create_messenger(facebook: CommonFacebook, database: MessageDBI,
     messenger.processor = processor_class(facebook=facebook, messenger=messenger)
     # 3. set weak reference to messenger
     session.messenger = messenger
+    # set for group manager
+    g_man = SharedGroupManager()
+    g_man.messenger = messenger
     return messenger
 
 

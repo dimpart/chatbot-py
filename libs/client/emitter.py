@@ -23,17 +23,19 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Dict
+from typing import Optional, Tuple, Dict
 
 from dimples import md5, hex_encode
 from dimples import TransportableData
 from dimples import EncryptKey, ID
-from dimples import InstantMessage
+from dimples import InstantMessage, ReliableMessage
 from dimples import Envelope, Content
 from dimples import TextContent, FileContent
 from dimples.client import ClientMessenger
 
 from ..utils import Singleton, Log, Logging
+
+from .group import SharedGroupManager
 
 
 @Singleton
@@ -95,14 +97,18 @@ class Emitter(Logging):
         # TODO: save into local storage
         pass
 
-    def _send_instant_message(self, msg: InstantMessage):
+    def _send_instant_message(self, msg: InstantMessage) -> Optional[ReliableMessage]:
         self.info(msg='send message (type=%d): %s -> %s' % (msg.content.type, msg.sender, msg.receiver))
         # send by shared messenger
         messenger = self.messenger
-        messenger.send_instant_message(msg=msg, priority=1)
+        r_msg = messenger.send_instant_message(msg=msg, priority=1)
         self._save_instant_message(msg=msg)
+        return r_msg
 
-    def send_content(self, content: Content, receiver: ID):
+    def send_content(self, content: Content, receiver: ID) -> Tuple[InstantMessage, Optional[ReliableMessage]]:
+        if receiver.is_group:
+            g_man = SharedGroupManager()
+            return g_man.send_content(content=content, group=receiver)
         messenger = self.messenger
         facebook = messenger.facebook
         current = facebook.current_user
@@ -113,7 +119,8 @@ class Emitter(Logging):
         if receiver.is_group:
             # TODO: pack group message for bot
             pass
-        self._send_instant_message(msg=i_msg)
+        r_msg = self._send_instant_message(msg=i_msg)
+        return i_msg, r_msg
 
     #
     #   File Message

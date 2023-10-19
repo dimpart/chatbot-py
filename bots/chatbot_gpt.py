@@ -56,6 +56,7 @@ Path.add(path=path)
 from libs.chatgpt.fakeopen import ChatClient
 from libs.chatgpt import ChatCallback, ChatRequest
 from libs.client import ClientProcessor, ClientContentProcessorCreator
+from libs.client import Emitter
 
 from bots.shared import start_bot
 
@@ -155,8 +156,8 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
                 self.error(msg='failed to get the bot name')
                 return False
             naked = replace_at(text=question, name=my_name)
-            if len(naked) == question:
-                self.debug(msg='ignore group message from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
+            if naked == question:
+                self.info(msg='ignore group message from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
                 return False
             else:
                 question = naked.strip()
@@ -174,7 +175,8 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
         name = self.get_name(identifier=identifier)
         self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
         content = TextContent.create(text=answer)
-        self.messenger.send_content(sender=None, receiver=identifier, content=content)
+        emitter = Emitter()
+        emitter.send_content(content=content, receiver=identifier)
 
 
 class ActiveUsersHandler(ChatHelper, CustomizedContentHandler):

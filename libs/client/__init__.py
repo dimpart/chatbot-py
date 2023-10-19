@@ -39,6 +39,8 @@ from .cpu import ChatTextContentProcessor
 from .packer import ClientPacker
 from .emitter import Emitter
 
+from .group import SharedGroupManager
+
 
 __all__ = [
 
@@ -57,5 +59,7 @@ __all__ = [
     'ClientProcessor',
     'ClientPacker',
     'Emitter',
+
+    'SharedGroupManager',
 
 ]
