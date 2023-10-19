@@ -24,12 +24,19 @@
 # SOFTWARE.
 # ==============================================================================
 
+import os
 import threading
+import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from dimples import DateTime
 from dimples import ID
-from dimples.utils import Logging
+from dimples.database import Storage
+
+from ..utils import json_encode
+from ..utils import Logging
+from ..utils import Singleton
 
 
 #
@@ -93,3 +100,54 @@ class ChatTaskPool:
         with self.__lock:
             if len(self.__tasks) > 0:
                 return self.__tasks.pop(0)
+
+
+@Singleton
+class ChatStorage(Logging):
+
+    def __init__(self):
+        super().__init__()
+        self.__root = None  # '/var/dim/protected'
+        self.__user = None
+
+    @property
+    def root(self) -> Optional[str]:
+        return self.__root
+
+    @root.setter
+    def root(self, path: str):
+        self.__root = path
+
+    @property
+    def bot(self) -> Optional[ID]:
+        return self.__user
+
+    @bot.setter
+    def bot(self, identifier: ID):
+        self.__user = identifier
+
+    def get_path(self, now: DateTime) -> Optional[str]:
+        """ get current save path """
+        root = self.root
+        user = self.bot
+        if root is None or user is None:
+            self.debug(msg='chat history not config')
+            return None
+        filename = 'chat-%s.txt' % time.strftime('%Y-%m-%d', now.localtime)
+        return os.path.join(root, str(user), filename)
+
+    def save_response(self, question: str, answer: str, identifier: ID, name: str) -> bool:
+        now = DateTime.now()
+        path = self.get_path(now=now)
+        if path is None:
+            self.info(msg='cannot get storage path for chat response')
+            return False
+        info = {
+            'ID': str(identifier),
+            'name': name,
+            'time': str(now),
+            'prompt': question,
+            'result': answer,
+        }
+        text = '%s,\n' % json_encode(info)
+        return Storage.append_text(text=text, path=path)

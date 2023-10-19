@@ -45,6 +45,7 @@ from libs.client import ClientProcessor, ClientPacker
 from libs.client import Terminal
 from libs.client import Emitter
 from libs.client import SharedGroupManager
+from libs.chatgpt import ChatStorage
 
 
 @Singleton
@@ -138,6 +139,9 @@ def create_database(config: Config) -> Database:
     for node in neighbors:
         print('adding neighbor node: %s' % node)
         db.add_station(identifier=None, host=node.host, port=node.port, provider=provider)
+    # config chat storage
+    cs = ChatStorage()
+    cs.root = config.get_string(section='history', option='root')
     return db
 
 
@@ -154,6 +158,9 @@ def create_facebook(database: AccountDBI, current_user: ID) -> CommonFacebook:
     # set for group manager
     g_man = SharedGroupManager()
     g_man.facebook = facebook
+    # config chat storage
+    cs = ChatStorage()
+    cs.bot = current_user
     return facebook
 
 

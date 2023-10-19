@@ -55,6 +55,7 @@ Path.add(path=path)
 
 from libs.chatgpt.fakeopen import ChatClient
 from libs.chatgpt import ChatCallback, ChatRequest
+from libs.chatgpt import ChatStorage
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter
 
@@ -174,9 +175,13 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
         identifier = request.identifier
         name = self.get_name(identifier=identifier)
         self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
+        # respond text message
         content = TextContent.create(text=answer)
         emitter = Emitter()
         emitter.send_content(content=content, receiver=identifier)
+        # save chat history
+        storage = ChatStorage()
+        storage.save_response(question=request.question, answer=answer, identifier=identifier, name=name)
 
 
 class ActiveUsersHandler(ChatHelper, CustomizedContentHandler):

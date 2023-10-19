@@ -34,6 +34,7 @@
 from .http import HttpClient, HttpSession
 from .http import show_response
 from .chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
+from .chat import ChatStorage
 
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
 
     'ChatRequest', 'ChatCallback',
     'ChatTask', 'ChatTaskPool',
+    'ChatStorage',
 ]
