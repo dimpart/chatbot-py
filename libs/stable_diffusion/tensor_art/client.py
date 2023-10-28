@@ -24,7 +24,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import random
 import threading
 import time
 import weakref
@@ -78,7 +77,8 @@ class ChatBox(Logging):
                 projects = self.__sd.search(keywords=prompt)
                 if len(projects) > 0:
                     # pick any project
-                    item = random.choice(projects)
+                    # item = random.choice(projects)
+                    item = projects[0]
                     # build text message
                     text = self.__build_text(projects=projects)
                     return [item, text]

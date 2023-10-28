@@ -30,8 +30,9 @@ function title() {
 
 title "DIM Chat Bots"
 restart gigi "bots/chatbot_gpt.py"
-restart ling "bots/chatbot_ling.py"
-restart xiao "bots/chatbot_xiao.py"
+restart simon "bots/chatbot_sd.py"
+#restart ling "bots/chatbot_ling.py"
+#restart xiao "bots/chatbot_xiao.py"
 
 echo ""
 echo "    >>> Done <<<"
