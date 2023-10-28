@@ -142,17 +142,36 @@ class DrawHelper(TwinsHelper, DrawCallback, Logging):
                 self.info(msg='[Dialog] SD >>> %s (%s): "%s"' % (identifier, name, item))
                 # respond text message
                 content = TextContent.create(text=item)
+                content['time'] = time.time() + 6  # ordered responses
             elif isinstance(item, Dict):
                 url = item.get('url')
                 if url is None:
                     self.error(msg='response error: %s' % item)
                     continue
-                content = FileContent.image(url=url, password=PlainKey())
+                filename = get_filename(url=url)
+                if len(filename) == 0:
+                    filename = 'image.png'
+                content = FileContent.image(filename=filename, url=url, password=PlainKey())
+                content['time'] = time.time() + 5  # ordered responses
             else:
                 self.error(msg='response error: %s' % item)
                 continue
             self.info(msg='responding: %s, %s' % (identifier, content))
             emitter.send_content(content=content, receiver=identifier)
+
+
+def get_filename(url: str) -> str:
+    pos = url.find('?')
+    if pos > 0:
+        url = url[:pos]  # cut query string
+    pos = url.find('#')
+    if pos > 0:
+        url = url[:pos]  # cut fragment
+    pos = url.rfind('/')
+    if pos < 0:
+        return url
+    else:
+        return url[pos+1:]
 
 
 def replace_at(text: str, name: str) -> str:

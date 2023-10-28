@@ -75,15 +75,18 @@ class ChatBox(Logging):
         try:
             if self.__prepare():
                 projects = self.__sd.search(keywords=prompt)
-                if len(projects) > 0:
-                    # pick any project
-                    # item = random.choice(projects)
-                    item = projects[0]
-                    # build text message
-                    text = self.__build_text(projects=projects)
-                    return [item, text]
-                else:
+                count = 0 if projects is None else len(projects)
+                if count == 0:
                     return [ChatCallback.NO_CONTENT]
+                if count > 3:
+                    projects = projects[:3]
+                responses = []
+                for item in projects:
+                    responses.append(item)
+                # build text message
+                text = self.__build_text(projects=projects)
+                responses.append(text)
+                return responses
         except Exception as error:
             self.error(msg='failed to search: %s, %s' % (prompt, error))
 
