@@ -31,7 +31,7 @@ from dimples.utils import random_bytes
 from dimples.utils import Log
 
 
-from ..http import HttpClient, HttpSession, show_response
+from ...utils import HttpClient, HttpSession, show_response
 
 
 def random_hex(size: int) -> str:

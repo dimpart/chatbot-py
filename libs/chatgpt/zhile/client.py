@@ -34,7 +34,7 @@ from dimples.utils import Singleton
 from dimples.utils import Runner, Logging
 
 
-from ..http import HttpSession
+from ...utils import HttpSession
 from ..chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
 
 from .token import SharedToken

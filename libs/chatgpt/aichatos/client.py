@@ -35,7 +35,7 @@ from dimples.utils import Singleton
 from dimples.utils import Runner, Logging
 
 
-from ..http import HttpClient
+from ...utils import HttpClient
 from ..chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
 
 from .gpt35 import AIChatOS

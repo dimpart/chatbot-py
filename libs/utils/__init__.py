@@ -43,6 +43,9 @@ from dimples.utils import File, TextFile, JSONFile
 from dimples.utils import Singleton
 from dimples.utils import Log, Logging
 
+from .http import HttpSession, HttpClient
+from .http import show_response
+
 
 __all__ = [
 
@@ -56,4 +59,8 @@ __all__ = [
 
     'Path',
     'File', 'TextFile', 'JSONFile',
+
+    'HttpSession', 'HttpClient',
+    'show_response',
+
 ]

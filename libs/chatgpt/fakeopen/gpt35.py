@@ -30,7 +30,7 @@ from dimples.utils import utf8_encode, json_encode, json_decode
 from dimples.utils import Log
 
 
-from ..http import HttpClient, HttpSession
+from ...utils import HttpClient, HttpSession
 
 
 class MessageQueue:

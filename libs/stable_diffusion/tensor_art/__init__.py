@@ -25,26 +25,24 @@
 # ==============================================================================
 
 """
-    Chat-GPT
-    ~~~~~~~~
+    Stable Diffusion
+    ~~~~~~~~~~~~~~~~
 
-    3.5
+    LDMs - Latent Diffusion Models
 """
 
 from ..chat import ChatCallback, ChatRequest  # , ChatTask, ChatTaskPool
-# from ..chat import ChatBox, ChatBoxPool
 
-from .gpt35 import AIChatOS
+from .model import TensorArt
 
-from .client import ChatClient  # , ChatBox
+from .client import DrawClient
 
 
 __all__ = [
 
     'ChatCallback', 'ChatRequest',  # 'ChatTask', 'ChatTaskPool',
-    # 'ChatBox', 'ChatBoxPool',
 
-    'AIChatOS',
+    'TensorArt',
 
-    'ChatClient',  # 'ChatBox',
+    'DrawClient',
 ]

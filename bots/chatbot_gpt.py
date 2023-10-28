@@ -33,11 +33,12 @@
 
 import random
 import time
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 
+from dimples import PlainKey
 from dimples import EntityType, ID
 from dimples import ReliableMessage
-from dimples import ContentType, Content, TextContent
+from dimples import ContentType, Content, TextContent, FileContent
 from dimples import ContentProcessor, ContentProcessorCreator
 from dimples import CustomizedContent, CustomizedContentProcessor, CustomizedContentHandler
 from dimples import BaseContentProcessor
@@ -56,6 +57,10 @@ Path.add(path=path)
 from libs.chatgpt.fakeopen import ChatClient
 from libs.chatgpt import ChatCallback, ChatRequest
 from libs.chatgpt import ChatStorage
+
+from libs.stable_diffusion.tensor_art import DrawClient
+from libs.stable_diffusion import ChatCallback as DrawCallback
+
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter
 
@@ -96,6 +101,59 @@ class Footprint:
         return now > (last_time + self.EXPIRES)
 
 
+class DrawHelper(TwinsHelper, DrawCallback, Logging):
+
+    @property
+    def facebook(self) -> CommonFacebook:
+        barrack = super().facebook
+        assert isinstance(barrack, CommonFacebook), 'facebook error: %s' % barrack
+        return barrack
+
+    @property
+    def messenger(self) -> CommonMessenger:
+        transceiver = super().messenger
+        assert isinstance(transceiver, CommonMessenger), 'messenger error: %s' % transceiver
+        return transceiver
+
+    def get_name(self, identifier: ID) -> Optional[str]:
+        doc = self.facebook.document(identifier=identifier)
+        if doc is None:
+            # document not found, query from station
+            self.messenger.query_document(identifier=identifier)
+            return identifier.name
+        name = doc.name
+        if name is not None and len(name) > 0:
+            return name
+        return Anonymous.get_name(identifier=identifier)
+
+    def request(self, prompt: str, sender: ID, group: Optional[ID]) -> bool:
+        identifier = sender if group is None else group
+        self.info(msg='[Dialog] ChatGPT <<< %s : "%s"' % (identifier, prompt))
+        g_painter.request(prompt=prompt, identifier=identifier, callback=self)
+        return True
+
+    # Override
+    def chat_response(self, results: List, request: ChatRequest):
+        identifier = request.identifier
+        name = self.get_name(identifier=identifier)
+        emitter = Emitter()
+        for item in results:
+            if isinstance(item, str):
+                self.info(msg='[Dialog] SD >>> %s (%s): "%s"' % (identifier, name, item))
+                # respond text message
+                content = TextContent.create(text=item)
+            elif isinstance(item, Dict):
+                url = item.get('url')
+                if url is None:
+                    self.error(msg='response error: %s' % item)
+                    continue
+                content = FileContent.image(url=url, password=PlainKey())
+            else:
+                self.error(msg='response error: %s' % item)
+                continue
+            emitter.send_content(content=content, receiver=identifier)
+
+
 def replace_at(text: str, name: str) -> str:
     at = '@%s' % name
     if text.endswith(at):
@@ -105,6 +163,10 @@ def replace_at(text: str, name: str) -> str:
 
 
 class ChatHelper(TwinsHelper, ChatCallback, Logging):
+
+    def __init__(self, facebook, messenger):
+        super().__init__(facebook=facebook, messenger=messenger)
+        self.__draw_helper = DrawHelper(facebook=facebook, messenger=messenger)
 
     @property
     def facebook(self) -> CommonFacebook:
@@ -166,14 +228,23 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
         if len(question) == 0:
             self.warning(msg='drop empty question from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
             return False
-        self.info(msg='[Dialog] ChatGPT <<< %s (%s): "%s"' % (sender, s_name, question))
-        g_client.request(question=question, identifier=identifier, callback=self)
+        self.warning(msg='redirect message for: %s' % identifier)
+        self.__draw_helper.request(prompt=question, sender=sender, group=group)
+        # self.info(msg='[Dialog] ChatGPT <<< %s (%s): "%s"' % (sender, s_name, question))
+        # g_client.request(question=question, identifier=identifier, callback=self)
         return True
 
     # Override
     def chat_response(self, answer: str, request: ChatRequest):
         identifier = request.identifier
         name = self.get_name(identifier=identifier)
+        if answer.find('"code": 404,') > 0:
+            question = request.question
+            sender = request.identifier
+            group = sender if sender.is_group else None
+            self.warning(msg='ChatGPT no response, ask SD: %s, %s' % (answer, sender))
+            self.__draw_helper.request(prompt=question, sender=sender, group=group)
+            return
         self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
         # respond text message
         content = TextContent.create(text=answer)
@@ -304,6 +375,10 @@ DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 # start chat gpt
 g_client = ChatClient()
 g_client.start()
+
+# start draw bot
+g_painter = DrawClient()
+g_painter.start()
 
 if __name__ == '__main__':
     # start chat bot

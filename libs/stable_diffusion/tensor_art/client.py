@@ -24,10 +24,11 @@
 # SOFTWARE.
 # ==============================================================================
 
+import random
 import threading
 import time
 import weakref
-from typing import Optional, Set
+from typing import Optional, Union, Set, List, Dict
 
 from dimples import ID
 from dimples.utils import Singleton
@@ -37,7 +38,7 @@ from dimples.utils import Runner, Logging
 from ...utils import HttpSession
 from ..chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
 
-from .gpt35 import FakeOpen
+from .model import TensorArt
 
 
 #
@@ -49,10 +50,10 @@ class ChatBox(Logging):
 
     EXPIRES = 36000  # seconds
 
-    def __init__(self, base_url: str, referer: str, auth_token: str, http_session: HttpSession):
+    def __init__(self, base_url: str, referer: str, http_session: HttpSession):
         super().__init__()
-        gpt = FakeOpen(base_url=base_url, referer=referer, auth_token=auth_token, http_session=http_session)
-        self.__gpt = gpt
+        sd = TensorArt(base_url=base_url, referer=referer, http_session=http_session)
+        self.__sd = sd
         self.__expired = time.time() + self.EXPIRES
 
     def is_expired(self, now: float) -> bool:
@@ -62,12 +63,29 @@ class ChatBox(Logging):
         self.__expired = time.time() + self.EXPIRES
         return True
 
-    def ask(self, question: str) -> Optional[str]:
+    # noinspection PyMethodMayBeStatic
+    def __build_text(self, projects: List[Dict]) -> str:
+        names = []
+        for item in projects:
+            text = item.get('name')
+            if text is not None and len(text) > 0:
+                names.append(text)
+        return 'You can also input:\n    %s' % '\n    '.join(names)
+
+    def request(self, prompt: str) -> Optional[List[Union[Dict, str]]]:
         try:
             if self.__prepare():
-                return self.__gpt.ask(question=question)
+                projects = self.__sd.search(keywords=prompt)
+                if len(projects) > 0:
+                    # pick any project
+                    item = random.choice(projects)
+                    # build text message
+                    text = self.__build_text(projects=projects)
+                    return [item, text]
+                else:
+                    return [ChatCallback.NO_CONTENT]
         except Exception as error:
-            self.error(msg='failed to ask question: %s, %s' % (question, error))
+            self.error(msg='failed to search: %s, %s' % (prompt, error))
 
 
 class ChatBoxPool(Logging):
@@ -81,8 +99,7 @@ class ChatBoxPool(Logging):
 
     @classmethod
     def __new_box(cls, base_url: str, referer: str, http_session: HttpSession) -> Optional[ChatBox]:
-        auth_token = 'Bearer pk-this-is-a-real-free-pool-token-for-everyone'
-        return ChatBox(base_url=base_url, referer=referer, auth_token=auth_token, http_session=http_session)
+        return ChatBox(base_url=base_url, referer=referer, http_session=http_session)
 
     def get_box(self, identifier: ID, base_url: str, referer: str, http_session: HttpSession) -> Optional[ChatBox]:
         with self.__lock:
@@ -110,10 +127,10 @@ class ChatBoxPool(Logging):
 
 
 @Singleton
-class ChatClient(Runner, Logging):
+class DrawClient(Runner, Logging):
 
-    BASE_URL = 'https://ai.fakeopen.com'
-    REFERER_URL = 'https://chat1.geekgpt.org/'
+    BASE_URL = 'https://api.tensor.art'
+    REFERER_URL = 'https://tensor.art/'
 
     def __init__(self):
         super().__init__(interval=Runner.INTERVAL_SLOW)
@@ -129,13 +146,13 @@ class ChatClient(Runner, Logging):
         now = time.time()
         if client is None or now > self.__client_expired:
             self.warning(msg='create http session: %s' % self.BASE_URL)
-            client = HttpSession(long_connection=True)
+            client = HttpSession(long_connection=True, verify=False)
             self.__client_ref = weakref.ref(client)
             self.__client_expired = now + ChatBox.EXPIRES
         return client
 
-    def request(self, question: str, identifier: ID, callback: ChatCallback):
-        request = ChatRequest(question=question, identifier=identifier)
+    def request(self, prompt: str, identifier: ID, callback: ChatCallback):
+        request = ChatRequest(prompt=prompt, identifier=identifier)
         task = ChatTask(request=request, callback=callback)
         self.__task_pool.add_task(task=task)
 
@@ -147,21 +164,21 @@ class ChatClient(Runner, Logging):
             self.__box_pool.purge()
             return False
         request = task.request
-        question = request.question
+        prompt = request.prompt
         identifier = request.identifier
         http_session = self.http_session
         base = self.BASE_URL
         referer = self.REFERER_URL
         box = self.__box_pool.get_box(identifier=identifier, base_url=base, referer=referer, http_session=http_session)
         if box is None:
-            self.error(msg='failed to get chat box, drop request from %s: "%s"' % (identifier, question))
+            self.error(msg='failed to get chat box, drop request from %s: "%s"' % (identifier, prompt))
             return False
-        answer = box.ask(question=question)
-        if answer is None:
-            self.error(msg='failed to get answer, drop request from %s: "%s"' % (identifier, question))
-            answer = '{\n\t"code": 404,\n\t"error": "No response, please try again later."\n}'
+        results = box.request(prompt=prompt)
+        if results is None:
+            self.error(msg='failed to get results, drop request from %s: "%s"' % (identifier, prompt))
+            results = [ChatCallback.NOT_FOUND]
         # OK
-        task.chat_response(answer=answer, request=request)
+        task.chat_response(results=results, request=request)
         return True
 
     def start(self):

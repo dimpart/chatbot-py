@@ -30,7 +30,7 @@ from dimples.utils import utf8_encode, utf8_decode, json_encode
 from dimples.utils import Logging
 
 
-from ..http import HttpClient, show_response
+from ...utils import HttpClient, show_response
 
 
 class AIChatOS(Logging):

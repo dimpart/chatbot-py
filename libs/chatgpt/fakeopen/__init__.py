@@ -31,7 +31,6 @@
     3.5
 """
 
-from ..http import HttpClient, HttpSession
 from ..chat import ChatCallback, ChatRequest  # , ChatTask, ChatTaskPool
 # from ..chat import ChatBox, ChatBoxPool
 
@@ -42,7 +41,6 @@ from .client import ChatClient  # , ChatBox
 
 __all__ = [
 
-    'HttpClient', 'HttpSession',
     'ChatCallback', 'ChatRequest',  # 'ChatTask', 'ChatTaskPool',
     # 'ChatBox', 'ChatBoxPool',
 

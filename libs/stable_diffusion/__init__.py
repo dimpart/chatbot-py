@@ -25,26 +25,19 @@
 # ==============================================================================
 
 """
-    Chat-GPT
-    ~~~~~~~~
+    Stable Diffusion
+    ~~~~~~~~~~~~~~~~
 
-    3.5
+    LDMs - Latent Diffusion Models
 """
 
-from ..chat import ChatCallback, ChatRequest  # , ChatTask, ChatTaskPool
-# from ..chat import ChatBox, ChatBoxPool
-
-from .gpt35 import AIChatOS
-
-from .client import ChatClient  # , ChatBox
+from .chat import ChatRequest, ChatCallback
+from .chat import ChatTask, ChatTaskPool
 
 
 __all__ = [
 
-    'ChatCallback', 'ChatRequest',  # 'ChatTask', 'ChatTaskPool',
-    # 'ChatBox', 'ChatBoxPool',
+    'ChatRequest', 'ChatCallback',
+    'ChatTask', 'ChatTaskPool',
 
-    'AIChatOS',
-
-    'ChatClient',  # 'ChatBox',
 ]
