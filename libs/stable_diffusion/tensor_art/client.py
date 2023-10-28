@@ -78,13 +78,13 @@ class ChatBox(Logging):
                 count = 0 if projects is None else len(projects)
                 if count == 0:
                     return [ChatCallback.NO_CONTENT]
+                # build text message
+                text = self.__build_text(projects=projects)
                 if count > 3:
                     projects = projects[:3]
                 responses = []
                 for item in projects:
                     responses.append(item)
-                # build text message
-                text = self.__build_text(projects=projects)
                 responses.append(text)
                 return responses
         except Exception as error:

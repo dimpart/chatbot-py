@@ -176,6 +176,8 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
         identifier = request.identifier
         name = self.get_name(identifier=identifier)
         self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
+        if answer.find('"code": 404,') > 0 and request.question in ['Hello!', 'Hi!']:
+            return False
         # respond text message
         content = TextContent.create(text=answer)
         emitter = Emitter()
