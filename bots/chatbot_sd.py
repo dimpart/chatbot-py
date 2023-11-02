@@ -54,6 +54,8 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
+from libs.utils import filename_from_url
+
 from libs.chatgpt.fakeopen import ChatClient
 from libs.chatgpt import ChatCallback, ChatRequest
 from libs.chatgpt import ChatStorage
@@ -148,8 +150,8 @@ class DrawHelper(TwinsHelper, DrawCallback, Logging):
                 if url is None:
                     self.error(msg='response error: %s' % item)
                     continue
-                filename = get_filename(url=url)
-                if len(filename) == 0:
+                filename = filename_from_url(url=url, filename=None)
+                if filename is None or len(filename) == 0:
                     filename = 'image.png'
                 content = FileContent.image(filename=filename, url=url, password=PlainKey())
                 content['time'] = time.time() + 5  # ordered responses
@@ -158,20 +160,6 @@ class DrawHelper(TwinsHelper, DrawCallback, Logging):
                 continue
             self.info(msg='responding: %s, %s' % (identifier, content))
             emitter.send_content(content=content, receiver=identifier)
-
-
-def get_filename(url: str) -> str:
-    pos = url.find('?')
-    if pos > 0:
-        url = url[:pos]  # cut query string
-    pos = url.find('#')
-    if pos > 0:
-        url = url[:pos]  # cut fragment
-    pos = url.rfind('/')
-    if pos < 0:
-        return url
-    else:
-        return url[pos+1:]
 
 
 def replace_at(text: str, name: str) -> str:

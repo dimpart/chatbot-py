@@ -16,9 +16,9 @@ urllib3    # 1.24.1
 startrek==0.4.2
 tcp==0.4.1
 
-mkm==1.0.1
-dkd==1.0.1
-dimp==1.0.1
-dimsdk==1.0.1
-dimplugins==1.0.1
-dimples==0.3.0
+mkm==1.0.2
+dkd==1.0.2
+dimp==1.0.2
+dimsdk==1.0.2
+dimplugins==1.0.2
+dimples==0.3.2

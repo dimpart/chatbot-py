@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # MIT License
@@ -26,9 +25,8 @@
 
 from typing import Optional, Any, List, Dict
 
-from dimples.utils import utf8_encode, json_encode, json_decode
-from dimples.utils import Log
-
+from ...utils import utf8_encode, json_encode, json_decode
+from ...utils import Log
 from ...utils import HttpClient, HttpSession
 
 

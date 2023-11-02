@@ -23,11 +23,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, List, Dict
 
-from dimples import utf8_encode, utf8_decode, json_encode, json_decode
 from dimples import ID, Document
-from dimples.database.dos.document import parse_document
+
+from ...utils import parse_document
+from ...utils import utf8_encode, utf8_decode, json_encode, json_decode
 
 from .base import Cache
 
@@ -52,27 +53,39 @@ class DocumentCache(Cache):
 
         redis key: 'mkm.document.{ID}'
     """
-    def __key(self, identifier: ID) -> str:
+    def __cache_name(self, identifier: ID) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, identifier)
 
-    def __prefix(self) -> str:
-        return '%s.%s.' % (self.db_name, self.tbl_name)
-
-    def save_document(self, document: Document) -> bool:
-        identifier = document.identifier
-        dictionary = document.dictionary
-        js = json_encode(obj=dictionary)
-        value = utf8_encode(string=js)
-        name = self.__key(identifier=identifier)
-        self.set(name=name, value=value, expires=self.EXPIRES)
-        return True
-
-    def document(self, identifier: ID, doc_type: Optional[str] = '*') -> Optional[Document]:
-        name = self.__key(identifier=identifier)
+    def documents(self, identifier: ID) -> Optional[List[Document]]:
+        array = []
+        name = self.__cache_name(identifier=identifier)
         value = self.get(name=name)
         if value is None:
+            # not found
             return None
         js = utf8_decode(data=value)
-        dictionary = json_decode(string=js)
-        assert dictionary is not None, 'document error: %s' % value
-        return parse_document(dictionary=dictionary, identifier=identifier, doc_type=doc_type)
+        assert js is not None, 'failed to decode string: %s' % value
+        info = json_decode(string=js)
+        if isinstance(info, List):
+            for item in info:
+                doc = parse_document(dictionary=item, identifier=identifier)
+                if doc is not None:
+                    array.append(doc)
+        elif isinstance(info, Dict):
+            doc = parse_document(dictionary=info, identifier=identifier)
+            if doc is not None:
+                array.append(doc)
+        else:
+            assert info is None, 'document error: %s' % value
+        return array
+
+    def save_documents(self, documents: List[Document], identifier: ID) -> bool:
+        array = []
+        for doc in documents:
+            assert doc.identifier == identifier, 'document ID not matched: %s, %s' % (identifier, doc)
+            array.append(doc.dictionary)
+        js = json_encode(obj=array)
+        value = utf8_encode(string=js)
+        name = self.__cache_name(identifier=identifier)
+        self.set(name=name, value=value, expires=self.EXPIRES)
+        return True

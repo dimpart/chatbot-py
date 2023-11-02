@@ -25,7 +25,6 @@
 
 from typing import Optional, Tuple, Dict
 
-from dimples import md5, hex_encode
 from dimples import TransportableData
 from dimples import EncryptKey, ID
 from dimples import InstantMessage, ReliableMessage
@@ -33,6 +32,8 @@ from dimples import Envelope, Content
 from dimples import TextContent, FileContent
 from dimples.client import ClientMessenger
 
+from ..utils import md5, hex_encode
+from ..utils import filename_from_data
 from ..utils import Singleton, Log, Logging
 
 from .group import SharedGroupManager
@@ -99,34 +100,50 @@ class Emitter(Logging):
 
     def _send_instant_message(self, msg: InstantMessage) -> Optional[ReliableMessage]:
         self.info(msg='send message (type=%d): %s -> %s' % (msg.content.type, msg.sender, msg.receiver))
-        # send by shared messenger
-        messenger = self.messenger
-        r_msg = messenger.send_instant_message(msg=msg, priority=1)
+        receiver = msg.receiver
+        if receiver.is_group:
+            # send by group manager
+            g_man = SharedGroupManager()
+            r_msg = g_man.send_message(msg=msg)
+        else:
+            # send by shared messenger
+            messenger = self.messenger
+            r_msg = messenger.send_instant_message(msg=msg, priority=1)
+        # save instant message
         self._save_instant_message(msg=msg)
         return r_msg
 
     def send_content(self, content: Content, receiver: ID) -> Tuple[InstantMessage, Optional[ReliableMessage]]:
         if receiver.is_group:
-            g_man = SharedGroupManager()
-            return g_man.send_content(content=content, group=receiver)
+            assert 'group' not in content or content.group == receiver, 'group ID error: %s, %s' % (receiver, content)
+            content.group = receiver
         messenger = self.messenger
         facebook = messenger.facebook
         current = facebook.current_user
         assert current is not None, 'current user not set'
         sender = current.identifier
+        # 1. pack instant message
         env = Envelope.create(sender=sender, receiver=receiver)
         i_msg = InstantMessage.create(head=env, body=content)
-        if receiver.is_group:
-            # TODO: pack group message for bot
-            pass
+        # 2. check file content
+        if isinstance(content, FileContent):
+            # encrypt & upload file data before send out
+            if content.data is not None:  # and content.url is None:
+                key = messenger.get_encrypt_key(msg=i_msg)
+                assert key is not None, 'failed to get msg key for: %s -> %s' % (i_msg.sender, i_msg.receiver)
+                r_msg = self.send_file_message(msg=i_msg, password=key)
+                return i_msg, r_msg
+        # 3. send
         r_msg = self._send_instant_message(msg=i_msg)
+        if r_msg is None and not i_msg.receiver.is_group:
+            self.warning(msg='not send yet (type=%d): %s' % (content.type, receiver))
         return i_msg, r_msg
 
     #
     #   File Message
     #
 
-    def send_file_message(self, msg: InstantMessage, password: EncryptKey):
+    def send_file_message(self, msg: InstantMessage, password: EncryptKey) -> Optional[ReliableMessage]:
         """
         Send file content message with password
 
@@ -159,7 +176,7 @@ class Emitter(Logging):
             # uploaded before
             self.info(msg='uploaded filename: %s -> %s => %s' % (content.filename, filename, url))
             content.url = url
-            self._send_instant_message(msg=msg)
+            return self._send_instant_message(msg=msg)
 
     def send_image_message(self, image: bytes, thumbnail: bytes, receiver: ID):
         """
@@ -190,18 +207,6 @@ class Emitter(Logging):
 #
 #   CDN Utils
 #
-
-
-def filename_from_data(data: bytes, filename: str) -> str:
-    pos = filename.rfind('.')
-    if pos < 0:
-        ext = 'jpeg'
-    else:
-        ext = filename[pos+1:]
-        filename = filename[:pos]
-    if len(filename) != 32:
-        filename = hex_encode(data=md5(data=data))
-    return '%s.%s' % (filename, ext)
 
 
 def cache_file_data(data: bytes, filename: str) -> int:

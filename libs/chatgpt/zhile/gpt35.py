@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # MIT License
@@ -26,11 +25,9 @@
 
 from typing import Optional, List
 
-from dimples.utils import hex_encode, utf8_encode, json_encode, json_decode
-from dimples.utils import random_bytes
-from dimples.utils import Log
-
-
+from ...utils import hex_encode, utf8_encode, json_encode, json_decode
+from ...utils import random_bytes
+from ...utils import Log
 from ...utils import HttpClient, HttpSession, show_response
 
 

@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # MIT License
@@ -28,8 +27,7 @@ import random
 import time
 from typing import Optional, List
 
-from mkm.types import Converter
-
+from dimples import Converter
 
 from ...utils import HttpClient, HttpSession, show_response
 

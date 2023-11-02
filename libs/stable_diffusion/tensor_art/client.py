@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # MIT License
@@ -30,10 +29,9 @@ import weakref
 from typing import Optional, Union, Set, List, Dict
 
 from dimples import ID
-from dimples.utils import Singleton
-from dimples.utils import Runner, Logging
 
-
+from ...utils import Singleton
+from ...utils import Runner, Logging
 from ...utils import HttpSession
 from ..chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
 

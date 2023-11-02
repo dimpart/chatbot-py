@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # MIT License
@@ -29,12 +28,11 @@ import time
 import weakref
 from typing import Optional, Set
 
-from dimsdk import hex_decode, base58_decode
 from dimples import ID
-from dimples.utils import Singleton
-from dimples.utils import Runner, Logging
 
-
+from ...utils import hex_decode, base58_decode
+from ...utils import Singleton
+from ...utils import Runner, Logging
 from ...utils import HttpClient
 from ..chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
 
