@@ -31,22 +31,18 @@
     Chat bot powered by OpenAI
 """
 
-import random
-import time
 from typing import Optional, Union, List, Dict
 
+from dimples import DateTime
 from dimples import PlainKey
 from dimples import EntityType, ID
 from dimples import ReliableMessage
 from dimples import ContentType, Content, TextContent, FileContent
 from dimples import ContentProcessor, ContentProcessorCreator
-from dimples import CustomizedContent, CustomizedContentProcessor, CustomizedContentHandler
 from dimples import BaseContentProcessor
 from dimples import TwinsHelper
 from dimples import CommonFacebook, CommonMessenger
 from dimples import Anonymous
-from dimples.utils import Singleton
-from dimples.utils import Log, Logging
 from dimples.utils import Path
 
 path = Path.abs(path=__file__)
@@ -55,13 +51,12 @@ path = Path.dir(path=path)
 Path.add(path=path)
 
 from libs.utils import filename_from_url
+from libs.utils import Footprint
+from libs.utils import Log, Logging
 
-from libs.chatgpt.fakeopen import ChatClient
 from libs.chatgpt import ChatCallback, ChatRequest
-from libs.chatgpt import ChatStorage
 
 from libs.stable_diffusion.tensor_art import DrawClient
-from libs.stable_diffusion import ChatCallback as DrawCallback
 
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter
@@ -69,112 +64,7 @@ from libs.client import Emitter
 from bots.shared import start_bot
 
 
-@Singleton
-class Footprint:
-
-    EXPIRES = 36000  # vanished after 10 hours
-
-    def __init__(self):
-        super().__init__()
-        self.__active_times = {}  # ID => float
-
-    def __get_time(self, identifier: ID, when: Optional[float]) -> Optional[float]:
-        now = time.time()
-        if when is None or when <= 0 or when >= now:
-            return now
-        elif when > self.__active_times.get(identifier, 0):
-            return when
-        # else:
-        #     # time expired, drop it
-        #     return None
-
-    def touch(self, identifier: ID, when: float = None):
-        when = self.__get_time(identifier=identifier, when=when)
-        if when is not None:
-            self.__active_times[identifier] = when
-            return True
-
-    def is_vanished(self, identifier: ID, now: float = None) -> bool:
-        last_time = self.__active_times.get(identifier)
-        if last_time is None:
-            return True
-        if now is None:
-            now = time.time()
-        return now > (last_time + self.EXPIRES)
-
-
-class DrawHelper(TwinsHelper, DrawCallback, Logging):
-
-    @property
-    def facebook(self) -> CommonFacebook:
-        barrack = super().facebook
-        assert isinstance(barrack, CommonFacebook), 'facebook error: %s' % barrack
-        return barrack
-
-    @property
-    def messenger(self) -> CommonMessenger:
-        transceiver = super().messenger
-        assert isinstance(transceiver, CommonMessenger), 'messenger error: %s' % transceiver
-        return transceiver
-
-    def get_name(self, identifier: ID) -> Optional[str]:
-        doc = self.facebook.document(identifier=identifier)
-        if doc is None:
-            # document not found, query from station
-            self.messenger.query_document(identifier=identifier)
-            return identifier.name
-        name = doc.name
-        if name is not None and len(name) > 0:
-            return name
-        return Anonymous.get_name(identifier=identifier)
-
-    def request(self, prompt: str, sender: ID, group: Optional[ID]) -> bool:
-        identifier = sender if group is None else group
-        self.info(msg='[Dialog] ChatGPT <<< %s : "%s"' % (identifier, prompt))
-        g_painter.request(prompt=prompt, identifier=identifier, callback=self)
-        return True
-
-    # Override
-    def chat_response(self, results: List, request: ChatRequest):
-        identifier = request.identifier
-        name = self.get_name(identifier=identifier)
-        emitter = Emitter()
-        for item in results:
-            if isinstance(item, str):
-                self.info(msg='[Dialog] SD >>> %s (%s): "%s"' % (identifier, name, item))
-                # respond text message
-                content = TextContent.create(text=item)
-                content['time'] = time.time() + 6  # ordered responses
-            elif isinstance(item, Dict):
-                url = item.get('url')
-                if url is None:
-                    self.error(msg='response error: %s' % item)
-                    continue
-                filename = filename_from_url(url=url, filename=None)
-                if filename is None or len(filename) == 0:
-                    filename = 'image.png'
-                content = FileContent.image(filename=filename, url=url, password=PlainKey())
-                content['time'] = time.time() + 5  # ordered responses
-            else:
-                self.error(msg='response error: %s' % item)
-                continue
-            self.info(msg='responding: %s, %s' % (identifier, content))
-            emitter.send_content(content=content, receiver=identifier)
-
-
-def replace_at(text: str, name: str) -> str:
-    at = '@%s' % name
-    if text.endswith(at):
-        text = text[:-len(at)]
-    at = '@%s ' % name
-    return text.replace(at, '')
-
-
-class ChatHelper(TwinsHelper, ChatCallback, Logging):
-
-    def __init__(self, facebook, messenger):
-        super().__init__(facebook=facebook, messenger=messenger)
-        self.__draw_helper = DrawHelper(facebook=facebook, messenger=messenger)
+class DrawHelper(TwinsHelper, ChatCallback, Logging):
 
     @property
     def facebook(self) -> CommonFacebook:
@@ -205,13 +95,13 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             return name
         return Anonymous.get_name(identifier=identifier)
 
-    def ask(self, question: str, sender: ID, group: Optional[ID], now: float = None) -> bool:
+    def ask(self, question: str, sender: ID, group: Optional[ID], now: DateTime) -> bool:
         s_name = self.get_name(identifier=sender)
         g_name = None if group is None else self.get_name(identifier=group)
         # 1. update active time
         if now is None:
-            now = time.time()
-        elif now < (time.time() - 600):
+            now = DateTime.now()
+        elif now < (DateTime.now() - 600):
             self.warning(msg='question timeout from %s (%s): %s' % (sender, s_name, question))
             return False
         fp = Footprint()
@@ -226,7 +116,7 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             if my_name is None or len(my_name) == 0:
                 self.error(msg='failed to get the bot name')
                 return False
-            naked = replace_at(text=question, name=my_name)
+            naked = ChatCallback.replace_at(text=question, name=my_name)
             if naked == question:
                 self.info(msg='ignore group message from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
                 return False
@@ -236,64 +126,43 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
         if len(question) == 0:
             self.warning(msg='drop empty question from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
             return False
-        self.warning(msg='redirect message for: %s' % identifier)
-        self.__draw_helper.request(prompt=question, sender=sender, group=group)
-        # self.info(msg='[Dialog] ChatGPT <<< %s (%s): "%s"' % (sender, s_name, question))
-        # g_client.request(question=question, identifier=identifier, callback=self)
+        self.info(msg='[Dialog] SD <<< %s : "%s"' % (identifier, question))
+        g_painter.request(prompt=question, time=now, identifier=identifier, callback=self)
         return True
 
     # Override
-    def chat_response(self, answer: str, request: ChatRequest):
+    def chat_response(self, results: List, request: ChatRequest):
+        emitter = Emitter()
+        req_time = request.time
         identifier = request.identifier
         name = self.get_name(identifier=identifier)
-        if answer.find('"code": 404,') > 0:
-            question = request.question
-            sender = request.identifier
-            group = sender if sender.is_group else None
-            self.warning(msg='ChatGPT no response, ask SD: %s, %s' % (answer, sender))
-            self.__draw_helper.request(prompt=question, sender=sender, group=group)
-            return
-        self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
-        # respond text message
-        content = TextContent.create(text=answer)
-        emitter = Emitter()
-        emitter.send_content(content=content, receiver=identifier)
-        # save chat history
-        storage = ChatStorage()
-        storage.save_response(question=request.question, answer=answer, identifier=identifier, name=name)
-
-
-class ActiveUsersHandler(ChatHelper, CustomizedContentHandler):
-
-    @property
-    def hi_text(self) -> str:
-        return random.choice(['Hello!', 'Hi!'])
-
-    # Override
-    def handle_action(self, act: str, sender: ID, content: CustomizedContent, msg: ReliableMessage) -> List[Content]:
-        users = content.get('users')
-        self.info(msg='received users: %s' % users)
-        if isinstance(users, List):
-            self.__say_hi(users=users, when=content.time)
-        else:
-            self.error(msg='content error: %s, sender: %s' % (content, sender))
-        return []
-
-    def __say_hi(self, users: List[dict], when: Optional[float]):
-        if when is None:
-            when = time.time()
-        elif when < (time.time() - 300):
-            self.warning(msg='users timeout %f: %s' % (when, users))
-            return False
-        fp = Footprint()
-        for item in users:
-            identifier = ID.parse(identifier=item.get('U'))
-            if identifier is None or identifier.type != EntityType.USER:
-                self.warning(msg='ignore user: %s' % item)
-            elif not fp.is_vanished(identifier=identifier, now=when):
-                self.info(msg='footprint not vanished yet: %s' % identifier)
-            elif self.ask(question=self.hi_text, sender=identifier, group=None, now=when):
-                self.info(msg='say hi for %s' % identifier)
+        for item in results:
+            if isinstance(item, str):
+                self.info(msg='[Dialog] SD >>> %s (%s): "%s"' % (identifier, name, item))
+                # respond text message
+                content = TextContent.create(text=item)
+                order = 2  # ordered responses
+            elif isinstance(item, Dict):
+                url = item.get('url')
+                if url is None:
+                    self.error(msg='response error: %s' % item)
+                    continue
+                filename = filename_from_url(url=url, filename=None)
+                if filename is None or len(filename) == 0:
+                    filename = 'image.png'
+                content = FileContent.image(filename=filename, url=url, password=PlainKey())
+                order = 1  # ordered responses
+            else:
+                self.error(msg='response error: %s' % item)
+                continue
+            res_time = content.time
+            if res_time is None or res_time <= req_time:
+                self.warning(msg='replace respond time: %s => %s + 1' % (res_time, req_time))
+                content['time'] = req_time + order
+            else:
+                content['time'] = res_time + order
+            self.info(msg='responding: %s, %s' % (identifier, content))
+            emitter.send_content(content=content, receiver=identifier)
 
 
 class BotTextContentProcessor(BaseContentProcessor, Logging):
@@ -302,7 +171,7 @@ class BotTextContentProcessor(BaseContentProcessor, Logging):
     def __init__(self, facebook, messenger):
         super().__init__(facebook=facebook, messenger=messenger)
         # Module(s) for customized contents
-        self.__helper = ChatHelper(facebook=facebook, messenger=messenger)
+        self.__helper = DrawHelper(facebook=facebook, messenger=messenger)
 
     # Override
     def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
@@ -322,34 +191,6 @@ class BotTextContentProcessor(BaseContentProcessor, Logging):
         return []
 
 
-class BotCustomizedContentProcessor(CustomizedContentProcessor, Logging):
-    """ Process customized content """
-
-    def __init__(self, facebook, messenger):
-        super().__init__(facebook=facebook, messenger=messenger)
-        # Module(s) for customized contents
-        self.__handler = ActiveUsersHandler(facebook=facebook, messenger=messenger)
-
-    # Override
-    def _filter(self, app: str, content: CustomizedContent, msg: ReliableMessage) -> Optional[List[Content]]:
-        if app == 'chat.dim.monitor':
-            # App ID match
-            # return None to fetch module handler
-            return None
-        # unknown app ID
-        return super()._filter(app=app, content=content, msg=msg)
-
-    # Override
-    def _fetch(self, mod: str, content: CustomizedContent, msg: ReliableMessage) -> Optional[CustomizedContentHandler]:
-        assert mod is not None, 'module name empty: %s' % content
-        if mod == 'users':
-            # customized module: "users"
-            return self.__handler
-        # TODO: define your modules here
-        # ...
-        return super()._fetch(mod=mod, content=content, msg=msg)
-
-
 class BotContentProcessorCreator(ClientContentProcessorCreator):
 
     # Override
@@ -357,9 +198,6 @@ class BotContentProcessorCreator(ClientContentProcessorCreator):
         # text
         if msg_type == ContentType.TEXT:
             return BotTextContentProcessor(facebook=self.facebook, messenger=self.messenger)
-        # application customized
-        if msg_type == ContentType.CUSTOMIZED:
-            return BotCustomizedContentProcessor(facebook=self.facebook, messenger=self.messenger)
         # others
         return super().create_content_processor(msg_type=msg_type)
 
@@ -379,10 +217,6 @@ Log.LEVEL = Log.DEVELOP
 
 DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
-
-# start chat gpt
-g_client = ChatClient()
-g_client.start()
 
 # start draw bot
 g_painter = DrawClient()

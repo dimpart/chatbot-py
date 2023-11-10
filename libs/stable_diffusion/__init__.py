@@ -30,8 +30,7 @@
     LDMs - Latent Diffusion Models
 """
 
-from .chat import ChatRequest, ChatCallback
-from .chat import ChatTask, ChatTaskPool
+from ..utils import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
 
 
 __all__ = [

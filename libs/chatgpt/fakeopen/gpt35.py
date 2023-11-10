@@ -23,11 +23,13 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, List
+from typing import Optional, Union, List
+
+from requests import Response
 
 from ...utils import utf8_encode, json_encode, json_decode
-from ...utils import Log
-from ...utils import HttpClient, HttpSession
+from ...utils import Log, Logging
+from ...utils import HttpClient
 
 
 class MessageQueue:
@@ -68,7 +70,7 @@ class MessageQueue:
         }
 
 
-class FakeOpen(HttpClient):
+class FakeOpen(Logging):
     """
         Fake Open
         ~~~~~~~~~
@@ -76,12 +78,16 @@ class FakeOpen(HttpClient):
         https://ai.fakeopen.com/v1/chat/completions
     """
 
-    def __init__(self, base_url: str, referer: str, auth_token: str, http_session: HttpSession = None):
-        super().__init__(session=http_session, long_connection=True, base_url=base_url)
+    def __init__(self, referer: str, auth_token: str, http_client: HttpClient):
+        super().__init__()
+        self.__http_client = http_client
         self.__referer = referer
         self.__auth_token = auth_token
         # messages
         self.__message_queue = MessageQueue()
+
+    def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
+        return self.__http_client.http_post(url=url, data=data, headers=headers)
 
     def ask(self, question: str) -> Optional[str]:
         msg = {

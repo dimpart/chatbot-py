@@ -30,13 +30,16 @@
     Generative Pre-Trained Transformer
 """
 
-from .chat import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
-from .chat import ChatStorage
+from ..utils import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
+
+from .storage import ChatStorage
 
 
 __all__ = [
 
     'ChatRequest', 'ChatCallback',
     'ChatTask', 'ChatTaskPool',
+
     'ChatStorage',
+
 ]

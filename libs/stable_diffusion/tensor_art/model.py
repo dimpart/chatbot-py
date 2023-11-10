@@ -23,14 +23,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Any, List, Dict
+from typing import Optional, Union, Any, List, Dict
+
+from requests import Response
 
 from ...utils import utf8_encode, json_encode, json_decode
-from ...utils import Log
-from ...utils import HttpClient, HttpSession
+from ...utils import Log, Logging
+from ...utils import HttpClient
 
 
-class TensorArt(HttpClient):
+class TensorArt(Logging):
     """
         Tensor Art
         ~~~~~~~~~~
@@ -38,9 +40,13 @@ class TensorArt(HttpClient):
         https://tensor.art/
     """
 
-    def __init__(self, base_url: str, referer: str, http_session: HttpSession = None):
-        super().__init__(session=http_session, long_connection=True, verify=False, base_url=base_url)
+    def __init__(self, referer: str, http_client: HttpClient = None):
+        super().__init__()
+        self.__http_client = http_client
         self.__referer = referer
+
+    def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
+        return self.__http_client.http_post(url=url, data=data, headers=headers)
 
     def search(self, keywords: str) -> List[Dict]:
         payload = {

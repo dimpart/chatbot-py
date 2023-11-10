@@ -30,16 +30,12 @@
     LDMs - Latent Diffusion Models
 """
 
-from ..chat import ChatCallback, ChatRequest  # , ChatTask, ChatTaskPool
-
 from .model import TensorArt
 
 from .client import DrawClient
 
 
 __all__ = [
-
-    'ChatCallback', 'ChatRequest',  # 'ChatTask', 'ChatTaskPool',
 
     'TensorArt',
 

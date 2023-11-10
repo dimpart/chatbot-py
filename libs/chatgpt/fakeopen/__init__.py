@@ -30,18 +30,12 @@
     3.5
 """
 
-from ..chat import ChatCallback, ChatRequest  # , ChatTask, ChatTaskPool
-# from ..chat import ChatBox, ChatBoxPool
-
 from .gpt35 import FakeOpen
 
 from .client import ChatClient  # , ChatBox
 
 
 __all__ = [
-
-    'ChatCallback', 'ChatRequest',  # 'ChatTask', 'ChatTaskPool',
-    # 'ChatBox', 'ChatBoxPool',
 
     'FakeOpen',
 

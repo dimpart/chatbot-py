@@ -31,10 +31,9 @@
     Chat bot powered by OpenAI
 """
 
-import random
-import time
 from typing import Optional, Union, List
 
+from dimples import DateTime
 from dimples import EntityType, ID
 from dimples import ReliableMessage
 from dimples import ContentType, Content, TextContent
@@ -44,8 +43,6 @@ from dimples import BaseContentProcessor
 from dimples import TwinsHelper
 from dimples import CommonFacebook, CommonMessenger
 from dimples import Anonymous
-from dimples.utils import Singleton
-from dimples.utils import Log, Logging
 from dimples.utils import Path
 
 path = Path.abs(path=__file__)
@@ -53,56 +50,18 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.chatgpt.fakeopen import ChatClient
+from libs.utils import greeting_prompt
+from libs.utils import Footprint
+from libs.utils import Log, Logging
+
 from libs.chatgpt import ChatCallback, ChatRequest
 from libs.chatgpt import ChatStorage
+from libs.chatgpt.fakeopen import ChatClient
 
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter
 
 from bots.shared import start_bot
-
-
-@Singleton
-class Footprint:
-
-    EXPIRES = 36000  # vanished after 10 hours
-
-    def __init__(self):
-        super().__init__()
-        self.__active_times = {}  # ID => float
-
-    def __get_time(self, identifier: ID, when: Optional[float]) -> Optional[float]:
-        now = time.time()
-        if when is None or when <= 0 or when >= now:
-            return now
-        elif when > self.__active_times.get(identifier, 0):
-            return when
-        # else:
-        #     # time expired, drop it
-        #     return None
-
-    def touch(self, identifier: ID, when: float = None):
-        when = self.__get_time(identifier=identifier, when=when)
-        if when is not None:
-            self.__active_times[identifier] = when
-            return True
-
-    def is_vanished(self, identifier: ID, now: float = None) -> bool:
-        last_time = self.__active_times.get(identifier)
-        if last_time is None:
-            return True
-        if now is None:
-            now = time.time()
-        return now > (last_time + self.EXPIRES)
-
-
-def replace_at(text: str, name: str) -> str:
-    at = '@%s' % name
-    if text.endswith(at):
-        text = text[:-len(at)]
-    at = '@%s ' % name
-    return text.replace(at, '')
 
 
 class ChatHelper(TwinsHelper, ChatCallback, Logging):
@@ -136,13 +95,13 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             return name
         return Anonymous.get_name(identifier=identifier)
 
-    def ask(self, question: str, sender: ID, group: Optional[ID], now: float = None) -> bool:
+    def ask(self, question: str, sender: ID, group: Optional[ID], now: DateTime) -> bool:
         s_name = self.get_name(identifier=sender)
         g_name = None if group is None else self.get_name(identifier=group)
         # 1. update active time
         if now is None:
-            now = time.time()
-        elif now < (time.time() - 600):
+            now = DateTime.now()
+        elif now < (DateTime.current_timestamp() - 600):
             self.warning(msg='question timeout from %s (%s): %s' % (sender, s_name, question))
             return False
         fp = Footprint()
@@ -157,7 +116,7 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             if my_name is None or len(my_name) == 0:
                 self.error(msg='failed to get the bot name')
                 return False
-            naked = replace_at(text=question, name=my_name)
+            naked = ChatCallback.replace_at(text=question, name=my_name)
             if naked == question:
                 self.info(msg='ignore group message from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
                 return False
@@ -168,30 +127,33 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             self.warning(msg='drop empty question from %s (%s) in group: %s (%s)' % (sender, s_name, group, g_name))
             return False
         self.info(msg='[Dialog] ChatGPT <<< %s (%s): "%s"' % (sender, s_name, question))
-        g_client.request(question=question, identifier=identifier, callback=self)
+        g_client.request(prompt=question, time=now, identifier=identifier, callback=self)
         return True
 
     # Override
-    def chat_response(self, answer: str, request: ChatRequest):
+    def chat_response(self, results: List, request: ChatRequest):
+        emitter = Emitter()
+        storage = ChatStorage()
+        req_time = request.time
         identifier = request.identifier
         name = self.get_name(identifier=identifier)
-        self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
-        if answer.find('"code": 404,') > 0 and request.question in ['Hello!', 'Hi!']:
-            return False
-        # respond text message
-        content = TextContent.create(text=answer)
-        emitter = Emitter()
-        emitter.send_content(content=content, receiver=identifier)
-        # save chat history
-        storage = ChatStorage()
-        storage.save_response(question=request.question, answer=answer, identifier=identifier, name=name)
+        for answer in results:
+            self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
+            if answer == ChatCallback.NOT_FOUND and ChatRequest.is_greeting(text=request.prompt):
+                self.warning(msg='ignore 404 for greeting: %s "%s"' % (identifier, name))
+                continue
+            # respond text message
+            content = TextContent.create(text=answer)
+            res_time = content.time
+            if res_time is None or res_time <= req_time:
+                self.warning(msg='replace respond time: %s => %s + 1' % (res_time, req_time))
+                content['time'] = req_time + 1
+            emitter.send_content(content=content, receiver=identifier)
+            # save chat history
+            storage.save_response(question=request.prompt, answer=answer, identifier=identifier, name=name)
 
 
 class ActiveUsersHandler(ChatHelper, CustomizedContentHandler):
-
-    @property
-    def hi_text(self) -> str:
-        return random.choice(['Hello!', 'Hi!'])
 
     # Override
     def handle_action(self, act: str, sender: ID, content: CustomizedContent, msg: ReliableMessage) -> List[Content]:
@@ -203,20 +165,24 @@ class ActiveUsersHandler(ChatHelper, CustomizedContentHandler):
             self.error(msg='content error: %s, sender: %s' % (content, sender))
         return []
 
-    def __say_hi(self, users: List[dict], when: Optional[float]):
+    def __say_hi(self, users: List[dict], when: Optional[DateTime]):
         if when is None:
-            when = time.time()
-        elif when < (time.time() - 300):
-            self.warning(msg='users timeout %f: %s' % (when, users))
+            when = DateTime.now()
+        elif when < (DateTime.current_timestamp() - 300):
+            self.warning(msg='users timeout %s: %s' % (when, users))
             return False
         fp = Footprint()
+        facebook = self.facebook
         for item in users:
             identifier = ID.parse(identifier=item.get('U'))
             if identifier is None or identifier.type != EntityType.USER:
                 self.warning(msg='ignore user: %s' % item)
+                continue
             elif not fp.is_vanished(identifier=identifier, now=when):
                 self.info(msg='footprint not vanished yet: %s' % identifier)
-            elif self.ask(question=self.hi_text, sender=identifier, group=None, now=when):
+                continue
+            hello = greeting_prompt(identifier=identifier, facebook=facebook)
+            if self.ask(question=hello, sender=identifier, group=None, now=when):
                 self.info(msg='say hi for %s' % identifier)
 
 

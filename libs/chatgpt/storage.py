@@ -24,9 +24,7 @@
 # ==============================================================================
 
 import os
-import threading
 import time
-from abc import ABC, abstractmethod
 from typing import Optional
 
 from dimples import DateTime
@@ -36,69 +34,6 @@ from dimples.database import Storage
 from ..utils import json_encode
 from ..utils import Logging
 from ..utils import Singleton
-
-
-#
-#   Chat Task
-#
-
-class ChatRequest:
-
-    def __init__(self, question: str, identifier: ID):
-        super().__init__()
-        self.__question = question
-        self.__identifier = identifier
-
-    @property
-    def question(self) -> str:
-        return self.__question
-
-    @property
-    def identifier(self) -> ID:
-        return self.__identifier
-
-
-class ChatCallback(ABC):
-
-    @abstractmethod
-    def chat_response(self, answer: str, request: ChatRequest):
-        raise NotImplemented
-
-
-class ChatTask(Logging, ChatCallback):
-
-    def __init__(self, request: ChatRequest, callback: ChatCallback):
-        super().__init__()
-        self.__request = request
-        self.__callback = callback
-
-    @property
-    def request(self) -> ChatRequest:
-        return self.__request
-
-    # Override
-    def chat_response(self, answer: str, request: ChatRequest):
-        try:
-            self.__callback.chat_response(answer=answer, request=request)
-        except Exception as error:
-            self.error(msg='failed to response: %s' % error)
-
-
-class ChatTaskPool:
-
-    def __init__(self):
-        super().__init__()
-        self.__tasks = []
-        self.__lock = threading.Lock()
-
-    def add_task(self, task: ChatTask):
-        with self.__lock:
-            self.__tasks.append(task)
-
-    def pop_task(self) -> Optional[ChatTask]:
-        with self.__lock:
-            if len(self.__tasks) > 0:
-                return self.__tasks.pop(0)
 
 
 @Singleton
