@@ -44,9 +44,12 @@ def greeting_prompt(identifier: ID, facebook: CommonFacebook) -> str:
     if visa is None:
         language = 'en'
     else:
-        language = visa.get_property(key='language')
+        app = visa.get_property(key='app')
+        language = None if app is None else app.get('language')
+        sys = visa.get_property(key='sys')
+        locale = None if sys is None else sys.get('locale')
         if language is None or len(language) == 0:
-            language = visa.get_property(key='locale')
+            language = locale
             if language is None or len(language) == 0:
                 language = 'en'
     template = ChatRequest.GREETING_PROMPT
@@ -86,9 +89,17 @@ class ChatRequest:
     GREETING_PROMPT = 'greeting:{language}'
 
     __greetings = {
-        'en': ['Hello!', 'Hi!'],
-        'fr': ['Bonjour!'],
-        'zh': ['你好！', '您好！'],
+        'en': ['Hello!', 'Hi!', 'Hey!', 'Good day!', 'I\'m back!'],
+        'es': ['¡Hola!', '¿Cómo estás?', '¡Buen día!', '¡He vuelto!'],
+        'fr': ['Bonjour!', 'Salut!', 'Bonne journée!', 'Je suis de retour!'],
+        'de': ['Hallo!', 'Guten Tag!', 'Ich bin zurück!'],
+        'it': ['Ciao!', 'Buon giorno!', 'Sono tornato/a!'],
+        'nl': ['Hallo!', 'Goede dag!', 'Ik ben terug!'],
+        'pt': ['Olá!', 'Bom dia!', 'Eu voltei!'],
+        'ru': ['Привет!', 'Здравствуйте!', 'Добрый день!', 'Я вернулась!'],
+        'ja': ['おはようございます', 'こんにちは', '帰ってきました'],
+        'ko': ['안녕', '안녕하세요', '안녕하십니까', '좋은 날', '돌아왔어요'],
+        'zh': ['你好！', '您好！', '我回来了！'],
     }
 
     @classmethod
