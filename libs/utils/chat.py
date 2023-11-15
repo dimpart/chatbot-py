@@ -23,7 +23,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import random
 import threading
 import weakref
 from abc import ABC, abstractmethod
@@ -88,20 +87,6 @@ class ChatRequest:
     #
     GREETING_PROMPT = 'greeting:{language}'
 
-    __greetings = {
-        'en': ['Hello!', 'Hi!', 'Hey!', 'Good day!', 'I\'m back!'],
-        'es': ['¡Hola!', '¿Cómo estás?', '¡Buen día!', '¡He vuelto!'],
-        'fr': ['Bonjour!', 'Salut!', 'Bonne journée!', 'Je suis de retour!'],
-        'de': ['Hallo!', 'Guten Tag!', 'Ich bin zurück!'],
-        'it': ['Ciao!', 'Buon giorno!', 'Sono tornato/a!'],
-        'nl': ['Hallo!', 'Goede dag!', 'Ik ben terug!'],
-        'pt': ['Olá!', 'Bom dia!', 'Eu voltei!'],
-        'ru': ['Привет!', 'Здравствуйте!', 'Добрый день!', 'Я вернулась!'],
-        'ja': ['おはようございます', 'こんにちは', '帰ってきました'],
-        'ko': ['안녕', '안녕하세요', '안녕하십니까', '좋은 날', '돌아왔어요'],
-        'zh': ['你好！', '您好！', '我回来了！'],
-    }
-
     @classmethod
     def is_greeting(cls, text: str) -> bool:
         return text.startswith('greeting:')
@@ -115,24 +100,54 @@ class ChatRequest:
 
     @classmethod
     def greeting(cls, language: Optional[str]) -> str:
-        # get language name
-        if language is None:
-            language = 'en'
-        else:
-            array = language.split('_')
-            language = array[0]
-        # get greetings
-        greetings = cls.__greetings.get(language)
-        if greetings is None:
-            greetings = cls.__greetings.get('en')
-            assert greetings is not None, 'failed to get greeting for language: %s' % language
-        if isinstance(greetings, str):
-            return greetings
-        assert isinstance(greetings, List), 'greetings error: %s' % greetings
-        if len(greetings) == 1:
-            return greetings[0]
-        else:
-            return random.choice(greetings)
+        if language is None or language == '' or language == 'en':
+            language = 'en_US'
+        return 'My current language environment code is "%s".' \
+               ' Please greet me in a language that suits me.' % language
+
+    # @classmethod
+    # def greeting(cls, language: Optional[str]) -> str:
+    #     # get language name
+    #     if language is None:
+    #         language = 'en'
+    #     else:
+    #         array = language.split('_')
+    #         language = array[0]
+    #     # get greetings
+    #     greetings = cls.__greetings.get(language)
+    #     if greetings is None:
+    #         greetings = cls.__greetings.get('en')
+    #         assert greetings is not None, 'failed to get greeting for language: %s' % language
+    #     if isinstance(greetings, str):
+    #         return greetings
+    #     assert isinstance(greetings, List), 'greetings error: %s' % greetings
+    #     if len(greetings) == 1:
+    #         return greetings[0]
+    #     else:
+    #         return random.choice(greetings)
+    #
+    # __greetings = {
+    #     'en': ['Hello!', 'Hi!', 'Hey!', 'Good day!', 'I\'m back!'],
+    #     'es': ['¡Hola!', '¿Cómo estás?', '¡Buen día!', '¡He vuelto!'],
+    #     'fr': ['Bonjour!', 'Salut!', 'Bonne journée!', 'Je suis de retour!'],
+    #     'de': ['Hallo!', 'Guten Tag!', 'Ich bin zurück!'],
+    #     'it': ['Ciao!', 'Buon giorno!', 'Sono tornato/a!'],
+    #     'nl': ['Hallo!', 'Goede dag!', 'Ik ben terug!'],
+    #     'pt': ['Olá!', 'Bom dia!', 'Eu voltei!'],
+    #     'ru': ['Привет!', 'Здравствуйте!', 'Добрый день!', 'Я вернулась!'],
+    #     'ja': ['おはようございます', 'こんにちは', '帰ってきました'],
+    #     'ko': ['안녕', '안녕하세요', '안녕하십니까', '좋은 날', '돌아왔어요'],
+    #     'zh': ['你好！', '您好！', '我回来了！'],
+    #
+    #     'af': ['Hoe gaan dit met u!', 'Ek is terug.'],
+    #     'ar': ['السلام عليكم', 'أهلاً', 'عدت'],
+    #     'bn': ['হ্যালো', 'আমি ফিরে এসেছি।'],
+    #     'hi': ['नमस्ते', 'नमस्कार', 'मैं वापस आया हूँ।'],
+    #     'id': ['Apa kabar!', 'Saya kembali.'],
+    #     'ms': ['Apa khabar!', 'Saya sudah kembali.'],
+    #     'th': ['สวัสดี', 'ทักทาย', 'สวัสดีครับ', 'ฉันกลับมา'],
+    #     'vi': ['Chào bạn!', 'Tôi đã trở lại.'],
+    # }
 
 
 class ChatCallback(ABC):
