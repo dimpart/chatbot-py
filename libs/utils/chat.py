@@ -29,7 +29,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Set, Dict
 
 from dimples import DateTime
-from dimples import ID
+from dimples import ID, Document
 from dimples import CommonFacebook
 
 from dimples.utils import Logging, Runner, Singleton
@@ -38,19 +38,30 @@ from dimples.utils import template_replace
 from .http import HttpClient
 
 
+def get_language(visa: Document, default: str) -> str:
+    # check 'app:language'
+    app = visa.get_property(key='app')
+    if isinstance(app, Dict):
+        language = app.get('language')
+        if language is not None and len(language) > 0:
+            return language
+    # check 'sys:locale'
+    sys = visa.get_property(key='sys')
+    if isinstance(sys, Dict):
+        locale = sys.get('locale')
+        if locale is not None and len(locale) > 0:
+            return locale
+    # default language
+    return default
+
+
 def greeting_prompt(identifier: ID, facebook: CommonFacebook) -> str:
     visa = facebook.document(identifier=identifier)
     if visa is None:
         language = 'en'
     else:
-        app = visa.get_property(key='app')
-        language = None if app is None else app.get('language')
-        sys = visa.get_property(key='sys')
-        locale = None if sys is None else sys.get('locale')
-        if language is None or len(language) == 0:
-            language = locale
-            if language is None or len(language) == 0:
-                language = 'en'
+        language = get_language(visa=visa, default='en')
+    # greeting with language code
     template = ChatRequest.GREETING_PROMPT
     return template_replace(template=template, key='language', value=language)
 
@@ -82,72 +93,52 @@ class ChatRequest:
         """ request user/group """
         return self.__identifier
 
+    @property
+    def facebook(self) -> Optional[CommonFacebook]:
+        from bots.shared import GlobalVariable
+        shared = GlobalVariable()
+        return shared.facebook
+
+    @property
+    def nickname(self) -> Optional[str]:
+        user = self.identifier
+        facebook = self.facebook
+        if facebook is not None:
+            doc = facebook.document(identifier=user)
+            if doc is not None:
+                return doc.name
+
     #
     #   Say Hi
     #
     GREETING_PROMPT = 'greeting:{language}'
 
-    @classmethod
-    def is_greeting(cls, text: str) -> bool:
-        return text.startswith('greeting:')
+    @property
+    def is_greeting(self) -> bool:
+        return self.prompt.startswith('greeting:')
 
-    @classmethod
-    def get_language(cls, text: str) -> Optional[str]:
+    @property
+    def language_code(self) -> str:
+        assert self.is_greeting, 'not a greeting: %s' % self.prompt
+        text = self.prompt
         pair = text.split(':')
         assert len(pair) == 2, 'greeting error: %s' % text
         assert not pair[1].startswith('{'), 'language error: %s' % text
         return pair[1]
 
-    @classmethod
-    def greeting(cls, language: Optional[str]) -> str:
-        if language is None or language == '' or language == 'en':
-            language = 'en_US'
-        return 'My current language environment code is "%s".' \
-               ' Please greet me in a language that suits me.' % language
-
-    # @classmethod
-    # def greeting(cls, language: Optional[str]) -> str:
-    #     # get language name
-    #     if language is None:
-    #         language = 'en'
-    #     else:
-    #         array = language.split('_')
-    #         language = array[0]
-    #     # get greetings
-    #     greetings = cls.__greetings.get(language)
-    #     if greetings is None:
-    #         greetings = cls.__greetings.get('en')
-    #         assert greetings is not None, 'failed to get greeting for language: %s' % language
-    #     if isinstance(greetings, str):
-    #         return greetings
-    #     assert isinstance(greetings, List), 'greetings error: %s' % greetings
-    #     if len(greetings) == 1:
-    #         return greetings[0]
-    #     else:
-    #         return random.choice(greetings)
-    #
-    # __greetings = {
-    #     'en': ['Hello!', 'Hi!', 'Hey!', 'Good day!', 'I\'m back!'],
-    #     'es': ['¡Hola!', '¿Cómo estás?', '¡Buen día!', '¡He vuelto!'],
-    #     'fr': ['Bonjour!', 'Salut!', 'Bonne journée!', 'Je suis de retour!'],
-    #     'de': ['Hallo!', 'Guten Tag!', 'Ich bin zurück!'],
-    #     'it': ['Ciao!', 'Buon giorno!', 'Sono tornato/a!'],
-    #     'nl': ['Hallo!', 'Goede dag!', 'Ik ben terug!'],
-    #     'pt': ['Olá!', 'Bom dia!', 'Eu voltei!'],
-    #     'ru': ['Привет!', 'Здравствуйте!', 'Добрый день!', 'Я вернулась!'],
-    #     'ja': ['おはようございます', 'こんにちは', '帰ってきました'],
-    #     'ko': ['안녕', '안녕하세요', '안녕하십니까', '좋은 날', '돌아왔어요'],
-    #     'zh': ['你好！', '您好！', '我回来了！'],
-    #
-    #     'af': ['Hoe gaan dit met u!', 'Ek is terug.'],
-    #     'ar': ['السلام عليكم', 'أهلاً', 'عدت'],
-    #     'bn': ['হ্যালো', 'আমি ফিরে এসেছি।'],
-    #     'hi': ['नमस्ते', 'नमस्कार', 'मैं वापस आया हूँ।'],
-    #     'id': ['Apa kabar!', 'Saya kembali.'],
-    #     'ms': ['Apa khabar!', 'Saya sudah kembali.'],
-    #     'th': ['สวัสดี', 'ทักทาย', 'สวัสดีครับ', 'ฉันกลับมา'],
-    #     'vi': ['Chào bạn!', 'Tôi đã trở lại.'],
-    # }
+    @property
+    def greeting(self) -> str:
+        name = self.nickname
+        lang = self.language_code
+        if lang is None or len(lang) == 0:
+            lang = 'en_US'
+        if name is None or len(name) == 0:
+            return 'My current language environment code is "%s".' \
+                   ' Please greet me in a language that suits me.' % lang
+        else:
+            return 'My name is "%s", and my current language environment code is "%s".' \
+                   ' Please consider my language habits and location to generate an appropriate greeting' \
+                   ' (don\'t translate my name).' % (name, lang)
 
 
 class ChatCallback(ABC):
@@ -325,11 +316,11 @@ class ChatClient(Runner, Logging, ABC):
             self._purge()
             return False
         request = task.request
-        prompt = request.prompt
-        if ChatRequest.is_greeting(text=prompt):
+        if request.is_greeting:
             # get greeting text with language
-            language = ChatRequest.get_language(text=prompt)
-            prompt = ChatRequest.greeting(language=language)
+            prompt = request.greeting
+        else:
+            prompt = request.prompt
         identifier = request.identifier
         box = self._get_box(identifier=identifier)
         if box is None:

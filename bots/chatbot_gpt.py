@@ -139,7 +139,7 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
         name = self.get_name(identifier=identifier)
         for answer in results:
             self.info(msg='[Dialog] ChatGPT >>> %s (%s): "%s"' % (identifier, name, answer))
-            if answer == ChatCallback.NOT_FOUND and ChatRequest.is_greeting(text=request.prompt):
+            if answer == ChatCallback.NOT_FOUND and request.is_greeting:
                 self.warning(msg='ignore 404 for greeting: %s "%s"' % (identifier, name))
                 continue
             # respond text message
