@@ -112,6 +112,11 @@ class Dialog:
             answer = self.ask(question=question, sender=sender)
             if answer is not None:
                 response = TextContent.create(text=answer)
+                req_time = content.time
+                res_time = response.time
+                print('checking respond time: %s, %s' % (res_time, req_time))
+                if res_time is None or res_time <= req_time:
+                    response['time'] = req_time + 1
                 group = content.group
                 if group is not None:
                     response.group = group

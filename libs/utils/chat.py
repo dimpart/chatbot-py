@@ -29,7 +29,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Set, Dict
 
 from dimples import DateTime
-from dimples import ID, Document
+from dimples import ID
 from dimples import CommonFacebook
 
 from dimples.utils import Logging, Runner, Singleton
@@ -38,21 +38,34 @@ from dimples.utils import template_replace
 from .http import HttpClient
 
 
-def get_language(visa: Document, default: str) -> str:
-    # check 'app:language'
-    app = visa.get_property(key='app')
-    if isinstance(app, Dict):
-        language = app.get('language')
-        if language is not None and len(language) > 0:
-            return language
-    # check 'sys:locale'
-    sys = visa.get_property(key='sys')
-    if isinstance(sys, Dict):
-        locale = sys.get('locale')
-        if locale is not None and len(locale) > 0:
+def combine_language(language: Optional[str], locale: Optional[str], default: str) -> str:
+    # if 'language' not found:
+    #     return 'locale' or default code
+    if language is None or len(language) == 0:
+        if locale is None or len(locale) == 0:
+            return default
+        else:
             return locale
-    # default language
-    return default
+    # if 'locale' not found
+    #     return 'language'
+    if locale is None or len(locale) == 0:
+        return language
+    assert isinstance(language, str)
+    assert isinstance(locale, str)
+    # combine 'language' and 'locale'
+    lang = language.lower()
+    if lang == 'zh_cn':
+        language = 'zh_Hans'
+    elif lang == 'zh_tw':
+        language = 'zh_Hant'
+    else:
+        pos = language.rfind('_')
+        if pos > 0:
+            language = language[:pos]
+    pos = locale.rfind('_')
+    if pos > 0:
+        locale = locale[pos+1:]
+    return '%s_%s' % (language, locale)
 
 
 def greeting_prompt(identifier: ID, facebook: CommonFacebook) -> str:
@@ -60,7 +73,20 @@ def greeting_prompt(identifier: ID, facebook: CommonFacebook) -> str:
     if visa is None:
         language = 'en'
     else:
-        language = get_language(visa=visa, default='en')
+        # check 'app:language'
+        app = visa.get_property(key='app')
+        if isinstance(app, Dict):
+            language = app.get('language')
+        else:
+            language = None
+        # check 'sys:locale'
+        sys = visa.get_property(key='sys')
+        if isinstance(sys, Dict):
+            locale = sys.get('locale')
+        else:
+            locale = None
+        # combine them
+        language = combine_language(language=language, locale=locale, default='en')
     # greeting with language code
     template = ChatRequest.GREETING_PROMPT
     return template_replace(template=template, key='language', value=language)
@@ -118,26 +144,30 @@ class ChatRequest:
         return self.prompt.startswith('greeting:')
 
     @property
-    def language_code(self) -> str:
+    def language_code(self) -> Optional[str]:
         assert self.is_greeting, 'not a greeting: %s' % self.prompt
         text = self.prompt
         pair = text.split(':')
         assert len(pair) == 2, 'greeting error: %s' % text
-        assert not pair[1].startswith('{'), 'language error: %s' % text
-        return pair[1]
+        if pair[1].startswith('{'):
+            assert False, 'greeting error: %s' % text
+        else:
+            return pair[1]
 
     @property
     def greeting(self) -> str:
         name = self.nickname
         lang = self.language_code
         if lang is None or len(lang) == 0:
-            lang = 'en_US'
+            lang = 'en'
         if name is None or len(name) == 0:
             return 'My current language environment code is "%s".' \
-                   ' Please greet me in a language that suits me.' % lang
+                   ' Please greet me in a language that suits me,' \
+                   ' considering the language habits of my region.' % lang
         else:
             return 'My name is "%s", and my current language environment code is "%s".' \
-                   ' Please consider my language habits and location to generate an appropriate greeting' \
+                   ' Please greet me in a language that suits me,' \
+                   ' considering the language habits of my region' \
                    ' (don\'t translate my name).' % (name, lang)
 
 

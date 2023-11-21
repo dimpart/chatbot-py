@@ -86,13 +86,12 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
 
     def get_name(self, identifier: ID) -> Optional[str]:
         doc = self.facebook.document(identifier=identifier)
-        if doc is None:
-            # document not found, query from station
-            self.messenger.query_document(identifier=identifier)
-            return identifier.name
-        name = doc.name
-        if name is not None and len(name) > 0:
-            return name
+        if doc is not None:
+            name = doc.name
+            if name is not None and len(name) > 0:
+                return name
+        # document not found, query from station
+        self.messenger.query_document(identifier=identifier)
         return Anonymous.get_name(identifier=identifier)
 
     def ask(self, question: str, sender: ID, group: Optional[ID], now: DateTime) -> bool:

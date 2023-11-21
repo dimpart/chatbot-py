@@ -86,7 +86,7 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
         except URLError as error:
             self.error('%s' % error)
 
-    def __ignored(self, content: Content, sender: ID, msg: ReliableMessage) -> bool:
+    def __ignored(self, content: TextContent, sender: ID, msg: ReliableMessage) -> bool:
         # check bot
         if sender.type in [EntityType.BOT, EntityType.STATION]:
             self.info('ignore message from another bot: %s, "%s"' % (sender, content.get('text')))
@@ -114,7 +114,7 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
             return True
         # TODO: remove all '@nickname'
         text = text.replace(at, '')
-        content.text = text
+        content['text'] = text
 
     # Override
     def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
@@ -137,14 +137,14 @@ class ChatTextContentProcessor(BaseContentProcessor, Logging):
         group = content.group
         if group is None:
             # personal message
-            self.debug(msg='Dialog > %s(%s): "%s" -> "%s"' % (nickname, sender, question, answer))
+            self.info(msg='Dialog > %s(%s): "%s" -> "%s"' % (nickname, sender, question, answer))
             return [res]
         else:
             # group message
-            self.debug(msg='Group Dialog > %s(%s)@%s: "%s" -> "%s"' % (nickname, sender, group.name, question, answer))
+            self.info(msg='Group Dialog > %s(%s)@%s: "%s" -> "%s"' % (nickname, sender, group.name, question, answer))
             emitter = Emitter()
-            _, r_msg = emitter.send_content(content=content, receiver=group)
-            if r_msg is not None:
+            _, r_msg1 = emitter.send_content(content=res, receiver=group)
+            if r_msg1 is not None:
                 text = 'Group message responded'
             else:
                 text = 'Group message respond failed'
