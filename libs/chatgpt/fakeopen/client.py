@@ -50,6 +50,10 @@ class ChatBox(SuperBox):
         self.__gpt = gpt
 
     # Override
+    def presume(self, system_content: str):
+        self.__gpt.presume(system_content=system_content)
+
+    # Override
     def _ask(self, question: str) -> Optional[List]:
         answer = self.__gpt.ask(question=question)
         if answer is None:

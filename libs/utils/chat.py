@@ -155,20 +155,39 @@ class ChatRequest:
             return pair[1]
 
     @property
-    def greeting(self) -> str:
+    def system_setting(self) -> Optional[str]:
         name = self.nickname
         lang = self.language_code
         if lang is None or len(lang) == 0:
             lang = 'en'
+        # content = 'You are ChatGPT, a large language model trained by OpenAI.\n' \
+        #           'Carefully heed the user\'s instructions.\n' \
+        #           'Respond using Markdown.'
+        # TODO: set bot name
+        content = 'Your name is "Gigi", a smart and beautiful girl.\n' \
+                  'You are set as a little assistant who is good at listening' \
+                  ' and willing to answer any questions.'
+        # setting username & language
         if name is None or len(name) == 0:
-            return 'My current language environment code is "%s".' \
-                   ' Please greet me in a language that suits me,' \
-                   ' considering the language habits of my region.' % lang
+            setting = 'My current language environment code is "%s".\n' \
+                      'Please consider a language that suits me.' % lang
         else:
-            return 'My name is "%s", and my current language environment code is "%s".' \
-                   ' Please greet me in a language that suits me,' \
-                   ' considering the language habits of my region' \
-                   ' (don\'t translate my name).' % (name, lang)
+            setting = 'My name is "%s", and my current language environment code is "%s".\n' \
+                      'Please consider a language that suits me.' % (name, lang)
+        return '%s\n%s' % (content, setting)
+
+    @property
+    def greeting(self) -> str:
+        name = self.nickname
+        if name is None or len(name) == 0:
+            return 'Please greet me in a language that suits me,' \
+                   ' considering my language habits and location' \
+                   ' and attempting to spark a new conversation.'
+        else:
+            return 'Please greet me in a language that suits me,' \
+                   ' considering my language habits and location' \
+                   ' and attempting to spark a new conversation.' \
+                   ' Please keep my fullname from being translated.'
 
 
 class ChatCallback(ABC):
@@ -245,6 +264,10 @@ class ChatBox(Logging, ABC):
 
     def is_expired(self, now: DateTime) -> bool:
         return now > self.__expired
+
+    def presume(self, system_content: str):
+        """ system setting """
+        raise NotImplemented
 
     def request(self, prompt: str) -> Optional[List]:
         try:
@@ -346,16 +369,18 @@ class ChatClient(Runner, Logging, ABC):
             self._purge()
             return False
         request = task.request
-        if request.is_greeting:
-            # get greeting text with language
-            prompt = request.greeting
-        else:
-            prompt = request.prompt
         identifier = request.identifier
         box = self._get_box(identifier=identifier)
         if box is None:
-            self.error(msg='failed to get chat box, drop request from %s: "%s"' % (identifier, prompt))
+            self.error(msg='failed to get chat box, drop request from %s: "%s"' % (identifier, request.prompt))
             return False
+        if request.is_greeting:
+            # presume language environment and get greeting text
+            box.presume(system_content=request.system_setting)
+            prompt = request.greeting
+        else:
+            prompt = request.prompt
+        # send request
         answers = box.request(prompt=prompt)
         if answers is None:
             self.error(msg='failed to get answer, drop request from %s: "%s"' % (identifier, prompt))

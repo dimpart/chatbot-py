@@ -85,18 +85,36 @@ class FakeOpen(Logging):
         self.__auth_token = auth_token
         # messages
         self.__message_queue = MessageQueue()
+        self.__system_setting: Optional[dict] = None
 
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
         return self.__http_client.http_post(url=url, data=data, headers=headers)
 
-    def ask(self, question: str) -> Optional[str]:
+    def presume(self, system_content: str):
+        assert system_content is not None and len(system_content) > 0, 'presume error'
+        self.__system_setting = {
+            'content': system_content,
+            'role': 'system',
+        }
+
+    def _build_messages(self, question: str) -> List[dict]:
         msg = {
             'content': question,
             'role': 'user',
         }
         self.__message_queue.push(msg=msg)
+        messages = self.__message_queue.messages
+        settings = self.__system_setting
+        if settings is not None:
+            # insert system settings in the front
+            messages = messages.copy()
+            messages.insert(0, settings)
+        return messages
+
+    def ask(self, question: str) -> Optional[str]:
+        messages = self._build_messages(question=question)
         info = {
-            "messages": self.__message_queue.messages,
+            "messages": messages,
             "model": "gpt-3.5-turbo",
             "temperature": 1,
             "presence_penalty": 0,
