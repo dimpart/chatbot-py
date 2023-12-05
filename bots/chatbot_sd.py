@@ -35,7 +35,7 @@ from typing import Optional, Union, List, Dict
 
 from dimples import DateTime
 from dimples import PlainKey
-from dimples import EntityType, ID
+from dimples import EntityType, ID, Document
 from dimples import ReliableMessage
 from dimples import ContentType, Content, TextContent, FileContent
 from dimples import ContentProcessor, ContentProcessorCreator
@@ -85,13 +85,19 @@ class DrawHelper(TwinsHelper, ChatCallback, Logging):
             return self.get_name(identifier=current.identifier)
 
     def get_name(self, identifier: ID) -> Optional[str]:
-        doc = self.facebook.document(identifier=identifier)
+        if identifier.is_user:
+            doc_type = Document.VISA
+        elif identifier.is_group:
+            doc_type = Document.BULLETIN
+        else:
+            doc_type = '*'
+        # get name from document
+        doc = self.facebook.document(identifier=identifier, doc_type=doc_type)
         if doc is not None:
             name = doc.name
             if name is not None and len(name) > 0:
                 return name
-        # document not found, query from station
-        self.messenger.query_document(identifier=identifier)
+        # get name from ID
         return Anonymous.get_name(identifier=identifier)
 
     def ask(self, question: str, sender: ID, group: Optional[ID], now: DateTime) -> bool:
@@ -156,7 +162,7 @@ class DrawHelper(TwinsHelper, ChatCallback, Logging):
                 continue
             res_time = content.time
             if res_time is None or res_time <= req_time:
-                self.warning(msg='replace respond time: %s => %s + 1' % (res_time, req_time))
+                self.warning(msg='replace respond time: %s => %s + %d' % (res_time, req_time, order))
                 content['time'] = req_time + order
             else:
                 content['time'] = res_time + order

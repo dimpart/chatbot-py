@@ -18,7 +18,7 @@ tcp==0.4.1
 
 mkm==1.0.2
 dkd==1.0.2
-dimp==1.0.2
-dimsdk==1.0.2
+dimp==1.0.3
+dimsdk==1.0.3
 dimplugins==1.0.2
-dimples==0.3.2
+dimples==0.3.3

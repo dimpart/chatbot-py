@@ -34,7 +34,7 @@
 from typing import Optional, Union, List
 
 from dimples import DateTime
-from dimples import EntityType, ID
+from dimples import EntityType, ID, Document
 from dimples import ReliableMessage
 from dimples import ContentType, Content, TextContent
 from dimples import ContentProcessor, ContentProcessorCreator
@@ -85,13 +85,19 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             return self.get_name(identifier=current.identifier)
 
     def get_name(self, identifier: ID) -> Optional[str]:
-        doc = self.facebook.document(identifier=identifier)
+        if identifier.is_user:
+            doc_type = Document.VISA
+        elif identifier.is_group:
+            doc_type = Document.BULLETIN
+        else:
+            doc_type = '*'
+        # get name from document
+        doc = self.facebook.document(identifier=identifier, doc_type=doc_type)
         if doc is not None:
             name = doc.name
             if name is not None and len(name) > 0:
                 return name
-        # document not found, query from station
-        self.messenger.query_document(identifier=identifier)
+        # get name from ID
         return Anonymous.get_name(identifier=identifier)
 
     def ask(self, question: str, sender: ID, group: Optional[ID], now: DateTime) -> bool:

@@ -73,7 +73,7 @@ __all__ = [
     'Log', 'Logging',
     'Path', 'File', 'TextFile', 'JSONFile',
     'CachePool', 'CacheHolder', 'CacheManager',
-    'FrequencyChecker', 'QueryFrequencyChecker',
+    'FrequencyChecker', 'RecentTimeChecker',
 
     'Config',
 
