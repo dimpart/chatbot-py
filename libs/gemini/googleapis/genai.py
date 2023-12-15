@@ -50,6 +50,7 @@ class MessageQueue:
         # simplify message data
         if trim:
             msg = self.__trim(msg=msg)
+        msg = self.__merge(msg=msg)
         # append to tail
         self.__messages.append(msg)
         self.__size += len(json_encode(obj=msg))
@@ -68,6 +69,24 @@ class MessageQueue:
         #     'content': content,
         #     'role': role,
         # }
+        return msg
+
+    # FIX: INVALID_ARGUMENT
+    #   ensure that multiturn requests alternate between user and model;
+    #   ensure that multiturn requests ends with a user role or a function response.
+    def __merge(self, msg: dict) -> dict:
+        count = len(self.__messages)
+        if count > 0:
+            last = self.__messages[count - 1]
+            if last.get('role') == msg.get('role'):
+                # merge into last request
+                parts1 = last.get('parts')
+                parts2 = msg.get('parts')
+                assert len(parts1) > 0 and len(parts2) > 0, 'message error: %s, %s' % (last, msg)
+                msg['parts'] = parts1 + parts2
+                # remove last message
+                self.__messages.pop(count - 1)
+                self.__size -= len(json_encode(obj=last))
         return msg
 
 
@@ -99,7 +118,8 @@ class GenerativeAI(Logging):
                     'text': system_content,
                 }
             ],
-            'role': 'system',
+            # 'role': 'system',
+            'role': 'user',
         }
 
     def _build_messages(self, question: str) -> List[dict]:
@@ -116,8 +136,11 @@ class GenerativeAI(Logging):
         settings = self.__system_setting
         if settings is not None:
             # insert system settings in the front
-            messages = messages.copy()
-            messages.insert(0, settings)
+            first = messages[0]
+            # FIXME:
+            if first.get('role') != 'user':
+                messages = messages.copy()
+                messages.insert(0, settings)
         return messages
 
     def ask(self, question: str) -> Optional[str]:
@@ -148,6 +171,7 @@ class GenerativeAI(Logging):
             parts = msg.get('parts')
             if isinstance(parts, List):
                 return get_text(parts=parts)
+        Log.error(msg='failed to parse content: %s' % info)
 
 
 def get_text(parts: List) -> str:
