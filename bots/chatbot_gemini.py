@@ -277,6 +277,7 @@ DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 # start google gemini
 g_client = ChatClient()
+g_client.role_bot = 'Your name is "Gege", a smart and handsome boy.'
 g_client.start()
 
 if __name__ == '__main__':

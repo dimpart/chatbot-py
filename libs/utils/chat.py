@@ -103,6 +103,7 @@ class ChatRequest:
         self.__prompt = prompt
         self.__time = time
         self.__identifier = identifier
+        self.__role_bot = ''
 
     @property
     def prompt(self) -> str:
@@ -118,6 +119,14 @@ class ChatRequest:
     def identifier(self) -> ID:
         """ request user/group """
         return self.__identifier
+
+    @property
+    def role_bot(self) -> str:
+        return self.__role_bot
+
+    @role_bot.setter
+    def role_bot(self, text):
+        self.__role_bot = text
 
     @property
     def facebook(self) -> Optional[CommonFacebook]:
@@ -163,18 +172,16 @@ class ChatRequest:
         # content = 'You are ChatGPT, a large language model trained by OpenAI.\n' \
         #           'Carefully heed the user\'s instructions.\n' \
         #           'Respond using Markdown.'
-        # TODO: set bot name
-        content = 'Your name is "Gigi", a smart and beautiful girl.\n' \
-                  'You are set as a little assistant who is good at listening' \
-                  ' and willing to answer any questions.'
-        # setting username & language
+        # 1. setting username & language
         if name is None or len(name) == 0:
             setting = 'My current language environment code is "%s".\n' \
                       'Please consider a language that suits me.' % lang
         else:
             setting = 'My name is "%s", and my current language environment code is "%s".\n' \
                       'Please consider a language that suits me.' % (name, lang)
-        return '%s\n%s' % (content, setting)
+        # 2. combine settings
+        return '%s\nYou are set as a little assistant who is good at listening' \
+               ' and willing to answer any questions.\n%s' % (self.role_bot, setting)
 
     @property
     def greeting(self) -> str:
@@ -333,6 +340,15 @@ class ChatClient(Runner, Logging, ABC):
         self.__http_ref: Optional[weakref.ReferenceType] = None
         self.__http_expired = 0
         self.__task_pool = ChatTaskPool()
+        self.__role_bot = 'Your name is "Gigi", a smart and beautiful girl.'
+
+    @property
+    def role_bot(self) -> str:
+        return self.__role_bot
+
+    @role_bot.setter
+    def role_bot(self, text):
+        self.__role_bot = text
 
     @property
     def http(self) -> HttpClient:
@@ -358,6 +374,7 @@ class ChatClient(Runner, Logging, ABC):
 
     def request(self, prompt: str, time: DateTime, identifier: ID, callback: ChatCallback):
         request = ChatRequest(prompt=prompt, time=time, identifier=identifier)
+        request.role_bot = self.role_bot
         task = ChatTask(request=request, callback=callback)
         self.__task_pool.add_task(task=task)
 

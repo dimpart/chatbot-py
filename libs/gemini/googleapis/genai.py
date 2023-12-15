@@ -34,8 +34,8 @@ from ...utils import HttpClient
 
 class MessageQueue:
 
-    MAX_SIZE = 10240
-    MAX_COUNT = 8
+    MAX_SIZE = 65536
+    MAX_COUNT = 16
 
     def __init__(self):
         super().__init__()
@@ -62,12 +62,13 @@ class MessageQueue:
 
     # noinspection PyMethodMayBeStatic
     def __trim(self, msg: dict) -> dict:
-        content = msg.get('content')
-        role = msg.get('role')
-        return {
-            'content': content,
-            'role': role,
-        }
+        # content = msg.get('content')
+        # role = msg.get('role')
+        # return {
+        #     'content': content,
+        #     'role': role,
+        # }
+        return msg
 
 
 class GenerativeAI(Logging):
@@ -93,13 +94,21 @@ class GenerativeAI(Logging):
     def presume(self, system_content: str):
         assert system_content is not None and len(system_content) > 0, 'presume error'
         self.__system_setting = {
-            'content': system_content,
+            'parts': [
+                {
+                    'text': system_content,
+                }
+            ],
             'role': 'system',
         }
 
     def _build_messages(self, question: str) -> List[dict]:
         msg = {
-            'content': question,
+            'parts': [
+                {
+                    'text': question,
+                }
+            ],
             'role': 'user',
         }
         self.__message_queue.push(msg=msg)
@@ -112,26 +121,9 @@ class GenerativeAI(Logging):
         return messages
 
     def ask(self, question: str) -> Optional[str]:
-        # messages = self._build_messages(question=question)
-        # info = {
-        #     "messages": messages,
-        #     "model": "gpt-3.5-turbo",
-        #     "temperature": 1,
-        #     "presence_penalty": 0,
-        #     "top_p": 1,
-        #     "frequency_penalty": 0,
-        #     "stream": False,
-        # }
+        messages = self._build_messages(question=question)
         info = {
-            'contents': [
-                {
-                    'parts': [
-                        {
-                            'text': question,
-                        }
-                    ]
-                }
-            ]
+            'contents': messages
         }
         self.info(msg='sending message: %s' % info)
         data = utf8_encode(string=json_encode(obj=info))
@@ -146,45 +138,40 @@ class GenerativeAI(Logging):
                           ' Chrome/116.0.0.0 Safari/537.36',
         }, data=data)
         # show_response(response=response)
-        msg = parse_response(text=response.text)
-        if msg is None:
+        info = parse_response(text=response.text)
+        if info is None:
             self.error(msg='failed to parse response: %s' % response.text)
-        else:
+            return None
+        msg = get_content(info=info)
+        if msg is not None:
             self.__message_queue.push(msg=msg, trim=True)
-            # content = msg.get('content')
-            # if isinstance(content, str):
-            #     return content
-            part_one = get_first_part(msg=msg)
-            if isinstance(part_one, Dict):
-                return part_one.get('text')
+            parts = msg.get('parts')
+            if isinstance(parts, List):
+                return get_text(parts=parts)
 
 
-def get_first_part(msg: Dict) -> Optional[Dict]:
-    candidates = msg.get('candidates')
-    if not isinstance(candidates, List) or len(candidates) == 0:
-        Log.error(msg='response error: %s' % msg)
-        return None
-    first = candidates[0]
-    if not isinstance(first, Dict):
-        Log.error(msg='response error: %s' % msg)
-        return None
-    content = first.get('content')
-    if not isinstance(first, Dict):
-        Log.error(msg='response error: %s' % msg)
-        return None
-    parts = content.get('parts')
-    if not isinstance(parts, List) or len(parts) == 0:
-        Log.error(msg='response error: %s' % msg)
-        return None
-    return parts[0]
+def get_text(parts: List) -> str:
+    lines = []
+    for item in parts:
+        if isinstance(item, Dict):
+            text = item.get('text')
+            if isinstance(text, str):
+                lines.append(text)
+    return '\n'.join(lines)
+
+
+def get_content(info: Dict) -> Optional[Dict]:
+    candidates = info.get('candidates')
+    if isinstance(candidates, List) and len(candidates) > 0:
+        first = candidates[0]
+        if isinstance(first, Dict):
+            content = first.get('content')
+            if isinstance(content, Dict):
+                return content
 
 
 def parse_response(text: str) -> Optional[dict]:
     try:
-        info = json_decode(string=text)
+        return json_decode(string=text)
     except Exception as e:
         Log.error(msg='failed to parse response: %s, error: %s' % (text, e))
-        return None
-    choices = info.get('choices')
-    if isinstance(choices, List) and len(choices) > 0:
-        return choices[0].get('message')
