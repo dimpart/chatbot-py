@@ -36,6 +36,8 @@ from .redis import *
 
 from .database import Database
 
+from .storage import ChatStorage
+
 
 __all__ = [
     #
@@ -73,4 +75,6 @@ __all__ = [
     #   Database
     #
     'Database',
+
+    'ChatStorage',
 ]

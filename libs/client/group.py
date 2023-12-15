@@ -212,5 +212,6 @@ class SharedGroupManager(GroupDataSource, Logging):
 
     def send_message(self, msg: InstantMessage, priority: int = 0) -> Optional[ReliableMessage]:
         assert msg.content.group is not None, 'group message error: %s' % msg
+        msg['GF'] = True
         delegate = self.emitter
         return delegate.send_message(msg=msg, priority=priority)

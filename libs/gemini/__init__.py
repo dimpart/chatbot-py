@@ -24,10 +24,10 @@
 # ==============================================================================
 
 """
-    Chat-GPT
-    ~~~~~~~~
+    Gemini
+    ~~~~~~
 
-    Generative Pre-Trained Transformer
+    Google AI
 """
 
 from ..utils import ChatRequest, ChatCallback, ChatTask, ChatTaskPool

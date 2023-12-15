@@ -24,22 +24,20 @@
 # ==============================================================================
 
 """
-    Chat-GPT
-    ~~~~~~~~
+    Gemini
+    ~~~~~~
 
-    Generative Pre-Trained Transformer
+    Google AI
 """
 
-from ..utils import ChatRequest, ChatCallback, ChatTask, ChatTaskPool
+from .genai import GenerativeAI
 
-from ..database import ChatStorage
+from .client import ChatClient  # , ChatBox
 
 
 __all__ = [
 
-    'ChatRequest', 'ChatCallback',
-    'ChatTask', 'ChatTaskPool',
+    'GenerativeAI',
 
-    'ChatStorage',
-
+    'ChatClient',  # 'ChatBox',
 ]
