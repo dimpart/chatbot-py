@@ -23,6 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import threading
 from typing import Optional, Union, List, Dict
 
 from requests import Response
@@ -41,25 +42,28 @@ class MessageQueue:
         super().__init__()
         self.__messages = []
         self.__size = 0
+        self.__lock = threading.Lock()
 
     @property
     def messages(self) -> List[dict]:
-        return self.__messages
+        with self.__lock:
+            return self.__messages.copy()
 
     def push(self, msg: dict, trim: bool = False):
-        # simplify message data
-        if trim:
-            msg = self.__trim(msg=msg)
-        msg = self.__merge(msg=msg)
-        # append to tail
-        self.__messages.append(msg)
-        self.__size += len(json_encode(obj=msg))
-        # check data size of the queue
-        while self.__size > self.MAX_SIZE:
-            if len(self.__messages) < self.MAX_COUNT:
-                break
-            first = self.__messages.pop(0)
-            self.__size -= len(json_encode(obj=first))
+        with self.__lock:
+            # simplify message data
+            if trim:
+                msg = self.__trim(msg=msg)
+            msg = self.__check_conflict(msg=msg)
+            # append to tail
+            self.__messages.append(msg)
+            self.__size += len(json_encode(obj=msg))
+            # check data size of the queue
+            while self.__size > self.MAX_SIZE:
+                if len(self.__messages) < self.MAX_COUNT:
+                    break
+                first = self.__messages.pop(0)
+                self.__size -= len(json_encode(obj=first))
 
     # noinspection PyMethodMayBeStatic
     def __trim(self, msg: dict) -> dict:
@@ -74,17 +78,11 @@ class MessageQueue:
     # FIX: INVALID_ARGUMENT
     #   ensure that multiturn requests alternate between user and model;
     #   ensure that multiturn requests ends with a user role or a function response.
-    def __merge(self, msg: dict) -> dict:
+    def __check_conflict(self, msg: dict) -> dict:
         count = len(self.__messages)
         if count > 0:
             last = self.__messages[count - 1]
             if last.get('role') == msg.get('role'):
-                # merge into last request
-                parts1 = last.get('parts')
-                parts2 = msg.get('parts')
-                assert len(parts1) > 0 and len(parts2) > 0, 'message error: %s, %s' % (last, msg)
-                msg['parts'] = parts1 + parts2
-                # remove last message
                 self.__messages.pop(count - 1)
                 self.__size -= len(json_encode(obj=last))
         return msg
@@ -138,8 +136,8 @@ class GenerativeAI(Logging):
             # insert system settings in the front
             first = messages[0]
             # FIXME:
-            if first.get('role') != 'user':
-                messages = messages.copy()
+            if first.get('role') != settings.get('role'):
+                # messages = messages.copy()
                 messages.insert(0, settings)
         return messages
 
