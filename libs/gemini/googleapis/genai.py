@@ -141,8 +141,9 @@ class GenerativeAI(Logging):
                 messages.insert(0, settings)
             elif len(messages) == 1:
                 # insert system setting
-                text = first['parts']['text']
-                first['parts']['text'] = '%s\n%s' % (settings, text)
+                text1 = settings['parts'][0]['text']
+                text2 = first['parts'][0]['text']
+                first['parts'][0]['text'] = '%s\n%s' % (text1, text2)
         return messages
 
     def ask(self, question: str) -> Optional[str]:
