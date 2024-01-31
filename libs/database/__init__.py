@@ -69,7 +69,7 @@ __all__ = [
     #
     'MetaCache',
     'DocumentCache',
-    'GroupCache',
+    'GroupCache', 'GroupHistoryCache',
 
     #
     #   Database

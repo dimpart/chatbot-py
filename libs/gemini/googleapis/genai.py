@@ -139,12 +139,34 @@ class GenerativeAI(Logging):
             if first.get('role') != settings.get('role'):
                 # messages = messages.copy()
                 messages.insert(0, settings)
+            elif len(messages) == 1:
+                # insert system setting
+                text = first['parts']['text']
+                first['parts']['text'] = '%s\n%s' % (settings, text)
         return messages
 
     def ask(self, question: str) -> Optional[str]:
         messages = self._build_messages(question=question)
         info = {
-            'contents': messages
+            'contents': messages,
+            'safetySettings': [
+                {
+                    'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                    'threshold': 'BLOCK_NONE',
+                },
+                {
+                    'category': 'HARM_CATEGORY_HATE_SPEECH',
+                    'threshold': 'BLOCK_NONE',
+                },
+                {
+                    'category': 'HARM_CATEGORY_HARASSMENT',
+                    'threshold': 'BLOCK_NONE',
+                },
+                {
+                    'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                    'threshold': 'BLOCK_NONE',
+                },
+            ],
         }
         self.info(msg='sending message: %s' % info)
         data = utf8_encode(string=json_encode(obj=info))

@@ -47,7 +47,7 @@ class MetaCache(Cache):
 
     """
         Meta key for Entities (User/Group)
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         redis key: 'mkm.meta.{ID}'
     """
