@@ -146,14 +146,14 @@ class ChatHelper(TwinsHelper, ChatCallback, Logging):
             self.info(msg='[Dialog] Gemini >>> %s (%s): "%s"' % (identifier, name, answer))
             if answer == ChatCallback.NOT_FOUND and request.is_greeting:
                 self.warning(msg='ignore 404 for greeting: %s "%s"' % (identifier, name))
-                continue
-            # respond text message
-            content = TextContent.create(text=answer)
-            res_time = content.time
-            if res_time is None or res_time <= req_time:
-                self.warning(msg='replace respond time: %s => %s + 1' % (res_time, req_time))
-                content['time'] = req_time + 1
-            emitter.send_content(content=content, receiver=identifier)
+            else:
+                # respond text message
+                content = TextContent.create(text=answer)
+                res_time = content.time
+                if res_time is None or res_time <= req_time:
+                    self.warning(msg='replace respond time: %s => %s + 1' % (res_time, req_time))
+                    content['time'] = req_time + 1
+                emitter.send_content(content=content, receiver=identifier)
             # save chat history
             storage.save_response(question=request.prompt, answer=answer, identifier=identifier, name=name)
 
