@@ -50,13 +50,13 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.utils import greeting_prompt
-from libs.utils import Footprint
 from libs.utils import Log, Logging
+from libs.database import ChatStorage
 
-from libs.gemini import ChatCallback, ChatRequest
-from libs.gemini import ChatStorage
-from libs.gemini.googleapis import ChatClient
+from libs.ai import greeting_prompt
+from libs.ai import Footprint
+from libs.ai import ChatCallback, ChatRequest
+from libs.ai.gemini import ChatClient
 
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter

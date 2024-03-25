@@ -51,12 +51,11 @@ path = Path.dir(path=path)
 Path.add(path=path)
 
 from libs.utils import filename_from_url
-from libs.utils import Footprint
 from libs.utils import Log, Logging
 
-from libs.chatgpt import ChatCallback, ChatRequest
-
-from libs.stable_diffusion.tensor_art import DrawClient
+from libs.ai import Footprint
+from libs.ai import ChatCallback, ChatRequest
+from libs.ai.stable_diffusion.tensor_art import DrawClient
 
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter

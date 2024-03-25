@@ -27,9 +27,9 @@ from typing import Optional, Union, Any, List, Dict
 
 from requests import Response
 
-from ...utils import utf8_encode, json_encode, json_decode
-from ...utils import Log, Logging
-from ...utils import HttpClient
+from ....utils import utf8_encode, json_encode, json_decode
+from ....utils import Log, Logging
+from ....utils import HttpClient
 
 
 class TensorArt(Logging):

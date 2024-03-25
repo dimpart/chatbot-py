@@ -27,12 +27,13 @@ from typing import Optional, List, Dict
 
 from dimples import ID
 
-from ...utils import Singleton
-from ...utils import HttpClient
-from ...utils import ChatCallback
-from ...utils import ChatBox as SuperBox
-from ...utils import ChatBoxPool as SuperPool
-from ...utils import ChatClient as SuperClient
+from ....utils import Singleton
+from ....utils import HttpClient
+
+from ...chat import ChatCallback
+from ...chat import ChatBox as SuperBox
+from ...chat import ChatBoxPool as SuperPool
+from ...chat import ChatClient as SuperClient
 
 from .model import TensorArt
 

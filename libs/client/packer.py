@@ -67,7 +67,7 @@ class ClientPacker(ClientMessagePacker):
         if i_msg is not None:
             content = i_msg.content
             if isinstance(content, FileContent):
-                if content.get('data') is None and content.get('URL') is not None:
+                if content.password is None and content.url is not None:
                     key = self.messenger.get_decrypt_key(msg=msg)
                     assert key is not None, 'failed to get password: %s -> %s' % (i_msg.sender, i_msg.receiver)
                     # keep password to decrypt data after downloaded

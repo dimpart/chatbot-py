@@ -27,9 +27,9 @@ from typing import Optional, Union, List
 
 from requests import Response
 
-from ...utils import utf8_encode, json_encode, json_decode
-from ...utils import Log, Logging
-from ...utils import HttpClient
+from ....utils import utf8_encode, json_encode, json_decode
+from ....utils import Log, Logging
+from ....utils import HttpClient
 
 
 class MessageQueue:
@@ -70,12 +70,13 @@ class MessageQueue:
         }
 
 
-class FakeOpen(Logging):
+class GPTHandler(Logging):
     """
-        Fake Open
-        ~~~~~~~~~
+        CAI Free
+        ~~~~~~~~
 
-        https://ai.fakeopen.com/v1/chat/completions
+        https://chat.caifree.com/api/openai/v1/chat/completions
+
     """
 
     def __init__(self, referer: str, auth_token: str, http_client: HttpClient):
@@ -115,8 +116,10 @@ class FakeOpen(Logging):
         messages = self._build_messages(question=question)
         info = {
             "messages": messages,
+            # "model": "gpt-4",
+            # "temperature": 1,
             "model": "gpt-3.5-turbo",
-            "temperature": 1,
+            "temperature": 0.5,
             "presence_penalty": 0,
             "top_p": 1,
             "frequency_penalty": 0,
@@ -124,9 +127,10 @@ class FakeOpen(Logging):
         }
         self.info(msg='sending message: %s' % info)
         data = utf8_encode(string=json_encode(obj=info))
-        response = self.http_post(url='/v1/chat/completions', headers={
+        response = self.http_post(url='/api/openai/v1/chat/completions', headers={
+            # 'Accept': 'application/json, text/event-stream',
             'Content-Type': 'application/json',
-            'Authorization': self.__auth_token,
+            # 'Authorization': self.__auth_token,
             'Origin': self.__referer,
             'Referer': self.__referer,
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
@@ -147,9 +151,15 @@ class FakeOpen(Logging):
 def parse_response(text: str) -> Optional[dict]:
     try:
         info = json_decode(string=text)
+        choices = info.get('choices')
+        if isinstance(choices, List) and len(choices) > 0:
+            return choices[0].get('message')
+        error = info.get('error')
+        if error is not None:
+            return {
+                'content': error['message'],
+                'role': 'assistant',
+            }
     except Exception as e:
         Log.error(msg='failed to parse response: %s, error: %s' % (text, e))
         return None
-    choices = info.get('choices')
-    if isinstance(choices, List) and len(choices) > 0:
-        return choices[0].get('message')

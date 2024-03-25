@@ -40,7 +40,7 @@ from dimples import BaseContentProcessor
 from dimples import CommonFacebook
 
 from ...utils import Logging
-from ...utils.nlp import ChatBot, Dialog
+from ...ai.nlp import ChatBot, Dialog
 from ..emitter import Emitter
 
 

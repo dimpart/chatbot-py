@@ -35,7 +35,7 @@ from dimples import CommonFacebook
 from dimples.utils import Logging, Runner, Singleton
 from dimples.utils import template_replace
 
-from .http import HttpClient
+from ..utils import HttpClient
 
 
 def combine_language(language: Optional[str], locale: Optional[str], default: str) -> str:

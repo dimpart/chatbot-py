@@ -29,12 +29,13 @@ from dimples import ID
 
 from ...utils import Singleton
 from ...utils import HttpClient
-from ...utils import ChatCallback
-from ...utils import ChatBox as SuperBox
-from ...utils import ChatBoxPool as SuperPool
-from ...utils import ChatClient as SuperClient
 
-from .gpt35 import FakeOpen
+from ..chat import ChatCallback
+from ..chat import ChatBox as SuperBox
+from ..chat import ChatBoxPool as SuperPool
+from ..chat import ChatClient as SuperClient
+
+from .genai import GenerativeAI
 
 
 #
@@ -46,16 +47,16 @@ class ChatBox(SuperBox):
 
     def __init__(self, referer: str, auth_token: str, http_client: HttpClient):
         super().__init__()
-        gpt = FakeOpen(referer=referer, auth_token=auth_token, http_client=http_client)
-        self.__gpt = gpt
+        gemini = GenerativeAI(referer=referer, auth_token=auth_token, http_client=http_client)
+        self.__gemini = gemini
 
     # Override
     def presume(self, system_content: str):
-        self.__gpt.presume(system_content=system_content)
+        self.__gemini.presume(system_content=system_content)
 
     # Override
     def _ask(self, question: str) -> Optional[List]:
-        answer = self.__gpt.ask(question=question)
+        answer = self.__gemini.ask(question=question)
         if answer is None:
             return None
         elif len(answer) == 0:
@@ -68,7 +69,7 @@ class ChatBoxPool(SuperPool):
 
     # Override
     def _new_box(self, params: Dict) -> Optional[ChatBox]:
-        auth_token = 'Bearer pk-this-is-a-real-free-pool-token-for-everyone'
+        auth_token = 'GOOGLE_API_KEY'
         referer = params.get('referer')
         http_client = params.get('http_client')
         return ChatBox(referer=referer, auth_token=auth_token, http_client=http_client)
@@ -77,8 +78,8 @@ class ChatBoxPool(SuperPool):
 @Singleton
 class ChatClient(SuperClient):
 
-    BASE_URL = 'https://ai.fakeopen.com'
-    REFERER_URL = 'https://chat1.geekgpt.org/'
+    BASE_URL = 'https://generativelanguage.googleapis.com'
+    REFERER_URL = 'https://generativelanguage.googleapis.com/'
 
     def __init__(self):
         super().__init__()

@@ -50,13 +50,13 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.utils import greeting_prompt
-from libs.utils import Footprint
 from libs.utils import Log, Logging
+from libs.database import ChatStorage
 
-from libs.chatgpt import ChatCallback, ChatRequest
-from libs.chatgpt import ChatStorage
-from libs.chatgpt.fakeopen import ChatClient
+from libs.ai import greeting_prompt
+from libs.ai import Footprint
+from libs.ai import ChatCallback, ChatRequest
+from libs.ai.chatgpt.caifree import ChatClient
 
 from libs.client import ClientProcessor, ClientContentProcessorCreator
 from libs.client import Emitter

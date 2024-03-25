@@ -39,14 +39,16 @@ from dimples.client import ClientArchivist, ClientFacebook
 
 from libs.utils import Log
 from libs.utils import Singleton
-from libs.utils.nlp import ChatBot, Tuling, XiaoI
 from libs.database import Database
+from libs.database import ChatStorage
+
+from libs.ai.nlp import ChatBot, Tuling, XiaoI
+
 from libs.client import ClientSession, ClientMessenger
 from libs.client import ClientProcessor, ClientPacker
 from libs.client import Terminal
 from libs.client import Emitter
 from libs.client import SharedGroupManager
-from libs.chatgpt import ChatStorage
 
 
 @Singleton

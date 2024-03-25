@@ -47,13 +47,6 @@ from .pnf import get_filename, get_extension
 from .pnf import get_cache_name
 from .pnf import filename_from_url, filename_from_data
 
-from .chat import ChatRequest, ChatCallback
-from .chat import ChatTask, ChatTaskPool
-from .chat import ChatBox, ChatBoxPool
-from .chat import ChatClient
-from .chat import Footprint
-from .chat import greeting_prompt
-
 
 __all__ = [
 
@@ -97,15 +90,5 @@ __all__ = [
     'get_filename', 'get_extension',
     'get_cache_name',
     'filename_from_url', 'filename_from_data',
-
-    #
-    #   Chat
-    #
-    'ChatRequest', 'ChatCallback',
-    'ChatTask', 'ChatTaskPool',
-    'ChatBox', 'ChatBoxPool',
-    'ChatClient',
-    'Footprint',
-    'greeting_prompt',
 
 ]

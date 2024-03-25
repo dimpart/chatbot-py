@@ -30,14 +30,14 @@
     3.5
 """
 
-from .gpt35 import FakeOpen
+from .gpt import GPTHandler
 
 from .client import ChatClient  # , ChatBox
 
 
 __all__ = [
 
-    'FakeOpen',
+    'GPTHandler',
 
     'ChatClient',  # 'ChatBox',
 ]
