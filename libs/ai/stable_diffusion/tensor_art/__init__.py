@@ -30,14 +30,16 @@
     LDMs - Latent Diffusion Models
 """
 
-from .model import TensorArt
-
-from .client import DrawClient
+# from .model import TensorArt
+#
+# from .client import SDChatBox
+from .client import SDChatClient
 
 
 __all__ = [
 
-    'TensorArt',
-
-    'DrawClient',
+    # 'TensorArt',
+    #
+    # 'SDChatBox',
+    'SDChatClient',
 ]

@@ -30,14 +30,18 @@
     3.5
 """
 
-from .gpt import GPTHandler
-
-from .client import ChatClient  # , ChatBox
+# from .gpt import MessageQueue
+# from .gpt import GPTHandler
+#
+# from .client import GPTChatBox
+from .client import GPTChatClient
 
 
 __all__ = [
 
-    'GPTHandler',
-
-    'ChatClient',  # 'ChatBox',
+    # 'MessageQueue',
+    # 'GPTHandler',
+    #
+    # 'GPTChatBox',
+    'GPTChatClient',
 ]

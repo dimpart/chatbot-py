@@ -23,24 +23,14 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .chat import ChatRequest, ChatCallback
-from .chat import ChatTask, ChatTaskPool
-from .chat import ChatBox, ChatBoxPool
-from .chat import ChatClient
-from .chat import Footprint
-from .chat import greeting_prompt
+"""
+    Artificial Intelligence
+    ~~~~~~~~~~~~~~~~~~~~~~~
+
+    Chat Bots
+"""
 
 
 __all__ = [
-
-    #
-    #   Chat
-    #
-    'ChatRequest', 'ChatCallback',
-    'ChatTask', 'ChatTaskPool',
-    'ChatBox', 'ChatBoxPool',
-    'ChatClient',
-    'Footprint',
-    'greeting_prompt',
 
 ]

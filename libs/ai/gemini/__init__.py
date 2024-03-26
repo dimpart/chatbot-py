@@ -30,14 +30,18 @@
     Google AI
 """
 
-from .genai import GenerativeAI
-
-from .client import ChatClient  # , ChatBox
+# from .genai import MessageQueue
+# from .genai import GenerativeAI
+#
+# from .client import GeminiChatBox
+from .client import GeminiChatClient
 
 
 __all__ = [
 
-    'GenerativeAI',
-
-    'ChatClient',  # 'ChatBox',
+    # 'MessageQueue',
+    # 'GenerativeAI',
+    #
+    # 'GeminiChatBox',
+    'GeminiChatClient',
 ]
