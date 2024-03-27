@@ -105,9 +105,12 @@ class SDChatBox(ChatBox, Logging):
         return 'You can also input:\n    %s' % '\n    '.join(names)
 
     def __chat_response(self, results: List, request: Request):
-        emitter = Emitter()
+        responses = []
+        # request time for calibration
         req_time = request.time
-        identifier = request.sender
+        if req_time is None:
+            req_time = 0
+        identifier = request.identifier
         name = get_nickname(identifier=identifier, facebook=self.__facebook)
         for item in results:
             if isinstance(item, str):
@@ -135,7 +138,9 @@ class SDChatBox(ChatBox, Logging):
             else:
                 content['time'] = res_time + order
             self.info(msg='responding: %s, %s' % (identifier, content))
-            emitter.send_content(content=content, receiver=identifier)
+            responses.append(content)
+        # respond to the sender (or group)
+        self.respond(responses=responses, request=request)
 
 
 class SDChatClient(ChatClient):

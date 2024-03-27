@@ -75,7 +75,7 @@ class GeminiChatBox(ChatBox):
         answer = self.__gemini.ask(question=prompt)
         if answer is not None and len(answer) > 0:
             self.respond_text(text=answer, request=request)
-        self._save_response(question=prompt, answer=answer, identifier=request.sender)
+        self._save_response(question=prompt, answer=answer, identifier=request.identifier)
         self.__talks_count += 1
 
     # Override
@@ -86,7 +86,7 @@ class GeminiChatBox(ChatBox):
         elif len(answer) == 0:
             answer = self.NO_CONTENT
         self.respond_text(text=answer, request=request)
-        self._save_response(question=prompt, answer=answer, identifier=request.sender)
+        self._save_response(question=prompt, answer=answer, identifier=request.identifier)
         self.__talks_count += 1
 
     # Override

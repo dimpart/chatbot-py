@@ -114,7 +114,7 @@ class ChatBox(ABC):
         content = request.content
         if isinstance(content, TextContent):
             # text message
-            text = content.text
+            text = request.text
             if text is not None and len(text) > 0:
                 self._ask_question(prompt=text, content=content, request=request)
             return
@@ -142,7 +142,7 @@ class ChatBox(ABC):
 
     def respond(self, responses: List[Content], request: Request):
         # all content time in responses must be calibrated with the request time
-        receiver = request.sender
+        receiver = request.identifier
         for res in responses:
             self._send_content(content=res, receiver=receiver)
 
@@ -214,7 +214,7 @@ class ChatClient(Runner, Logging, ABC):
     def process(self) -> bool:
         request = self._next()
         if request is not None:
-            box = self._get_box(identifier=request.sender)
+            box = self._get_box(identifier=request.identifier)
             if box is not None:
                 # try to process the request
                 try:

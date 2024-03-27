@@ -39,7 +39,8 @@ class Request(ABC):
 
     @property
     @abstractmethod
-    def sender(self) -> ID:
+    def identifier(self) -> ID:
+        """ Sender, or group ID """
         raise NotImplemented
 
     @property
@@ -56,15 +57,15 @@ class Request(ABC):
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s sender="%s">[%s] %s</%s module="%s">' \
-               % (cname, self.sender, self.time, self.text, cname, mod)
+        return '<%s identifier="%s">[%s] %s</%s module="%s">' \
+               % (cname, self.identifier, self.time, self.text, cname, mod)
 
     # Override
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s sender="%s">[%s] %s</%s module="%s">' \
-               % (cname, self.sender, self.time, self.text, cname, mod)
+        return '<%s identifier="%s">[%s] %s</%s module="%s">' \
+               % (cname, self.identifier, self.time, self.text, cname, mod)
 
 
 class Setting(Request):
@@ -75,7 +76,7 @@ class Setting(Request):
         self.__definition = definition
 
     @property  # Override
-    def sender(self) -> ID:
+    def identifier(self) -> ID:
         return ID.parse(identifier='system@anywhere')
 
     @property  # Override
@@ -101,7 +102,7 @@ class Greeting(Request, Logging):
         return self.__facebook
 
     @property  # Override
-    def sender(self) -> ID:
+    def identifier(self) -> ID:
         return self.__identifier
 
     @property  # Override
@@ -110,11 +111,13 @@ class Greeting(Request, Logging):
 
     @property  # Override
     def text(self) -> Optional[str]:
-        name = get_nickname(identifier=self.sender, facebook=self.facebook)
+        sender = self.identifier
+        assert sender.is_user, 'greeting sender error: %s' % sender
+        name = get_nickname(identifier=sender, facebook=self.facebook)
         if name is None or len(name) == 0:
-            self.error(msg='failed to get nickname for sender: %s' % self.sender)
+            self.error(msg='failed to get nickname for sender: %s' % sender)
             return None
-        language = get_language(identifier=self.sender, facebook=self.facebook)
+        language = get_language(identifier=sender, facebook=self.facebook)
         return 'My name is "%s", my current language environment code is "%s".' \
                ' Please try to greet me in a language that suits me,' \
                ' considering my language habits and location.' \
@@ -144,22 +147,25 @@ class ChatRequest(Request, Logging):
         return self.__content
 
     @property  # Override
-    def sender(self) -> ID:
-        return self.__envelope.sender
+    def identifier(self) -> ID:
+        group = self.content.group
+        if group is not None:
+            return group
+        return self.envelope.sender
 
     @property  # Override
     def time(self) -> Optional[DateTime]:
-        return self.__content.time
+        return self.content.time
 
     @property  # Override
     def text(self) -> Optional[str]:
-        question = self.__content.get('text')
+        question = self.content.get('text')
         if question is not None and len(question) > 0:
             question = self.__filter(text=question)
         return question
 
     def __filter(self, text: str) -> Optional[str]:
-        sender = self.sender
+        sender = self.envelope.sender
         if EntityType.BOT == sender.type:
             self.info('ignore message from another bot: %s, "%s"' % (sender, text))
             return None
