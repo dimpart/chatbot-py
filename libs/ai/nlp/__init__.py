@@ -39,6 +39,9 @@ from .chatbot import ChatBot, Dialog
 from .tuling import Tuling
 from .xiaoi import XiaoI
 
+from .client import NLPChatBox
+from .client import NLPChatClient
+
 
 __all__ = [
 
@@ -46,4 +49,8 @@ __all__ = [
     'Dialog',
 
     'Tuling', 'XiaoI',
+
+    'NLPChatBox',
+    'NLPChatClient',
+
 ]

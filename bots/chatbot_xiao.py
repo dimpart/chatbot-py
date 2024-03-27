@@ -31,11 +31,6 @@
     Chat bot powered by XiaoI
 """
 
-from typing import Optional, Union
-
-from dimples import ContentType
-from dimples import ContentProcessor, ContentProcessorCreator
-from dimples.utils import Log
 from dimples.utils import Path
 
 path = Path.abs(path=__file__)
@@ -43,38 +38,26 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.client import ChatTextContentProcessor
-from libs.client import ClientProcessor, ClientContentProcessorCreator
+from libs.utils import Log
+from libs.chat import ChatClient
+from libs.client import ClientProcessor
+
+from libs.ai.nlp import NLPChatClient
 
 from bots.shared import GlobalVariable
 from bots.shared import chat_bots
 from bots.shared import start_bot
 
 
-class BotTextContentProcessor(ChatTextContentProcessor):
-
-    def __init__(self, facebook, messenger):
-        shared = GlobalVariable()
-        bots = chat_bots(names=['xiaoi'], shared=shared)  # chat bot
-        super().__init__(facebook=facebook, messenger=messenger, bots=bots)
-
-
-class BotContentProcessorCreator(ClientContentProcessorCreator):
-
-    # Override
-    def create_content_processor(self, msg_type: Union[int, ContentType]) -> Optional[ContentProcessor]:
-        # text
-        if msg_type == ContentType.TEXT:
-            return BotTextContentProcessor(facebook=self.facebook, messenger=self.messenger)
-        # others
-        return super().create_content_processor(msg_type=msg_type)
-
-
 class BotMessageProcessor(ClientProcessor):
 
     # Override
-    def _create_creator(self) -> ContentProcessorCreator:
-        return BotContentProcessorCreator(facebook=self.facebook, messenger=self.messenger)
+    def _create_chat_client(self) -> ChatClient:
+        shared = GlobalVariable()
+        bots = chat_bots(names=['xiaoi'], shared=shared)  # chat bot
+        client = NLPChatClient(bots=bots, facebook=self.facebook)
+        client.start()
+        return client
 
 
 #
