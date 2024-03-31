@@ -23,15 +23,13 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, List, Dict
+from typing import Optional
 
 from dimples import ID
 from dimples import Content
-from dimples import TextContent, FileContent
+from dimples import TextContent
 from dimples import CommonFacebook
-from dimples import PlainKey
 
-from ....utils import filename_from_url
 from ....utils import Logging
 from ....utils import HttpClient
 
@@ -39,7 +37,6 @@ from ....client import Emitter
 
 from ....chat import Request
 from ....chat import ChatBox, ChatClient
-from ....chat.base import get_nickname
 
 from .model import TensorArt
 
@@ -69,78 +66,108 @@ class SDChatBox(ChatBox, Logging):
         self.__sd = sd
 
     # Override
-    def _say_hi(self, prompt: str, request: Request):
-        pass
-
-    # Override
-    def _ask_question(self, prompt: str, content: TextContent, request: Request):
-        projects = self.__sd.search(keywords=prompt)
-        count = 0 if projects is None else len(projects)
-        if count == 0:
-            text = self.NO_CONTENT
-            self.respond_text(text=text, request=request)
-            return
-        # build text message
-        text = self.__build_text(projects=projects)
-        if count > 3:
-            projects = projects[:3]
-        responses = []
-        for item in projects:
-            responses.append(item)
-        responses.append(text)
-        self.__chat_response(results=responses, request=request)
-
-    # Override
     def _send_content(self, content: Content, receiver: ID):
         emitter = Emitter()
         emitter.send_content(content=content, receiver=receiver)
 
-    # noinspection PyMethodMayBeStatic
-    def __build_text(self, projects: List[Dict]) -> str:
-        names = []
-        for item in projects:
-            text = item.get('name')
-            if text is not None and len(text) > 0:
-                names.append(text)
-        return 'You can also input:\n    %s' % '\n    '.join(names)
+    # Override
+    def _ask_question(self, prompt: str, content: TextContent, request: Request):
+        projects = self.__sd.search(keywords=prompt)
+        total = 0 if projects is None else len(projects)
+        answer = 'Result of "%s":\n----' % prompt
+        if total == 0:
+            answer += '\n```json\n%s\n```' % self.NO_CONTENT
+            self.respond_text(text=answer, request=request)
+            return
+        elif total > 3:
+            count = 3
+        else:
+            count = total
+        # show the top results
+        answer += '\n|'
+        for i in range(count):
+            item = projects[i]
+            answer += ' ![%s](%s) |' % (item.get('name'), item.get('url'))
+        answer += '\n|'
+        for i in range(count):
+            answer += '----|'
+        answer += '\n|'
+        for i in range(count):
+            item = projects[i]
+            answer += ' **%s** |' % item.get('name')
+        # show other results
+        if total > count:
+            answer += '\n\n'
+            answer += 'You can also input:\n----'
+            for i in range(count, total):
+                item = projects[i]
+                answer += '\n- %s' % item.get('name')
+        self.respond_text(text=answer, request=request)
 
-    def __chat_response(self, results: List, request: Request):
-        responses = []
-        # request time for calibration
-        req_time = request.time
-        if req_time is None:
-            req_time = 0
-        identifier = request.identifier
-        name = get_nickname(identifier=identifier, facebook=self.__facebook)
-        for item in results:
-            if isinstance(item, str):
-                self.info(msg='[Dialog] SD >>> %s (%s): "%s"' % (identifier, name, item))
-                # respond text message
-                content = TextContent.create(text=item)
-                order = 2  # ordered responses
-            elif isinstance(item, Dict):
-                url = item.get('url')
-                if url is None:
-                    self.error(msg='response error: %s' % item)
-                    continue
-                filename = filename_from_url(url=url, filename=None)
-                if filename is None or len(filename) == 0:
-                    filename = 'image.png'
-                content = FileContent.image(filename=filename, url=url, password=PlainKey())
-                order = 1  # ordered responses
-            else:
-                self.error(msg='response error: %s' % item)
-                continue
-            res_time = content.time
-            if res_time is None or res_time <= req_time:
-                self.warning(msg='replace respond time: %s => %s + %d' % (res_time, req_time, order))
-                content['time'] = req_time + order
-            else:
-                content['time'] = res_time + order
-            self.info(msg='responding: %s, %s' % (identifier, content))
-            responses.append(content)
-        # respond to the sender (or group)
-        self.respond(responses=responses, request=request)
+    # # Override
+    # def _ask_question(self, prompt: str, content: TextContent, request: Request):
+    #     projects = self.__sd.search(keywords=prompt)
+    #     count = 0 if projects is None else len(projects)
+    #     if count == 0:
+    #         text = self.NO_CONTENT
+    #         self.respond_text(text=text, request=request)
+    #         return
+    #     # build text message
+    #     text = self.__build_text(projects=projects)
+    #     if count > 3:
+    #         projects = projects[:3]
+    #     responses = []
+    #     for item in projects:
+    #         responses.append(item)
+    #     responses.append(text)
+    #     self.__chat_response(results=responses, request=request)
+    #
+    # # noinspection PyMethodMayBeStatic
+    # def __build_text(self, projects: List[Dict]) -> str:
+    #     names = []
+    #     for item in projects:
+    #         text = item.get('name')
+    #         if text is not None and len(text) > 0:
+    #             names.append(text)
+    #     return 'You can also input:\n----\n- %s' % '\n- '.join(names)
+    #
+    # def __chat_response(self, results: List, request: Request):
+    #     responses = []
+    #     # request time for calibration
+    #     req_time = request.time
+    #     if req_time is None:
+    #         req_time = 0
+    #     identifier = request.identifier
+    #     name = get_nickname(identifier=identifier, facebook=self.__facebook)
+    #     for item in results:
+    #         if isinstance(item, str):
+    #             self.info(msg='[Dialog] SD >>> %s (%s): "%s"' % (identifier, name, item))
+    #             # respond text message
+    #             content = TextContent.create(text=item)
+    #             order = 2  # ordered responses
+    #         elif isinstance(item, Dict):
+    #             url = item.get('url')
+    #             if url is None:
+    #                 self.error(msg='response error: %s' % item)
+    #                 continue
+    #             filename = filename_from_url(url=url, filename=None)
+    #             if filename is None or len(filename) == 0:
+    #                 filename = 'image.png'
+    #             content = FileContent.image(filename=filename, url=url, password=PlainKey())
+    #             order = 1  # ordered responses
+    #         else:
+    #             self.error(msg='response error: %s' % item)
+    #             continue
+    #         res_time = content.time
+    #         if res_time is None or res_time <= req_time:
+    #             self.warning(msg='replace respond time: %s => %s + %d' % (res_time, req_time, order))
+    #             content['time'] = req_time + order
+    #         else:
+    #             content['time'] = res_time + order
+    #         self.info(msg='responding: %s, %s' % (identifier, content))
+    #         responses.append(content)
+    #     # respond to the sender (or group)
+    #     self.respond(responses=responses, request=request)
 
 
 class SDChatClient(ChatClient):

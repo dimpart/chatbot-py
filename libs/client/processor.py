@@ -29,7 +29,7 @@ from typing import List
 from dimples import EntityType, ID
 from dimples import ReliableMessage
 from dimples import Envelope
-from dimples import Content, TextContent, CustomizedContent
+from dimples import Content, TextContent, FileContent, CustomizedContent
 from dimples import CommonFacebook, CommonMessenger
 
 from dimples.client import ClientMessageProcessor
@@ -58,6 +58,10 @@ class ClientProcessor(ClientMessageProcessor):
         request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
         self.__chat_client.append(request=request)
 
+    def _process_file_content(self, content: FileContent, envelope: Envelope):
+        request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
+        self.__chat_client.append(request=request)
+
     def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
         users = content.get('users')
         if isinstance(users, List):
@@ -78,6 +82,9 @@ class ClientProcessor(ClientMessageProcessor):
     def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
         if isinstance(content, TextContent):
             self._process_text_content(content=content, envelope=r_msg.envelope)
+            return []
+        elif isinstance(content, FileContent):
+            self._process_file_content(content=content, envelope=r_msg.envelope)
             return []
         elif isinstance(content, CustomizedContent):
             mod = content.module

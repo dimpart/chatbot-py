@@ -31,6 +31,7 @@ from typing import Optional, Set, List
 from mkm.types import DateTime
 from dimples import ID
 from dimples import Content, TextContent
+from dimples import FileContent, ImageContent, AudioContent, VideoContent
 
 from dimples.utils import Runner, Logging
 
@@ -102,32 +103,62 @@ class ChatBox(ABC):
     #   Request
     #
 
-    def process_request(self, request: Request):
+    def process_request(self, request: Request) -> bool:
         # greeting
         if isinstance(request, Greeting):
             text = request.text
-            if text is not None and len(text) > 0:
-                self._say_hi(prompt=text, request=request)
-            return
+            if text is None or len(text) == 0:
+                return False
+            return self._say_hi(prompt=text, request=request)
         # chatting
         assert isinstance(request, ChatRequest), 'unknown request: %s' % request
         content = request.content
         if isinstance(content, TextContent):
-            # text message
-            text = request.text
-            if text is not None and len(text) > 0:
-                self._ask_question(prompt=text, content=content, request=request)
-            return
-        # TODO: file message
-        assert False, 'unsupported request: %s' % request
+            return self._process_text_content(content=content, request=request)
+        elif isinstance(content, FileContent):
+            return self._process_file_content(content=content, request=request)
+        # else:
+        #     assert False, 'unsupported content: %s, envelope: %s' % (content, request.envelope)
 
-    @abstractmethod
-    def _say_hi(self, prompt: str, request: Request):
+    def _process_text_content(self, content: TextContent, request: ChatRequest) -> bool:
+        # text message
+        text = request.text
+        if text is None or len(text) == 0:
+            return False
+        return self._ask_question(prompt=text, content=content, request=request)
+
+    def _process_file_content(self, content: FileContent, request: ChatRequest) -> bool:
+        # file message
+        if isinstance(content, ImageContent):
+            # image message
+            return self._process_image_content(content=content, request=request)
+        elif isinstance(content, AudioContent):
+            # audio message
+            return self._process_audio_content(content=content, request=request)
+        elif isinstance(content, VideoContent):
+            # video message
+            return self._process_video_content(content=content, request=request)
+        # else:
+        #     assert False, 'unsupported file content: %s, envelope: %s' % (content, request.envelope)
+
+    def _process_image_content(self, content: ImageContent, request: ChatRequest) -> bool:
+        """ Process image message """
+        pass
+
+    def _process_audio_content(self, content: AudioContent, request: ChatRequest) -> bool:
+        """ Process audio message """
+        pass
+
+    def _process_video_content(self, content: VideoContent, request: ChatRequest) -> bool:
+        """ Process video message """
+        pass
+
+    def _say_hi(self, prompt: str, request: Request) -> bool:
         """ Build greeting message & query the server """
-        raise NotImplemented
+        pass
 
     @abstractmethod
-    def _ask_question(self, prompt: str, content: TextContent, request: Request):
+    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
         """ Build message(s) & query the server """
         raise NotImplemented
 
