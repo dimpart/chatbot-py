@@ -32,6 +32,7 @@ from dimples import CommonFacebook
 
 from ....utils import Logging
 from ....utils import HttpClient
+from ....utils import markdown_escape
 
 from ....client import Emitter
 
@@ -76,7 +77,7 @@ class SDChatBox(ChatBox, Logging):
         total = 0 if projects is None else len(projects)
         answer = 'Result of "%s":\n----' % prompt
         if total == 0:
-            answer += '\n```json\n%s\n```' % self.NO_CONTENT
+            answer += '\n```json\n    %s\n```' % self.NO_CONTENT
             self.respond_text(text=answer, request=request)
             return
         elif total > 3:
@@ -87,14 +88,18 @@ class SDChatBox(ChatBox, Logging):
         answer += '\n|'
         for i in range(count):
             item = projects[i]
-            answer += ' ![%s](%s) |' % (item.get('name'), item.get('url'))
+            url = item.get('url')
+            name = markdown_escape(item.get('name'))
+            answer += ' ![%s](%s) |' % (name, url)
         answer += '\n|'
         for i in range(count):
             answer += '----|'
         answer += '\n|'
         for i in range(count):
             item = projects[i]
-            answer += ' **%s** |' % item.get('name')
+            name = markdown_escape(item.get('name'))
+            answer += ' **%s** |' % name
+        answer += '\n\n(*Double click the image to preview, long press to save to album*)'
         # show other results
         if total > count:
             answer += '\n\n'
