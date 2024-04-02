@@ -121,8 +121,8 @@ class Greeting(Request, Logging):
         return 'My name is "%s", my current language environment code is "%s".' \
                ' Please try to greet me in a language that suits me,' \
                ' considering my language habits and location.' \
-               ' Please keep my name unchanged and' \
-               ' not to translate it in your response.' % (name, language)
+               ' Please keep our names unchanged and' \
+               ' not to translate them in your response.' % (name, language)
 
 
 class ChatRequest(Request, Logging):

@@ -42,7 +42,7 @@ from libs.utils import Log
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
-from libs.ai.stable_diffusion.tensor_art import SDChatClient
+from libs.av.stable_diffusion import SDChatClient
 
 from bots.shared import start_bot
 

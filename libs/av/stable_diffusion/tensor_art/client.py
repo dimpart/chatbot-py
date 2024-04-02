@@ -89,8 +89,7 @@ class SDChatBox(ChatBox, Logging):
         for i in range(count):
             item = projects[i]
             url = item.get('url')
-            name = markdown_escape(item.get('name'))
-            answer += ' ![%s](%s) |' % (name, url)
+            answer += ' ![](%s) |' % url
         answer += '\n|'
         for i in range(count):
             answer += '----|'

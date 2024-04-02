@@ -2,7 +2,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2023 Albert Moky
+# Copyright (c) 2024 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,24 +24,13 @@
 # ==============================================================================
 
 """
-    Chat-GPT
-    ~~~~~~~~
+    Album & Vision
+    ~~~~~~~~~~~~~~
 
-    3.5
+    Chat Bots
 """
-
-from .gpt import MessageQueue
-from .gpt import GPTHandler
-
-from .client import GPTChatBox
-from .client import GPTChatClient
 
 
 __all__ = [
 
-    'MessageQueue',
-    'GPTHandler',
-
-    'GPTChatBox',
-    'GPTChatClient',
 ]

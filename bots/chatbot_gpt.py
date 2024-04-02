@@ -42,7 +42,7 @@ from libs.utils import Log
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
-from libs.ai.chatgpt.caifree import GPTChatClient
+from libs.ai.chatgpt import GPTChatClient
 
 from bots.shared import start_bot
 
