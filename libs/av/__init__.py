@@ -30,7 +30,11 @@
     Chat Bots
 """
 
+from .stable_diffusion import SDChatClient as SearchChatClient
+
 
 __all__ = [
+
+    'SearchChatClient',
 
 ]

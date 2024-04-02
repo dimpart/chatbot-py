@@ -30,11 +30,7 @@
     Generative Pre-Trained Transformer
 """
 
-from .caifree import GPTChatClient
-
 
 __all__ = [
-
-    'GPTChatClient',
 
 ]

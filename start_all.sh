@@ -31,9 +31,11 @@ function title() {
 title "DIM Chat Bots"
 restart gege "bots/chatbot_gemini.py"
 restart gigi "bots/chatbot_gpt.py"
-restart simon "bots/chatbot_sd.py"
 #restart ling "bots/chatbot_ling.py"
 #restart xiao "bots/chatbot_xiao.py"
+
+title "DIM Search Bots"
+restart simon "bots/sebot_sd.py"
 
 echo ""
 echo "    >>> Done <<<"

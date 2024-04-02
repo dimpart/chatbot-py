@@ -42,7 +42,7 @@ from libs.utils import Log
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
-from libs.av.stable_diffusion import SDChatClient
+from libs.av import SearchChatClient
 
 from bots.shared import start_bot
 
@@ -51,7 +51,7 @@ class BotMessageProcessor(ClientProcessor):
 
     # Override
     def _create_chat_client(self) -> ChatClient:
-        client = SDChatClient(facebook=self.facebook)
+        client = SearchChatClient(facebook=self.facebook)
         client.start()
         return client
 
