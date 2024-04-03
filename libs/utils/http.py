@@ -23,16 +23,18 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 
 import requests
 from requests import Response, Session
 from requests.cookies import RequestsCookieJar
 
 from dimples.utils import Log, Logging
+from dimples.utils import CacheManager
+from dimples import DateTime
 
 
-def fetch_cookies(response: Response) -> Optional[dict]:
+def fetch_cookies(response: Response) -> Optional[Dict]:
     cookies = response.cookies
     if isinstance(cookies, RequestsCookieJar):
         return cookies.get_dict()
@@ -62,18 +64,21 @@ class HttpSession:
             self.__session = network
         return network
 
-    def http_get(self, url: str, headers: dict = None, cookies: dict = None) -> Response:
+    def http_get(self, url: str, headers: Dict = None, cookies: Dict = None) -> Response:
         network = self.session if self.__long_connection else requests
         verify = self.__verify
         return network.request(method='GET', url=url, headers=headers, cookies=cookies, verify=verify)
 
-    def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None, cookies: dict = None) -> Response:
+    def http_post(self, url: str, data: Union[Dict, bytes], headers: Dict = None, cookies: Dict = None) -> Response:
         network = self.session if self.__long_connection else requests
         verify = self.__verify
         return network.request(method='POST', url=url, data=data, headers=headers, cookies=cookies, verify=verify)
 
 
 class HttpClient(Logging):
+
+    CACHE_EXPIRES = 60*60  # seconds
+    CACHE_REFRESHING = 32  # seconds
 
     def __init__(self, session: HttpSession = None, long_connection: bool = False, verify: bool = True,
                  base_url: str = None):
@@ -83,9 +88,15 @@ class HttpClient(Logging):
         self.__session = session
         self.__cookies = {}
         self.__base = base_url
+        man = CacheManager()
+        self.__web_cache = man.get_pool(name='web_pages')  # url => html
 
     @property
-    def cookies(self) -> dict:
+    def base_url(self) -> Optional[str]:
+        return self.__base
+
+    @property
+    def cookies(self) -> Dict:
         return self.__cookies
 
     def set_cookie(self, key: str, value: str):
@@ -93,6 +104,9 @@ class HttpClient(Logging):
 
     def get_cookie(self, key: str) -> Optional[str]:
         return self.__cookies.get(key)
+
+    def clear_cookies(self):
+        self.__cookies.clear()
 
     def _update_cookies(self, response: Response):
         cookies = fetch_cookies(response=response)
@@ -104,22 +118,49 @@ class HttpClient(Logging):
             self.__cookies[key] = cookies[key]
         return cookies
 
-    def _get_url(self, url: str) -> str:
-        if url.find('://') > 0:
-            return url
-        base = self.__base
-        return url if base is None else '%s%s' % (base, url)
+    def remove_cache(self, url: str):
+        self.__web_cache.erase(key=url)
 
-    def http_get(self, url: str, headers: dict = None) -> Response:
+    def cache_get(self, url: str, headers: Dict = None):
+        now = DateTime.now()
+        # 1. check memory cache
+        value, holder = self.__web_cache.fetch(key=url, now=now)
+        if value is None:
+            # cache empty
+            if holder is None:
+                # cache not load yet, wait to load
+                self.__web_cache.update(key=url, life_span=self.CACHE_REFRESHING, now=now)
+            else:
+                if holder.is_alive(now=now):
+                    # cache not exists
+                    return None
+                # cache expired, wait to reload
+                holder.renewal(duration=self.CACHE_REFRESHING, now=now)
+            # 2. query remote server
+            response = self.http_get(url=url, headers=headers)
+            if response.status_code == 200:
+                value = response.text
+                # 3. update memory cache
+                self.__web_cache.update(key=url, value=value, life_span=self.CACHE_EXPIRES, now=now)
+        # OK, return cached value
+        return value
+
+    def http_get(self, url: str, headers: Dict = None) -> Response:
         url = self._get_url(url=url)
         self.info(msg='GET %s' % url)
         response = self.__session.http_get(url=url, headers=headers, cookies=self.cookies)
         self._update_cookies(response=response)
         return response
 
-    def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
+    def http_post(self, url: str, data: Union[Dict, bytes], headers: Dict = None) -> Response:
         url = self._get_url(url=url)
         self.info(msg='POST %s' % url)
         response = self.__session.http_post(url=url, data=data, headers=headers, cookies=self.cookies)
         self._update_cookies(response=response)
         return response
+
+    def _get_url(self, url: str) -> str:
+        if url.find('://') > 0:
+            return url
+        base = self.__base
+        return url if base is None else '%s%s' % (base, url)
