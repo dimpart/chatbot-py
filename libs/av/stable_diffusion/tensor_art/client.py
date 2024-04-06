@@ -32,7 +32,7 @@ from dimples import CommonFacebook
 
 from ....utils import Logging
 from ....utils import HttpClient
-from ....utils import markdown_escape
+from ....utils import md_esc
 
 from ....client import Emitter
 
@@ -96,7 +96,7 @@ class SDChatBox(ChatBox, Logging):
         answer += '\n|'
         for i in range(count):
             item = projects[i]
-            name = markdown_escape(item.get('name'))
+            name = md_esc(item.get('name'))
             answer += ' **%s** |' % name
         answer += '\n\n(*Double click the image to preview, long press to save to album*)'
         # show other results

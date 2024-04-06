@@ -48,30 +48,27 @@ from .pnf import get_cache_name
 from .pnf import filename_from_url, filename_from_data
 
 
-def markdown_escape(text: str) -> str:
+def md_esc(text: str) -> str:
     if text is None:
         return ''
-    else:
+    elif not isinstance(text, str):
         text = str(text)
     escape = ''
     for c in text:
-        v = _md_tbl.get(c)
-        escape += c if v is None else v
+        if c in _md_chars:
+            escape += '\\'
+        escape += c
     return escape
 
 
-_md_tbl = {
-    '*': '\*',
-    '_': '\_',
-    '[': '\[',
-    ']': '\]',
-    '`': '\`',
-    '#': '\E',
-    '>': '\>',
-    '~': '\~',
-    '-': '\-',
-    '|': '\|',
-    '!': '\!',
+_md_chars = {
+    '\\',
+    '#', '*', '_', '-', '+',
+    '~', '`',
+    '|', ':', '!', '.',
+    '[', ']', '(', ')',
+    '<', '>', '{', '}',
+    '"', "'",
 }
 
 
@@ -105,7 +102,7 @@ __all__ = [
 
     'parse_document',
 
-    'markdown_escape',
+    'md_esc',
 
     #
     #   HTTP
