@@ -53,7 +53,7 @@ class BotMessageProcessor(ClientProcessor):
 
     # Override
     def _create_chat_client(self) -> ChatClient:
-        api_key = shared.config.get_string(section='google', option='gemini_key')
+        api_key = shared.config.get_string(section='gemini', option='google_api_key')
         client = GeminiChatClient(facebook=self.facebook, api_key=api_key)
         client.start()
         return client
