@@ -50,10 +50,11 @@ def show_response(response: Response):
 
 class HttpSession:
 
-    def __init__(self, long_connection: bool = False, verify: bool = True):
+    def __init__(self, long_connection: bool = False, proxies: Dict[str, str] = None, verify: bool = True):
         super().__init__()
         self.__long_connection = long_connection
         self.__session = None
+        self.__proxies = proxies
         self.__verify = verify
 
     @property
@@ -64,15 +65,38 @@ class HttpSession:
             self.__session = network
         return network
 
+    @property
+    def proxies(self) -> Optional[Dict[str, str]]:
+        return self.__proxies
+
+    @proxies.setter
+    def proxies(self, values: Dict[str, str]):
+        self.__proxies = values
+
+    def set_proxy(self, scheme: str, proxy: Optional[str]):
+        values = self.__proxies
+        if proxy is not None:
+            if values is None:
+                values = self.__proxies = {}
+            values[scheme] = proxy
+        elif values is not None:
+            values.pop(scheme, None)
+
     def http_get(self, url: str, headers: Dict = None, cookies: Dict = None) -> Response:
         network = self.session if self.__long_connection else requests
+        proxies = self.__proxies
         verify = self.__verify
-        return network.request(method='GET', url=url, headers=headers, cookies=cookies, verify=verify)
+        return network.request(method='GET', url=url,
+                               headers=headers, cookies=cookies,
+                               proxies=proxies, verify=verify)
 
     def http_post(self, url: str, data: Union[Dict, bytes], headers: Dict = None, cookies: Dict = None) -> Response:
         network = self.session if self.__long_connection else requests
+        proxies = self.__proxies
         verify = self.__verify
-        return network.request(method='POST', url=url, data=data, headers=headers, cookies=cookies, verify=verify)
+        return network.request(method='POST', url=url, data=data,
+                               headers=headers, cookies=cookies,
+                               proxies=proxies, verify=verify)
 
 
 class HttpClient(Logging):
@@ -80,11 +104,12 @@ class HttpClient(Logging):
     CACHE_EXPIRES = 60*60  # seconds
     CACHE_REFRESHING = 32  # seconds
 
-    def __init__(self, session: HttpSession = None, long_connection: bool = False, verify: bool = True,
+    def __init__(self, session: HttpSession = None,
+                 long_connection: bool = False, proxies: Dict[str, str] = None, verify: bool = True,
                  base_url: str = None):
         super().__init__()
         if session is None:
-            session = HttpSession(long_connection=long_connection, verify=verify)
+            session = HttpSession(long_connection=long_connection, proxies=proxies, verify=verify)
         self.__session = session
         self.__cookies = {}
         self.__base = base_url
@@ -94,6 +119,17 @@ class HttpClient(Logging):
     @property
     def base_url(self) -> Optional[str]:
         return self.__base
+
+    @property
+    def proxies(self) -> Optional[Dict[str, str]]:
+        return self.__session.proxies
+
+    @proxies.setter
+    def proxies(self, values: Dict[str, str]):
+        self.__session.proxies = values
+
+    def set_proxy(self, scheme: str, proxy: Optional[str]):
+        self.__session.set_proxy(scheme=scheme, proxy=proxy)
 
     @property
     def cookies(self) -> Dict:

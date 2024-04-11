@@ -30,8 +30,6 @@
     LDMs - Latent Diffusion Models
 """
 
-from .tensor_art import SDChatClient
-
 
 __all__ = [
 

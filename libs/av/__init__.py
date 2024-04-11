@@ -30,11 +30,12 @@
     Chat Bots
 """
 
-from .stable_diffusion import SDChatClient as SearchChatClient
+# from .stable_diffusion import SDChatClient as SearchClient
+from .tv_movie import SearchClient
 
 
 __all__ = [
 
-    'SearchChatClient',
+    'SearchClient',
 
 ]
