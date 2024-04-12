@@ -26,12 +26,12 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
 
-from mkm.types import DateTime
+from dimples import DateTime
 from dimples import EntityType, ID
 from dimples import Envelope, Content
 from dimples import CommonFacebook
 
-from dimples.utils import Logging
+from ..utils import Logging
 
 
 class Request(ABC):

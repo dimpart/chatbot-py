@@ -26,18 +26,13 @@
 from typing import Optional
 
 from dimples import ID
-from dimples import Content
-from dimples import TextContent
+from dimples import Content, TextContent
 from dimples import CommonFacebook
 
 from ...utils import HttpClient
-from ...database import ChatStorage
-
-from ...client import Emitter
-
 from ...chat import Request, Setting
 from ...chat import ChatBox, ChatClient
-from ...chat.base import get_nickname
+from ...client import Emitter
 
 from .genai import GenerativeAI
 
@@ -59,45 +54,38 @@ class GeminiChatBox(ChatBox):
         "error": "No response, please try again later."
     }'''
 
-    def __init__(self, identifier: ID, setting: Setting, facebook: CommonFacebook,
-                 referer: str, auth_token: str, http_client: HttpClient):
-        super().__init__(identifier=identifier, setting=setting)
-        self.__facebook = facebook
+    def __init__(self, identifier: ID, facebook: CommonFacebook,
+                 referer: str, auth_token: str, http_client: HttpClient,
+                 setting: Setting):
+        super().__init__(identifier=identifier, facebook=facebook)
         gemini = GenerativeAI(referer=referer, auth_token=auth_token, http_client=http_client)
         gemini.presume(system_content=setting.text)
         self.__gemini = gemini
-        self.__talks_count = 0
 
     # Override
-    def _say_hi(self, prompt: str, request: Request):
-        if self.__talks_count > 0:
-            return
+    def _say_hi(self, prompt: str, request: Request) -> bool:
         answer = self.__gemini.ask(question=prompt)
         if answer is not None and len(answer) > 0:
             self.respond_text(text=answer, request=request)
-        self._save_response(question=prompt, answer=answer, identifier=request.identifier)
-        self.__talks_count += 1
+        self._save_response(prompt=prompt, text=answer, request=request)
+        return True
 
     # Override
-    def _ask_question(self, prompt: str, content: TextContent, request: Request):
+    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
         answer = self.__gemini.ask(question=prompt)
         if answer is None:
             answer = self.NOT_FOUND
         elif len(answer) == 0:
             answer = self.NO_CONTENT
         self.respond_text(text=answer, request=request)
-        self._save_response(question=prompt, answer=answer, identifier=request.identifier)
-        self.__talks_count += 1
+        self._save_response(prompt=prompt, text=answer, request=request)
+        return True
 
     # Override
-    def _send_content(self, content: Content, receiver: ID):
+    def _send_content(self, content: Content, receiver: ID) -> bool:
         emitter = Emitter()
         emitter.send_content(content=content, receiver=receiver)
-
-    def _save_response(self, question: str, answer: str, identifier: ID) -> bool:
-        name = get_nickname(identifier=identifier, facebook=self.__facebook)
-        storage = ChatStorage()
-        return storage.save_response(question=question, answer=answer, identifier=identifier, name=name)
+        return True
 
 
 class GeminiChatClient(ChatClient):

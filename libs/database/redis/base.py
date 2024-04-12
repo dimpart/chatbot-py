@@ -27,8 +27,10 @@ from typing import Optional, Dict, List, Tuple
 
 from redis import Redis
 
+from ...utils import Logging
 
-class RedisConnector:
+
+class RedisConnector(Logging):
 
     def __init__(self):
         super().__init__()
@@ -85,6 +87,7 @@ class RedisConnector:
                 host = self.__host
                 port = self.__port
                 password = self.__password
+                self.info(msg='create redis db: %d (%s:%d) pwd: "%s"' % (order, host, port, password))
                 db = Redis(db=order, host=host, port=port, password=password)
                 self.__dbs[order] = db
             return db

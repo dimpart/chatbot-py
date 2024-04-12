@@ -30,6 +30,8 @@
     Generative Pre-Trained Transformer
 """
 
+from .client import GPTChatClient
+
 
 __all__ = [
 
