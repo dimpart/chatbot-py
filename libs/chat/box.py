@@ -49,7 +49,7 @@ class ChatBox(Logging, ABC):
         self.__identifier = identifier
         self.__facebook = facebook
         self.__greeted = False
-        self.__expired = DateTime.current_timestamp() + self.EXPIRES
+        self.__last_time = DateTime.current_timestamp()
 
     @property
     def identifier(self) -> ID:
@@ -70,7 +70,21 @@ class ChatBox(Logging, ABC):
         return name
 
     def is_expired(self, now: DateTime) -> bool:
-        return now > self.__expired
+        expired = self.__last_time + self.EXPIRES
+        return now > expired
+
+    def _refresh_time(self, when: DateTime):
+        if when is None:
+            # error
+            return
+        else:
+            when = when.timestamp
+            # calibrate time
+            current = DateTime.current_timestamp()
+            if when > current:
+                when = current
+        if when > self.__last_time:
+            self.__last_time = when
 
     # Override
     def __hash__(self) -> int:
@@ -114,6 +128,8 @@ class ChatBox(Logging, ABC):
     #
 
     def process_request(self, request: Request) -> bool:
+        # refresh last active time
+        self._refresh_time(when=request.time)
         # greeting
         if isinstance(request, Greeting):
             if not self.__greeted:

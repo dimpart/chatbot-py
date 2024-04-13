@@ -30,11 +30,19 @@
     Generative Pre-Trained Transformer
 """
 
+from .handler import MessageQueue
+from .handler import GPTHandler
+
+from .client import GPTChatBox
 from .client import GPTChatClient
 
 
 __all__ = [
 
+    'MessageQueue',
+    'GPTHandler',
+
+    'GPTChatBox',
     'GPTChatClient',
 
 ]

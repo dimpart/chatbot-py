@@ -23,88 +23,20 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
+import random
 from typing import Optional, List, Dict
 
 from dimples import ID
 from dimples import Content, TextContent
 from dimples import CommonFacebook
 
-from ...utils import json_encode
 from ...chat.base import get_nickname
 from ...chat import Request, Setting
 from ...chat import ChatBox, ChatClient
 from ...client import Emitter
 
-
-class MessageQueue:
-
-    MAX_SIZE = 10240
-    MAX_COUNT = 8
-
-    def __init__(self):
-        super().__init__()
-        self.__messages = []
-        self.__size = 0
-
-    @property
-    def messages(self) -> List[Dict]:
-        return self.__messages
-
-    def push(self, msg: Dict, trim: bool = False):
-        # simplify message data
-        if trim:
-            msg = self._trim(msg=msg)
-        # append to tail
-        self.__messages.append(msg)
-        self.__size += len(json_encode(obj=msg))
-        # check data size of the queue
-        while self.__size > self.MAX_SIZE:
-            if len(self.__messages) < self.MAX_COUNT:
-                break
-            first = self.__messages.pop(0)
-            self.__size -= len(json_encode(obj=first))
-
-    # noinspection PyMethodMayBeStatic
-    def _trim(self, msg: Dict) -> Dict:
-        return {
-            'content': msg.get('content'),
-            'role': msg.get('role'),
-        }
-
-
-class GPTHandler(ABC):
-
-    # Override
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s>\n    API: "%s%s"\n</%s module="%s">' % (cname, self.base_url, self.api_path, cname, mod)
-
-    # Override
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s>\n    API: "%s%s"\n</%s module="%s">' % (cname, self.base_url, self.api_path, cname, mod)
-
-    @property
-    @abstractmethod
-    def base_url(self) -> str:
-        """ API base """
-        raise NotImplemented
-
-    @property
-    @abstractmethod
-    def api_path(self) -> str:
-        """ API path """
-        raise NotImplemented
-
-    @abstractmethod
-    def query(self, messages: List[Dict]) -> Optional[Dict]:
-        """ Build query data and post to remote server
-            return message item with content text
-        """
-        raise NotImplemented
+from .handler import MessageQueue
+from .handler import GPTHandler
 
 
 class GPTChatBox(ChatBox):
@@ -156,9 +88,13 @@ class GPTChatBox(ChatBox):
 
     def _query(self, prompt: str) -> Optional[str]:
         """ query by handler """
+        all_handlers = self.__handlers
+        if len(all_handlers) == 0:
+            self.error(msg='gpt handlers not set')
+            return 'GPT handler not set'
         messages = self._build_messages(prompt=prompt)
         index = 0
-        for handler in self.__handlers:
+        for handler in all_handlers:
             # try to query by each handler
             msg = handler.query(messages=messages)
             if msg is None:
@@ -170,14 +106,14 @@ class GPTChatBox(ChatBox):
                 self.error(msg='response error from handler: %s' % handler)
                 index += 1
                 continue
-            # append responded message item
-            self._append_message(msg=msg)
+            # got an answer
             if index > 0:
                 # move this handler to the front
                 self.warning(msg='move handler position: %d, %s' % (index, handler))
                 self.__handlers.pop(index)
                 self.__handlers.insert(0, handler)
-            # OK
+            # OK, append responded message item
+            self._append_message(msg=msg)
             return answer
 
     # Override
@@ -229,5 +165,9 @@ class GPTChatClient(ChatClient):
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
         facebook = self.__facebook
         setting = self.__system_setting
+        # copy handlers in random order
         handlers = self.__handlers.copy()
+        count = len(handlers)
+        if count > 1:
+            handlers = random.sample(handlers, count)
         return GPTChatBox(identifier=identifier, facebook=facebook, setting=setting, handlers=handlers)

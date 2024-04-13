@@ -54,22 +54,14 @@ class NLPChatBox(ChatBox, Logging):
         "error": "No response, please try again later."
     }'''
 
-    def __init__(self, identifier: ID, facebook: CommonFacebook, bots: Union[list, NLPBot]):
+    def __init__(self, identifier: ID, facebook: CommonFacebook, bots: List[NLPBot]):
         super().__init__(identifier=identifier, facebook=facebook)
-        if isinstance(bots, List):
-            count = len(bots)
-            if count > 1:
-                # set bots with random order
-                bots = random.sample(bots, count)
-        else:
-            assert isinstance(bots, NLPBot), 'chat bot error: %s' % bots
-            bots = [bots]
         self.__bots = bots
 
     def _ask_bots(self, question: str, identifier: ID) -> Optional[str]:
         all_bots = self.__bots
-        if all_bots is None:
-            self.error('chat bots not set')
+        if len(all_bots) == 0:
+            self.error(msg='chat bots not set')
             return 'Chat bot not found'
         user = str(identifier.address)
         if len(user) > 32:
@@ -78,14 +70,17 @@ class NLPChatBox(ChatBox, Logging):
         index = 0
         for bot in all_bots:
             answer = bot.ask(question=question, user=user)
-            if answer is None:
+            if answer is None or len(answer) == 0:
+                self.error(msg='failed to ask bot: %s' % bot)
                 index += 1
                 continue
             # got the answer
             if index > 0:
                 # move this bot to front
+                self.warning(msg='move bot position: %d, %s' % (index, bot))
                 self.__bots.remove(bot)
                 self.__bots.insert(0, bot)
+            # OK
             return answer
 
     # Override
@@ -115,13 +110,21 @@ class NLPChatBox(ChatBox, Logging):
 
 class NLPChatClient(ChatClient):
 
-    def __init__(self, facebook: CommonFacebook, bots: Union[list, NLPBot]):
+    def __init__(self, facebook: CommonFacebook, bots: Union[List, NLPBot]):
         super().__init__()
         self.__facebook = facebook
-        self.__bots = bots
+        if isinstance(bots, List):
+            self.__bots = bots
+        else:
+            assert isinstance(bots, NLPBot), 'NLP bots error: %s' % bots
+            self.__bots = [bots]
 
     # Override
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
         facebook = self.__facebook
-        bots = self.__bots
+        # copy bots in random order
+        bots = self.__bots.copy()
+        count = len(bots)
+        if count > 1:
+            bots = random.sample(bots, count)
         return NLPChatBox(identifier=identifier, facebook=facebook, bots=bots)
