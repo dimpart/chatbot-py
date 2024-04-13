@@ -26,9 +26,12 @@
 from .base import Request
 from .base import Setting, Greeting, ChatRequest
 
-from .box import ChatBox, ChatClient
+from .box import ChatBox
+from .client import ChatClient
 
-from .story import Episode, Chapter, Season
+from .episode import Episode, Chapter, Season
+
+from .storage import ChatStorage
 
 
 __all__ = [
@@ -36,8 +39,11 @@ __all__ = [
     'Request',
     'Setting', 'Greeting', 'ChatRequest',
 
-    'ChatBox', 'ChatClient',
+    'ChatBox',
+    'ChatClient',
 
     'Episode', 'Chapter', 'Season',
+
+    'ChatStorage',
 
 ]

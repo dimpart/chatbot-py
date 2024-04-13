@@ -28,22 +28,17 @@
 # SOFTWARE.
 # ==============================================================================
 
-"""
-    Chat Bot
-    ~~~~~~~~
 
-    AI chat bots
-"""
-
-import random
 from abc import ABC, abstractmethod
-from typing import Union, List
-
-from dimples import ID
-from dimples import Content, TextContent, AudioContent
 
 
-class ChatBot(ABC):
+class NLPBot(ABC):
+    """
+        Chat Bot
+        ~~~~~~~~
+
+        AI chat bots
+    """
 
     @abstractmethod
     def ask(self, question: str, user: str = None) -> str:
@@ -54,73 +49,3 @@ class ChatBot(ABC):
             :return answer string
         """
         pass
-
-
-class Dialog:
-    """
-        Dialog Bot
-        ~~~~~~~~~~
-
-        Dialog for chatting with station
-    """
-
-    def __init__(self):
-        super().__init__()
-        # chat bot candidates
-        self.__bots = []
-
-    @property
-    def bots(self) -> List[ChatBot]:
-        return self.__bots
-
-    @bots.setter
-    def bots(self, array: Union[list, ChatBot]):
-        if isinstance(array, list):
-            count = len(array)
-            if count > 1:
-                # set bots with random order
-                self.__bots = random.sample(array, count)
-            else:
-                self.__bots = array
-        elif isinstance(array, ChatBot):
-            self.__bots = [array]
-        else:
-            raise ValueError('bots error: %s' % array)
-
-    def ask(self, question: str, sender: ID) -> str:
-        # try each chat bots
-        user = str(sender.address)
-        if len(user) > 32:
-            user = user[-32:]
-        index = 0
-        for bot in self.__bots:
-            answer = bot.ask(question=question, user=user)
-            if answer is None:
-                index += 1
-                continue
-            # got the answer
-            if index > 0:
-                # move this bot to front
-                self.__bots.remove(bot)
-                self.__bots.insert(0, bot)
-            return answer
-
-    def query(self, content: Content, sender: ID) -> TextContent:
-        if isinstance(content, TextContent):
-            # text dialog
-            question = content.text
-            answer = self.ask(question=question, sender=sender)
-            if answer is not None:
-                response = TextContent.create(text=answer)
-                req_time = content.time
-                res_time = response.time
-                print('checking respond time: %s, %s' % (res_time, req_time))
-                if res_time is None or res_time <= req_time:
-                    response['time'] = req_time + 1
-                group = content.group
-                if group is not None:
-                    response.group = group
-                return response
-        elif isinstance(content, AudioContent):
-            # TODO: Automatic Speech Recognition
-            pass

@@ -41,14 +41,16 @@ from typing import Optional
 from dimples import hex_encode, utf8_encode, utf8_decode, sha1
 from dimples.utils import random_bytes
 
-from .chatbot import ChatBot
+from ...utils import Logging
+
+from .chatbot import NLPBot
 
 
 def sha_hex(string: str) -> str:
     return hex_encode(data=sha1(data=utf8_encode(string=string)))
 
 
-class XiaoI(ChatBot):
+class XiaoI(NLPBot, Logging):
 
     def __init__(self, app_key: str, app_secret: str):
         super().__init__()
@@ -62,7 +64,7 @@ class XiaoI(ChatBot):
         self.uri = '/ask.do'
         self.method = 'POST'
         # ignore responses
-        self.ignores = ['默认回复', '重复回复']
+        self.ignores = []  # ['默认回复', '重复回复']
 
     def __request(self, text: str) -> str:
         return 'type=0&platform=dim&userId=%s&question=%s' % (self.user_id, text)
@@ -82,21 +84,23 @@ class XiaoI(ChatBot):
             'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
             'X-Auth': self.__auth(),
         }
+        self.info(msg='querying XiaoI API: %s' % self.api_url)
         http_post = urllib.request.Request(self.api_url, data=utf8_encode(string=request), headers=headers)
         response = urllib.request.urlopen(http_post)
         data: bytes = response.read()
         if data is not None:
             return utf8_decode(data=data)
 
-    def __fetch(self, response: str) -> Optional[str]:
+    def __fetch(self, response: str) -> str:
         # check blah blah
+        # TODO: 默认回复, 重复回复
         if response in self.ignores:
             # no answer, ignore it
-            return None
+            return ''
         # got it
         return response
 
-    def ask(self, question: str, user: str = None) -> str:
+    def ask(self, question: str, user: str = None) -> Optional[str]:
         if user is not None:
             self.user_id = user
         response = self.__post(text=question)

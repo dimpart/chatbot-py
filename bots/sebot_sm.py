@@ -1,8 +1,9 @@
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2024 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,54 +25,49 @@
 # ==============================================================================
 
 """
-    Database module
-    ~~~~~~~~~~~~~~~
+    Chat bot: Search Engine
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
+    Chat bot as service
 """
 
-from dimples.common.dbi import *
+from dimples.utils import Path
 
-from .dos import *
-from .redis import *
+path = Path.abs(path=__file__)
+path = Path.dir(path=path)
+path = Path.dir(path=path)
+Path.add(path=path)
 
-from .database import Database
+from libs.utils import Log
+from libs.chat import ChatClient
+from libs.client import ClientProcessor
+
+from libs.av.tv_movie import SearchClient
+
+from bots.shared import start_bot
 
 
-__all__ = [
-    #
-    #   DBI
-    #
-    'PrivateKeyDBI', 'MetaDBI', 'DocumentDBI',
-    'UserDBI', 'GroupDBI',
-    'AccountDBI',
+class BotMessageProcessor(ClientProcessor):
 
-    'ReliableMessageDBI', 'CipherKeyDBI',
-    'MessageDBI',
+    # Override
+    def _create_chat_client(self) -> ChatClient:
+        client = SearchClient(facebook=self.facebook)
+        client.start()
+        return client
 
-    'LoginDBI', 'ProviderDBI',
-    'SessionDBI',
 
-    #
-    #   DOS
-    #
-    'Storage',
-    'PrivateKeyStorage', 'MetaStorage', 'DocumentStorage',
-    'UserStorage',
-    'GroupStorage', 'GroupHistoryStorage',
-    'GroupKeysStorage',
-    'LoginStorage',
-    'StationStorage',
+#
+# show logs
+#
+Log.LEVEL = Log.DEVELOP
 
-    #
-    #   Redis
-    #
-    'MetaCache',
-    'DocumentCache',
-    'GroupCache', 'GroupHistoryCache',
 
-    #
-    #   Database
-    #
-    'Database',
+DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
-]
+
+if __name__ == '__main__':
+    # start chat bot
+    g_terminal = start_bot(default_config=DEFAULT_CONFIG,
+                           app_name='ChatBot: Site Manager',
+                           ans_name='king',
+                           processor_class=BotMessageProcessor)

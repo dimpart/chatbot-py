@@ -35,7 +35,7 @@
     AI chat bots
 """
 
-from .chatbot import ChatBot, Dialog
+from .chatbot import NLPBot
 from .tuling import Tuling
 from .xiaoi import XiaoI
 
@@ -45,9 +45,7 @@ from .client import NLPChatClient
 
 __all__ = [
 
-    'ChatBot',
-    'Dialog',
-
+    'NLPBot',
     'Tuling', 'XiaoI',
 
     'NLPChatBox',

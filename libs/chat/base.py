@@ -57,14 +57,14 @@ class Request(ABC):
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s identifier="%s">[%s] %s</%s module="%s">' \
+        return '<%s identifier="%s">\n\t[%s] %s\n</%s module="%s">' \
                % (cname, self.identifier, self.time, self.text, cname, mod)
 
     # Override
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s identifier="%s">[%s] %s</%s module="%s">' \
+        return '<%s identifier="%s">\n\t[%s] %s\n</%s module="%s">' \
                % (cname, self.identifier, self.time, self.text, cname, mod)
 
 

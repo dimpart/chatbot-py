@@ -40,10 +40,12 @@ from typing import Optional
 
 from dimples import json_encode, json_decode, utf8_encode, utf8_decode
 
-from .chatbot import ChatBot
+from ...utils import Logging
+
+from .chatbot import NLPBot
 
 
-class Tuling(ChatBot):
+class Tuling(NLPBot, Logging):
 
     def __init__(self, api_key: str):
         super().__init__()
@@ -78,6 +80,7 @@ class Tuling(ChatBot):
     def __post(self, text: str) -> dict:
         request = self.__request(text=text)
         headers = {'content-type': 'application/json'}
+        self.info(msg='querying Tuling API: %s' % self.api_url)
         http_post = urllib.request.Request(self.api_url, data=request, headers=headers)
         response = urllib.request.urlopen(http_post)
         data: bytes = response.read()
@@ -93,7 +96,7 @@ class Tuling(ChatBot):
             code = intent.get('code')
             if code in self.ignores:
                 # requests limited for test, ignore it
-                return None
+                return ''
         # get text
         results: list = response.get('results')
         if results is not None and len(results) > 0:
@@ -101,7 +104,7 @@ class Tuling(ChatBot):
             if values is not None:
                 return values.get('text')
 
-    def ask(self, question: str, user: str = None) -> str:
+    def ask(self, question: str, user: str = None) -> Optional[str]:
         if user is not None:
             self.user_id = user
         response = self.__post(text=question)

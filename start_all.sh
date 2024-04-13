@@ -35,6 +35,7 @@ restart gigi "bots/chatbot_gpt.py"
 #restart xiao "bots/chatbot_xiao.py"
 
 title "DIM Search Bots"
+restart king "bots/sebot_sm.py"
 restart simon "bots/sebot_sd.py"
 
 echo ""

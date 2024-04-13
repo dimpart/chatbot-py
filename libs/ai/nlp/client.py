@@ -23,7 +23,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union
+import random
+from typing import Optional, Union, List
 from urllib.error import URLError
 
 from dimples import ID
@@ -32,74 +33,89 @@ from dimples import TextContent
 from dimples import CommonFacebook
 
 from ...utils import Logging
-from ...database import ChatStorage
 
 from ...client import Emitter
 
 from ...chat import Request
 from ...chat import ChatBox, ChatClient
-from ...chat.base import get_nickname
 
-from .chatbot import ChatBot, Dialog
-
-
-#
-#   Chat Box
-#
+from .chatbot import NLPBot
 
 
 class NLPChatBox(ChatBox, Logging):
 
-    def __init__(self, identifier: ID, facebook: CommonFacebook, bots: Union[list, ChatBot]):
-        super().__init__(identifier=identifier)
-        self.__facebook = facebook
-        self.__bots = bots
-        self.__dialog: Optional[Dialog] = None
+    NO_CONTENT = '''{
+        "code": 204,
+        "error": "No Content."
+    }'''
 
-    @property
-    def dialog(self) -> Dialog:
-        if self.__dialog is None and len(self.__bots) > 0:
-            d = Dialog()
-            d.bots = self.__bots
-            self.__dialog = d
-        return self.__dialog
+    NOT_FOUND = '''{
+        "code": 404,
+        "error": "No response, please try again later."
+    }'''
+
+    def __init__(self, identifier: ID, facebook: CommonFacebook, bots: Union[list, NLPBot]):
+        super().__init__(identifier=identifier, facebook=facebook)
+        if isinstance(bots, List):
+            count = len(bots)
+            if count > 1:
+                # set bots with random order
+                bots = random.sample(bots, count)
+        else:
+            assert isinstance(bots, NLPBot), 'chat bot error: %s' % bots
+            bots = [bots]
+        self.__bots = bots
+
+    def _ask_bots(self, question: str, identifier: ID) -> Optional[str]:
+        all_bots = self.__bots
+        if all_bots is None:
+            self.error('chat bots not set')
+            return 'Chat bot not found'
+        user = str(identifier.address)
+        if len(user) > 32:
+            user = user[-32:]
+        # try each chat bots
+        index = 0
+        for bot in all_bots:
+            answer = bot.ask(question=question, user=user)
+            if answer is None:
+                index += 1
+                continue
+            # got the answer
+            if index > 0:
+                # move this bot to front
+                self.__bots.remove(bot)
+                self.__bots.insert(0, bot)
+            return answer
 
     # Override
     def _say_hi(self, prompt: str, request: Request):
-        pass
+        return True
 
     # Override
-    def _ask_question(self, prompt: str, content: TextContent, request: Request):
-        if self.__bots is None:
-            self.error('chat bots not set')
-            return None
-        dialog = self.dialog
-        if dialog is None:
-            # chat bots empty
-            return None
+    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
         try:
-            res = dialog.query(content=content, sender=request.identifier)
+            answer = self._ask_bots(question=prompt, identifier=request.identifier)
+            if answer is None:
+                answer = self.NOT_FOUND
+            elif len(answer) == 0:
+                answer = self.NO_CONTENT
         except URLError as error:
             self.error('%s' % error)
-            return None
-        self.respond(responses=[res], request=request)
-        answer = res.get_str(key='text', default='')
-        self._save_response(question=prompt, answer=answer, identifier=request.identifier)
+            return False
+        self.respond_text(text=answer, request=request)
+        self._save_response(prompt=prompt, text=answer, request=request)
+        return True
 
     # Override
     def _send_content(self, content: Content, receiver: ID):
         emitter = Emitter()
         emitter.send_content(content=content, receiver=receiver)
 
-    def _save_response(self, question: str, answer: str, identifier: ID) -> bool:
-        name = get_nickname(identifier=identifier, facebook=self.__facebook)
-        storage = ChatStorage()
-        return storage.save_response(question=question, answer=answer, identifier=identifier, name=name)
-
 
 class NLPChatClient(ChatClient):
 
-    def __init__(self, facebook: CommonFacebook, bots: Union[list, ChatBot]):
+    def __init__(self, facebook: CommonFacebook, bots: Union[list, NLPBot]):
         super().__init__()
         self.__facebook = facebook
         self.__bots = bots

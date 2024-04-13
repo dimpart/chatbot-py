@@ -25,10 +25,10 @@
 # ==============================================================================
 
 """
-    Chat bot: 'GPT-3.5'
-    ~~~~~~~~~~~~~~~~~~~
+    Chat bot: Search Engine
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
-    Chat bot powered by OpenAI
+    Chat bot as service
 """
 
 from dimples.utils import Path
@@ -42,7 +42,7 @@ from libs.utils import Log
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
-from libs.av import SearchClient
+from libs.av.stable_diffusion import SDChatClient
 
 from bots.shared import start_bot
 
@@ -51,7 +51,7 @@ class BotMessageProcessor(ClientProcessor):
 
     # Override
     def _create_chat_client(self) -> ChatClient:
-        client = SearchClient(facebook=self.facebook)
+        client = SDChatClient(facebook=self.facebook)
         client.start()
         return client
 
@@ -68,6 +68,6 @@ DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 if __name__ == '__main__':
     # start chat bot
     g_terminal = start_bot(default_config=DEFAULT_CONFIG,
-                           app_name='ChatBot: GPT',
+                           app_name='ChatBot: Stable Diffusion',
                            ans_name='simon',
                            processor_class=BotMessageProcessor)

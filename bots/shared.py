@@ -41,15 +41,16 @@ from libs.utils import Log
 from libs.utils import Singleton
 from libs.database.redis import Cache as RedisCache
 from libs.database import Database
-from libs.database import ChatStorage
 
-from libs.ai.nlp import ChatBot, Tuling, XiaoI
+from libs.chat import ChatStorage
 
 from libs.client import ClientSession, ClientMessenger
 from libs.client import ClientProcessor, ClientPacker
 from libs.client import Terminal
 from libs.client import Emitter
 from libs.client import SharedGroupManager
+
+from libs.ai.nlp import NLPBot, Tuling, XiaoI
 
 
 @Singleton
@@ -247,7 +248,7 @@ def start_bot(default_config: str, app_name: str, ans_name: str, processor_class
     config = create_config(app_name=app_name, default_config=default_config)
     shared.config = config
     if not check_bot_id(config=config, ans_name=ans_name):
-        raise LookupError('Failed to get Bot ID: %s' % config)
+        raise LookupError('Failed to get Bot ID: %s in %s' % (ans_name, config))
     # Step 2: create database
     db = create_database(config=config)
     shared.adb = db
@@ -280,7 +281,7 @@ def start_bot(default_config: str, app_name: str, ans_name: str, processor_class
 #
 
 
-def chat_bots(names: List[str], shared: GlobalVariable) -> List[ChatBot]:
+def chat_bots(names: List[str], shared: GlobalVariable) -> List[NLPBot]:
     """
         Chat Bots
         ~~~~~~~~~
@@ -295,7 +296,7 @@ def chat_bots(names: List[str], shared: GlobalVariable) -> List[ChatBot]:
     return bots
 
 
-def chat_bot(name: str, shared: GlobalVariable) -> Optional[ChatBot]:
+def chat_bot(name: str, shared: GlobalVariable) -> Optional[NLPBot]:
     config = shared.config
     if 'tuling' == name:
         # Tuling ChatBot
@@ -309,7 +310,7 @@ def chat_bot(name: str, shared: GlobalVariable) -> Optional[ChatBot]:
         tuling = Tuling(api_key=api_key)
         # config ignores
         tuling_ignores = config.get_string(section='nlp', option='tuling_ignores')
-        array = tuling_ignores.split(',')
+        array = [] if tuling_ignores is None else tuling_ignores.split(',')
         for item in array:
             value = int(item)
             if value not in tuling.ignores:
@@ -328,7 +329,7 @@ def chat_bot(name: str, shared: GlobalVariable) -> Optional[ChatBot]:
         xiaoi = XiaoI(app_key=app_key, app_secret=app_secret)
         # config ignores
         xiaoi_ignores = config.get_string(section='nlp', option='xiaoi_ignores')
-        array = xiaoi_ignores.split(',')
+        array = [] if xiaoi_ignores is None else xiaoi_ignores.split(',')
         for item in array:
             value = item.strip()
             if value not in xiaoi.ignores:

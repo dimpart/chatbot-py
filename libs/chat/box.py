@@ -33,11 +33,11 @@ from dimples import FileContent, ImageContent, AudioContent, VideoContent
 from dimples import CommonFacebook
 
 from ..utils import Logging
-from ..database import ChatStorage
 
 from .base import get_nickname
 from .base import Request
 from .base import Greeting, ChatRequest
+from .storage import ChatStorage
 
 
 class ChatBox(Logging, ABC):
@@ -59,6 +59,15 @@ class ChatBox(Logging, ABC):
     @property
     def facebook(self) -> CommonFacebook:
         return self.__facebook
+
+    def get_name(self, identifier: ID) -> str:
+        # return self.__facebook.get_name(identifier=identifier)
+        name = get_nickname(identifier=identifier, facebook=self.__facebook)
+        if name is None or len(name) == 0:
+            name = identifier.name
+            if name is None or len(name) == 0:
+                name = str(identifier.address)
+        return name
 
     def is_expired(self, now: DateTime) -> bool:
         return now > self.__expired
@@ -173,17 +182,27 @@ class ChatBox(Logging, ABC):
 
     def _save_response(self, text: str, prompt: str, request: Request) -> bool:
         """ Save response text with prompt """
-        identifier = request.identifier
-        name = get_nickname(identifier=identifier, facebook=self.facebook)
-        # check for group message
+        # check request type
         if isinstance(request, ChatRequest):
+            # sender
+            sender = request.envelope.sender
+            sender_name = self.get_name(identifier=sender)
+            # check group
             group = request.content.group
             if group is not None:
-                # "sender_name (group_name)"
-                name += ' (%s)' % get_nickname(identifier=group, facebook=self.facebook)
+                # group message: "sender_name (group_name)"
                 identifier = group
+                group_name = self.get_name(identifier=group)
+                name = '%s (%s)' % (sender_name, group_name)
             else:
-                assert identifier == request.envelope.sender, 'sender error: %s, %s' % request
+                # personal message: "sender_name"
+                identifier = sender
+                name = sender_name
+        else:
+            # greeting: "sender_name"
+            identifier = request.identifier
+            name = self.get_name(identifier=identifier)
+        # OK
         storage = ChatStorage()
         return storage.save_response(question=prompt, answer=text, identifier=identifier, name=name)
 
