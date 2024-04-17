@@ -49,7 +49,7 @@ class ChatBox(Logging, ABC):
         self.__identifier = identifier
         self.__facebook = facebook
         self.__greeted = False
-        self.__last_time = DateTime.current_timestamp()
+        self.__last_time = DateTime.now()
 
     @property
     def identifier(self) -> ID:
@@ -78,9 +78,8 @@ class ChatBox(Logging, ABC):
             # error
             return
         else:
-            when = when.timestamp
             # calibrate time
-            current = DateTime.current_timestamp()
+            current = DateTime.now()
             if when > current:
                 when = current
         if when > self.__last_time:
@@ -116,31 +115,34 @@ class ChatBox(Logging, ABC):
     # Override
     def __str__(self) -> str:
         cname = self.__class__.__name__
-        return '<%s identifier="%s" />' % (cname, self.identifier)
+        return '<%s identifier="%s" time="%s" />' % (cname, self.__identifier, self.__last_time)
 
     # Override
     def __repr__(self) -> str:
         cname = self.__class__.__name__
-        return '<%s identifier="%s" />' % (cname, self.identifier)
+        return '<%s identifier="%s" time="%s" />' % (cname, self.__identifier, self.__last_time)
 
     #
     #   Request
     #
 
     def process_request(self, request: Request) -> bool:
-        # refresh last active time
-        self._refresh_time(when=request.time)
-        # greeting
-        if isinstance(request, Greeting):
-            if not self.__greeted:
-                text = request.text
-                if text is not None and len(text) > 0:
-                    self.__greeted = self._say_hi(prompt=text, request=request)
-            return self.__greeted
-        else:
+        if isinstance(request, ChatRequest):
+            # chatting, refresh last active time
+            self._refresh_time(when=request.time)
             self.__greeted = True
-        # chatting
-        assert isinstance(request, ChatRequest), 'unknown request: %s' % request
+        elif self.__greeted:
+            assert isinstance(request, Greeting), 'request error: %s' % request
+            # no need to greet again
+            return True
+        else:
+            assert isinstance(request, Greeting), 'request error: %s' % request
+            # say hi
+            text = request.text
+            if text is not None and len(text) > 0:
+                self.__greeted = self._say_hi(prompt=text, request=request)
+            return self.__greeted
+        # process request content
         content = request.content
         if isinstance(content, TextContent):
             return self._process_text_content(content=content, request=request)

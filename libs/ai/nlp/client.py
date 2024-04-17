@@ -32,8 +32,6 @@ from dimples import Content
 from dimples import TextContent
 from dimples import CommonFacebook
 
-from ...utils import Logging
-
 from ...client import Emitter
 
 from ...chat import Request
@@ -42,7 +40,7 @@ from ...chat import ChatBox, ChatClient
 from .chatbot import NLPBot
 
 
-class NLPChatBox(ChatBox, Logging):
+class NLPChatBox(ChatBox):
 
     NO_CONTENT = '''{
         "code": 204,

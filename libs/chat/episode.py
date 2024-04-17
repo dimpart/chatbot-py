@@ -54,7 +54,7 @@ class Episode:
         return self.__url
 
 
-class Chapter:
+class Tube:
 
     def __init__(self, title: str, episodes: List[Episode]):
         super().__init__()
@@ -92,19 +92,19 @@ class Chapter:
 
 class Season:
 
-    def __init__(self, name: str, cover: str, details: Optional[str], chapters: List[Chapter]):
+    def __init__(self, name: str, cover: str, details: Optional[str], tubes: List[Tube]):
         super().__init__()
         self.__name = name
         self.__cover = cover
         self.__desc = details
-        self.__chapters = chapters
+        self.__tubes = tubes
 
     # Override
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
         children = '\n'
-        for item in self.chapters:
+        for item in self.tubes:
             children += '%s\n' % item
         return '<%s name="%s" cover="%s">%s' \
                '</%s module="%s">' % (cname, self.name, self.cover, children, cname, mod)
@@ -114,7 +114,7 @@ class Season:
         mod = self.__module__
         cname = self.__class__.__name__
         children = '\n'
-        for item in self.chapters:
+        for item in self.tubes:
             children += '%s\n' % item
         return '<%s name="%s" cover="%s">%s' \
                '</%s module="%s">' % (cname, self.name, self.cover, children, cname, mod)
@@ -132,5 +132,5 @@ class Season:
         return self.__desc
 
     @property
-    def chapters(self) -> List[Chapter]:
-        return self.__chapters
+    def tubes(self) -> List[Tube]:
+        return self.__tubes

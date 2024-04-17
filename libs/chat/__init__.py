@@ -29,7 +29,7 @@ from .base import Setting, Greeting, ChatRequest
 from .box import ChatBox
 from .client import ChatClient
 
-from .episode import Episode, Chapter, Season
+from .episode import Episode, Tube, Season
 
 from .storage import ChatStorage
 
@@ -42,7 +42,7 @@ __all__ = [
     'ChatBox',
     'ChatClient',
 
-    'Episode', 'Chapter', 'Season',
+    'Episode', 'Tube', 'Season',
 
     'ChatStorage',
 
