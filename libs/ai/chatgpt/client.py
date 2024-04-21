@@ -24,7 +24,7 @@
 # ==============================================================================
 
 import random
-from typing import Optional, List, Dict
+from typing import Optional, Tuple, List, Dict
 
 from dimples import ID
 from dimples import Content, TextContent
@@ -86,12 +86,12 @@ class GPTChatBox(ChatBox):
         # OK
         return messages
 
-    def _query(self, prompt: str, identifier: ID) -> Optional[str]:
+    def _query(self, prompt: str, identifier: ID) -> Tuple[Optional[str], Optional[GPTHandler]]:
         """ query by handler """
         all_handlers = self.__handlers
         if len(all_handlers) == 0:
             self.error(msg='gpt handlers not set')
-            return 'GPT handler not set'
+            return 'GPT handler not set', None
         messages = self._build_messages(prompt=prompt)
         index = 0
         for handler in all_handlers:
@@ -118,15 +118,22 @@ class GPTChatBox(ChatBox):
                 self.__handlers.insert(0, handler)
             # OK, append responded message item
             self._append_message(msg=msg)
-            return answer
+            return answer, handler
+        # failed to get answer
+        return None, None
 
     # Override
     def _say_hi(self, prompt: str, request: Request) -> bool:
         identifier = request.identifier
-        answer = self._query(prompt=prompt, identifier=identifier)
+        answer, handler = self._query(prompt=prompt, identifier=identifier)
         if answer is not None and len(answer) > 0:
             self.respond_text(text=answer, request=request)
-        self._save_response(prompt=prompt, text=answer, request=request)
+        # save response with handler
+        if handler is None:
+            text = answer
+        else:
+            text = '[%s] %s' % (handler.agent, answer)
+        self._save_response(prompt=prompt, text=text, request=request)
         return True
 
     # Override
@@ -134,14 +141,19 @@ class GPTChatBox(ChatBox):
         identifier = request.identifier
         name = get_nickname(identifier=identifier, facebook=self.facebook)
         self.info(msg='<<< received prompt from "%s": "%s"' % (name, prompt))
-        answer = self._query(prompt=prompt, identifier=identifier)
+        answer, handler = self._query(prompt=prompt, identifier=identifier)
         self.info(msg='>>> responding answer to "%s": "%s"' % (name, answer))
         if answer is None:
             answer = self.NOT_FOUND
         elif len(answer) == 0:
             answer = self.NO_CONTENT
         self.respond_text(text=answer, request=request)
-        self._save_response(prompt=prompt, text=answer, request=request)
+        # save response with handler
+        if handler is None:
+            text = answer
+        else:
+            text = '[%s] %s' % (handler.agent, answer)
+        self._save_response(prompt=prompt, text=text, request=request)
         return True
 
     # Override

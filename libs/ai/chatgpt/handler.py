@@ -82,6 +82,10 @@ class GPTHandler(ABC):
         return '<%s>\n    API: "%s%s"\n</%s module="%s">' % (cname, self.base_url, self.api_path, cname, mod)
 
     @property
+    def agent(self) -> str:
+        return self.__class__.__name__
+
+    @property
     @abstractmethod
     def base_url(self) -> str:
         """ API base """
