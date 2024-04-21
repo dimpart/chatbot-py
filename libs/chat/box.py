@@ -127,9 +127,11 @@ class ChatBox(Logging, ABC):
     #
 
     def process_request(self, request: Request) -> bool:
+        # refresh last active time
+        self._refresh_time(when=request.time)
+        # chatting
         if isinstance(request, ChatRequest):
-            # chatting, refresh last active time
-            self._refresh_time(when=request.time)
+            # question from user
             self.__greeted = True
         elif self.__greeted:
             assert isinstance(request, Greeting), 'request error: %s' % request

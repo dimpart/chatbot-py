@@ -86,7 +86,7 @@ class GPTChatBox(ChatBox):
         # OK
         return messages
 
-    def _query(self, prompt: str) -> Optional[str]:
+    def _query(self, prompt: str, identifier: ID) -> Optional[str]:
         """ query by handler """
         all_handlers = self.__handlers
         if len(all_handlers) == 0:
@@ -96,7 +96,11 @@ class GPTChatBox(ChatBox):
         index = 0
         for handler in all_handlers:
             # try to query by each handler
-            msg = handler.query(messages=messages)
+            try:
+                msg = handler.query(messages=messages, identifier=identifier)
+            except Exception as error:
+                self.error(msg='failed to query handler: %s, error: %s' % (handler, error))
+                msg = None
             if msg is None:
                 self.error(msg='failed to query handler: %s' % handler)
                 index += 1
@@ -118,7 +122,8 @@ class GPTChatBox(ChatBox):
 
     # Override
     def _say_hi(self, prompt: str, request: Request) -> bool:
-        answer = self._query(prompt=prompt)
+        identifier = request.identifier
+        answer = self._query(prompt=prompt, identifier=identifier)
         if answer is not None and len(answer) > 0:
             self.respond_text(text=answer, request=request)
         self._save_response(prompt=prompt, text=answer, request=request)
@@ -129,7 +134,7 @@ class GPTChatBox(ChatBox):
         identifier = request.identifier
         name = get_nickname(identifier=identifier, facebook=self.facebook)
         self.info(msg='<<< received prompt from "%s": "%s"' % (name, prompt))
-        answer = self._query(prompt=prompt)
+        answer = self._query(prompt=prompt, identifier=identifier)
         self.info(msg='>>> responding answer to "%s": "%s"' % (name, answer))
         if answer is None:
             answer = self.NOT_FOUND

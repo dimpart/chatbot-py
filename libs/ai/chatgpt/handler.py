@@ -26,6 +26,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
+from dimples import ID
+
 from ...utils import json_encode
 
 
@@ -92,7 +94,7 @@ class GPTHandler(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def query(self, messages: List[Dict]) -> Optional[Dict]:
+    def query(self, messages: List[Dict], identifier: ID) -> Optional[Dict]:
         """ Build query data and post to remote server
             return message item with content text
         """
