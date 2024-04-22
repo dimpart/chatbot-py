@@ -47,7 +47,7 @@ from libs.chat import ChatStorage
 from libs.client import ClientSession, ClientMessenger
 from libs.client import ClientProcessor, ClientPacker
 from libs.client import Terminal
-from libs.client import Emitter
+from libs.client import Emitter, Monitor
 from libs.client import SharedGroupManager
 
 from libs.ai.nlp import NLPBot, Tuling, XiaoI
@@ -268,6 +268,9 @@ def start_bot(default_config: str, app_name: str, ans_name: str, processor_class
     # set messenger to emitter
     emitter = Emitter()
     emitter.messenger = messenger
+    # set config to monitor
+    monitor = Monitor()
+    monitor.config = config
     # create & start terminal
     terminal = Terminal(messenger=messenger)
     thread = threading.Thread(target=terminal.run, daemon=False)

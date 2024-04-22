@@ -38,6 +38,7 @@ from .processor import ClientProcessor
 from .packer import ClientPacker
 
 from .emitter import Emitter
+from .monitor import Monitor
 
 from .group import SharedGroupManager
 
@@ -56,6 +57,7 @@ __all__ = [
     'ClientPacker',
 
     'Emitter',
+    'Monitor',
 
     'SharedGroupManager',
 

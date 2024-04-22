@@ -34,6 +34,7 @@ from ...chat.base import get_nickname
 from ...chat import Request, Setting
 from ...chat import ChatBox, ChatClient
 from ...client import Emitter
+from ...client import Monitor
 
 from .handler import MessageQueue
 from .handler import GPTHandler
@@ -92,6 +93,8 @@ class GPTChatBox(ChatBox):
         if len(all_handlers) == 0:
             self.error(msg='gpt handlers not set')
             return 'GPT handler not set', None
+        monitor = Monitor()
+        service = 'ChatGPT'
         messages = self._build_messages(prompt=prompt)
         index = 0
         for handler in all_handlers:
@@ -104,12 +107,16 @@ class GPTChatBox(ChatBox):
             if msg is None:
                 self.error(msg='failed to query handler: %s' % handler)
                 index += 1
+                monitor.report_failure(service=service, agent=handler.agent)
                 continue
             answer = msg.get('content')
             if answer is None or len(answer) == 0:
                 self.error(msg='response error from handler: %s' % handler)
                 index += 1
+                monitor.report_failure(service=service, agent=handler.agent)
                 continue
+            else:
+                monitor.report_success(service=service, agent=handler.agent)
             # got an answer
             if index > 0:
                 # move this handler to the front
@@ -120,6 +127,7 @@ class GPTChatBox(ChatBox):
             self._append_message(msg=msg)
             return answer, handler
         # failed to get answer
+        monitor.report_crash(service=service)
         return None, None
 
     # Override
