@@ -33,6 +33,7 @@ from ...utils import HttpClient
 from ...chat import Request, Setting
 from ...chat import ChatBox, ChatClient
 from ...client import Emitter
+from ...client import Monitor
 
 from .genai import GenerativeAI
 
@@ -62,9 +63,25 @@ class GeminiChatBox(ChatBox):
         gemini.presume(system_content=setting.text)
         self.__gemini = gemini
 
+    def _query(self, prompt: str) -> Optional[str]:
+        monitor = Monitor()
+        service = 'Gemini'
+        agent = 'GoogleAPI'
+        try:
+            answer = self.__gemini.ask(question=prompt)
+        except Exception as error:
+            self.error(msg='failed to query google API, error: %s' % error)
+            answer = None
+        if answer is None or len(answer) == 0:
+            self.error(msg='response error from google API')
+            monitor.report_failure(service=service, agent=agent)
+        else:
+            monitor.report_success(service=service, agent=agent)
+        return answer
+
     # Override
     def _say_hi(self, prompt: str, request: Request) -> bool:
-        answer = self.__gemini.ask(question=prompt)
+        answer = self._query(prompt=prompt)
         if answer is not None and len(answer) > 0:
             self.respond_text(text=answer, request=request)
         self._save_response(prompt=prompt, text=answer, request=request)
@@ -72,7 +89,7 @@ class GeminiChatBox(ChatBox):
 
     # Override
     def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
-        answer = self.__gemini.ask(question=prompt)
+        answer = self._query(prompt=prompt)
         if answer is None:
             answer = self.NOT_FOUND
         elif len(answer) == 0:

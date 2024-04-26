@@ -149,7 +149,7 @@ class Monitor(Runner, Logging):
         self.__config = None
         # start ticking
         self.__report_time = DateTime.current_timestamp() + self.TIME_INTERVAL
-        self.__daemon = Daemon(target=self.run)
+        self.__daemon = Daemon(target=self)
 
     def start(self):
         self.__daemon.start()
@@ -221,11 +221,16 @@ class Monitor(Runner, Logging):
 
 
 def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
-    text = '**%s** [%s -> %s]:\n' % (barrel.service, barrel.time, now)
+    # build report
+    text = '**%s**:\n' % barrel.service
     bottles = barrel.bottles
     for bot in bottles:
         text += '- **%s** - success: %d, failure: %d\n' % (bot.agent, bot.success, bot.failure)
-    text += 'Totally, success: %d, crash: %d' % (barrel.success, barrel.crash)
+    text += '\n'
+    text += 'Start [%s]\n' % barrel.time
+    text += 'End   [%s]\n' % now
+    text += 'Totally, success: **%d**, crash: **%d**' % (barrel.success, barrel.crash)
+    # respond
     content = TextContent.create(text=text)
     emitter = Emitter()
     for receiver in supervisors:

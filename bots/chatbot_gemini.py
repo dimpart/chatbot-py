@@ -41,6 +41,7 @@ Path.add(path=path)
 from libs.utils import Log
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
+from libs.client import Monitor
 
 from libs.ai.gemini import GeminiChatClient
 
@@ -77,3 +78,5 @@ if __name__ == '__main__':
                            app_name='ChatBot: Gemini',
                            ans_name='gege',
                            processor_class=BotMessageProcessor)
+    g_monitor = Monitor()
+    g_monitor.start()

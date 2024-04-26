@@ -42,7 +42,7 @@ from .storage import ChatStorage
 
 class ChatBox(Logging, ABC):
 
-    EXPIRES = 36000  # seconds
+    EXPIRES = 3600 * 36  # seconds
 
     def __init__(self, identifier: ID, facebook: CommonFacebook):
         super().__init__()
