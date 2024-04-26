@@ -2,7 +2,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2021 Albert Moky
+# Copyright (c) 2019 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,32 +24,21 @@
 # ==============================================================================
 
 """
-    Database module
-    ~~~~~~~~~~~~~~~
-    Redis Client
+    Common module
+    ~~~~~~~~~~~~~
+
 """
 
-from .base import RedisConnector
-from .base import Cache
-
-from .meta import MetaCache
-from .document import DocumentCache
-from .group import GroupCache
-from .grp_history import GroupHistoryCache
-
-from .video import EpisodeCache, SeasonCache, VideoSearchCache
+from .dbi import *
 
 
 __all__ = [
 
-    'RedisConnector',
-    'Cache',
+    #
+    #   Database Interface
+    #
 
-    'MetaCache',
-    'DocumentCache',
-    'GroupCache', 'GroupHistoryCache',
-
-    'EpisodeCache', 'SeasonCache',
-    'VideoSearchCache',
+    'Episode', 'Tube', 'Season',
+    'VideoDBI',
 
 ]

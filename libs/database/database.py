@@ -31,6 +31,7 @@
 
 from typing import Optional, Tuple, List, Dict
 
+from dimples import URI, DateTime
 from dimples import SymmetricKey, PrivateKey, SignKey, DecryptKey
 from dimples import ID, Meta, Document
 from dimples import ReliableMessage
@@ -40,14 +41,18 @@ from dimples import ProviderInfo, StationInfo
 from dimples.database.t_private import PrivateKeyTable
 from dimples.database.t_cipherkey import CipherKeyTable
 
+from ..common import Episode, Season, VideoDBI
+
 # from .t_ans import AddressNameTable
 from .t_meta import MetaTable
 from .t_document import DocumentTable
 from .t_group import GroupTable
 from .t_grp_history import GroupHistoryTable
 
+from .t_video import EpisodeTable, SeasonTable, VideoSearchTable
 
-class Database(AccountDBI, MessageDBI, SessionDBI):
+
+class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
 
     def __init__(self, root: str = None, public: str = None, private: str = None):
         super().__init__()
@@ -63,6 +68,10 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
         self.__cipherkey_table = CipherKeyTable(root=root, public=public, private=private)
         # # ANS
         # self.__ans_table = AddressNameTable(root=root, public=public, private=private)
+        # Video
+        self.__episode_table = EpisodeTable(root=root, public=public, private=private)
+        self.__season_table = SeasonTable(root=root, public=public, private=private)
+        self.__search_table = VideoSearchTable(root=root, public=public, private=private)
 
     def show_info(self):
         # Entity
@@ -75,6 +84,9 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
         self.__cipherkey_table.show_info()
         # # ANS
         # self.__ans_table.show_info()
+        # Video
+        self.__episode_table.show_info()
+        self.__season_table.show_info()
 
     """
         Private Key file for Users
@@ -419,3 +431,31 @@ class Database(AccountDBI, MessageDBI, SessionDBI):
     def remove_stations(self, provider: ID) -> bool:
         # TODO: remove all stations for ISP
         return True
+
+    #
+    #   Video DBI
+    #
+
+    # Override
+    def save_episode(self, episode: Episode, url: URI) -> bool:
+        return self.__episode_table.save_episode(episode=episode, url=url)
+
+    # Override
+    def load_episode(self, url: URI) -> Optional[Episode]:
+        return self.__episode_table.load_episode(url=url)
+
+    # Override
+    def save_season(self, season: Season, url: URI) -> bool:
+        return self.__season_table.save_season(season=season, url=url)
+
+    # Override
+    def load_season(self, url: URI) -> Optional[Season]:
+        return self.__season_table.load_season(url=url)
+
+    # Override
+    def save_search_results(self, results: List[URI], keywords: str) -> bool:
+        return self.__search_table.save_results(results=results, keywords=keywords)
+
+    # Override
+    def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+        return self.__search_table.load_results(keywords=keywords)

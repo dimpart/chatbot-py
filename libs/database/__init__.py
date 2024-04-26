@@ -31,6 +31,8 @@
 
 from dimples.common.dbi import *
 
+from ..common.dbi import *
+
 from .dos import *
 from .redis import *
 
@@ -51,6 +53,8 @@ __all__ = [
     'LoginDBI', 'ProviderDBI',
     'SessionDBI',
 
+    'Episode', 'Tube', 'Season',
+
     #
     #   DOS
     #
@@ -68,6 +72,8 @@ __all__ = [
     'MetaCache',
     'DocumentCache',
     'GroupCache', 'GroupHistoryCache',
+
+    'EpisodeCache', 'SeasonCache',
 
     #
     #   Database
