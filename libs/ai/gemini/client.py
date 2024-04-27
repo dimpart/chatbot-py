@@ -66,7 +66,8 @@ class GeminiChatBox(ChatBox):
     def _query(self, prompt: str) -> Optional[str]:
         monitor = Monitor()
         service = 'Gemini'
-        agent = 'GoogleAPI'
+        # agent = 'GoogleAPI'
+        agent = 'API'
         try:
             answer = self.__gemini.ask(question=prompt)
         except Exception as error:

@@ -228,7 +228,7 @@ class Season(Dictionary):
 
     @property
     def name(self) -> str:
-        return self.get_str(key='title', default='')
+        return self.get_str(key='name', default='')
 
     @property
     def cover(self) -> Optional[str]:

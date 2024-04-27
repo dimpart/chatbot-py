@@ -34,6 +34,7 @@
 """
 
 from startrek.fsm import Runnable, Runner
+from startrek.fsm import Daemon
 
 from dimples.utils import *
 
@@ -85,6 +86,7 @@ __all__ = [
     'Converter',
 
     'Runnable', 'Runner',
+    'Daemon',
 
     'Singleton',
     'Log', 'Logging',

@@ -222,14 +222,13 @@ class Monitor(Runner, Logging):
 
 def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
     # build report
-    text = '**%s**:\n' % barrel.service
+    text = '[%s] -> [%s]\n' % (barrel.time, now)
+    text += '## **%s**:\n' % barrel.service
     bottles = barrel.bottles
     for bot in bottles:
         text += '- **%s** - success: %d, failure: %d\n' % (bot.agent, bot.success, bot.failure)
     text += '\n'
-    text += 'Start [%s]\n' % barrel.time
-    text += 'End   [%s]\n' % now
-    text += 'Totally, success: **%d**, crash: **%d**' % (barrel.success, barrel.crash)
+    text += 'Totaling success: **%d**, crash: **%d**' % (barrel.success, barrel.crash)
     # respond
     content = TextContent.create(text=text)
     emitter = Emitter()

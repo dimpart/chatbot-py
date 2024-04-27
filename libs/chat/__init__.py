@@ -27,6 +27,8 @@ from .base import Request
 from .base import Setting, Greeting, ChatRequest
 
 from .box import ChatBox
+from .video import VideoBox, SearchTask
+
 from .client import ChatClient
 
 from .storage import ChatStorage
@@ -37,7 +39,7 @@ __all__ = [
     'Request',
     'Setting', 'Greeting', 'ChatRequest',
 
-    'ChatBox',
+    'ChatBox', 'VideoBox', 'SearchTask',
     'ChatClient',
 
     'ChatStorage',
