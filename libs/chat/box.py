@@ -235,6 +235,12 @@ class ChatBox(Logging, ABC):
         calibrate_time(content=content, request=request)
         return self.respond(responses=[content], request=request)
 
+    def respond_markdown(self, text: str, request: Request) -> int:
+        content = TextContent.create(text=text)
+        content['format'] = 'markdown'
+        calibrate_time(content=content, request=request)
+        return self.respond(responses=[content], request=request)
+
     def respond(self, responses: List[Content], request: Request) -> int:
         # all content time in responses must be calibrated with the request time
         receiver = request.identifier

@@ -93,9 +93,12 @@ class GeminiChatBox(ChatBox):
         answer = self._query(prompt=prompt)
         if answer is None:
             answer = self.NOT_FOUND
+            self.respond_text(text=answer, request=request)
         elif len(answer) == 0:
             answer = self.NO_CONTENT
-        self.respond_text(text=answer, request=request)
+            self.respond_text(text=answer, request=request)
+        else:
+            self.respond_markdown(text=answer, request=request)
         self._save_response(prompt=prompt, text=answer, request=request)
         return True
 

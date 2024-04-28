@@ -148,7 +148,7 @@ class Monitor(Runner, Logging):
         self.__lock = threading.Lock()
         self.__config = None
         # start ticking
-        self.__report_time = DateTime.current_timestamp() + self.TIME_INTERVAL
+        self.__report_time = None
         self.__daemon = Daemon(target=self)
 
     def start(self):
@@ -162,6 +162,22 @@ class Monitor(Runner, Logging):
     def config(self, conf: Config):
         self.__config = conf
 
+    def _update_report_time(self):
+        if self.__report_time is None:
+            self.__report_time = DateTime.current_timestamp() + self.TIME_INTERVAL
+
+    def _check_report_time(self) -> Optional[DateTime]:
+        with self.__lock:
+            report_time = self.__report_time
+            if report_time is not None:
+                # check report time
+                now = DateTime.now()
+                if now >= report_time:
+                    # clear report time
+                    self.__report_time = None
+                    return now
+                # waiting for report time
+
     def report_success(self, service: str, agent: str):
         with self.__lock:
             barrel = self.__barrels.get(service)
@@ -169,6 +185,7 @@ class Monitor(Runner, Logging):
                 barrel = Barrel(service=service)
                 self.__barrels[service] = barrel
             barrel.increase_success(agent=agent)
+            self._update_report_time()
 
     def report_failure(self, service: str, agent: str):
         with self.__lock:
@@ -177,6 +194,7 @@ class Monitor(Runner, Logging):
                 barrel = Barrel(service=service)
                 self.__barrels[service] = barrel
             barrel.increase_failure(agent=agent)
+            self._update_report_time()
 
     def report_crash(self, service: str):
         with self.__lock:
@@ -185,11 +203,13 @@ class Monitor(Runner, Logging):
                 barrel = Barrel(service=service)
                 self.__barrels[service] = barrel
             barrel.increase_crash()
+            self._update_report_time()
 
     def _get_barrels(self) -> ValuesView[Barrel]:
-        barrels = self.__barrels
-        self.__barrels = {}
-        return barrels.values()
+        with self.__lock:
+            barrels = self.__barrels
+            self.__barrels = {}
+            return barrels.values()
 
     def _get_supervisors(self) -> List[ID]:
         config = self.config
@@ -201,13 +221,10 @@ class Monitor(Runner, Logging):
 
     # Override
     def process(self) -> bool:
-        now = DateTime.now()
-        if now < self.__report_time:
-            # waiting for report time
+        now = self._check_report_time()
+        if now is None:
             return False
-        else:
-            # update next report time
-            self.__report_time = now + self.TIME_INTERVAL
+        # check admins
         admins = self._get_supervisors()
         barrels = self._get_barrels()
         self.info(msg='reporting %d service(s) to supervisor: %s' % (len(barrels), admins))

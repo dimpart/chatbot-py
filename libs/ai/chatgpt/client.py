@@ -153,9 +153,12 @@ class GPTChatBox(ChatBox):
         self.info(msg='>>> responding answer to "%s": "%s"' % (name, answer))
         if answer is None:
             answer = self.NOT_FOUND
+            self.respond_text(text=answer, request=request)
         elif len(answer) == 0:
             answer = self.NO_CONTENT
-        self.respond_text(text=answer, request=request)
+            self.respond_text(text=answer, request=request)
+        else:
+            self.respond_markdown(text=answer, request=request)
         # save response with handler
         if handler is None:
             text = answer

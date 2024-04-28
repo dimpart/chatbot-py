@@ -31,7 +31,6 @@ from dimples import URI, DateTime
 from ..utils import md_esc, utf8_encode, base64_encode
 from ..common import Episode, Season, VideoDBI
 
-from .base import Request
 from .box import ChatBox
 
 
@@ -119,34 +118,3 @@ def _md_build_season(season: Season, index: int, total: int) -> str:
             else:
                 text += ' > \\[[%s](%s "%s - %s")\\]' % (i_title, m3u8, name, i_title)
     return text
-
-
-class SearchTask:
-
-    def __init__(self, keywords: str, request: Optional[Request], box: VideoBox):
-        super().__init__()
-        self.__keywords = keywords
-        self.__request = request
-        self.__box = box
-
-    # Override
-    def __str__(self) -> str:
-        cname = self.__class__.__name__
-        return '<%s id="%s" keywords="%s" />' % (cname, self.box.identifier, self.keywords)
-
-    # Override
-    def __repr__(self) -> str:
-        cname = self.__class__.__name__
-        return '<%s id="%s" keywords="%s" />' % (cname, self.box.identifier, self.keywords)
-
-    @property
-    def keywords(self) -> str:
-        return self.__keywords
-
-    @property
-    def request(self) -> Optional[Request]:
-        return self.__request
-
-    @property
-    def box(self) -> VideoBox:
-        return self.__box
