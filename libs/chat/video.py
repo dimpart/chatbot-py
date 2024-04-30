@@ -114,7 +114,10 @@ def _md_build_season(season: Season, index: int, total: int) -> str:
             i_title = md_esc(text=item.title)
             m3u8 = item.url
             if i_title.startswith(name):
-                text += ' > \\[[%s](%s "%s")\\]' % (i_title, m3u8, i_title)
+                alt_text = i_title
             else:
-                text += ' > \\[[%s](%s "%s - %s")\\]' % (i_title, m3u8, name, i_title)
+                alt_text = '%s - %s' % (name, i_title)
+            if cover is not None:
+                alt_text += '; cover=%s' % cover
+            text += ' > \\[[%s](%s "%s")\\]' % (i_title, m3u8, alt_text)
     return text

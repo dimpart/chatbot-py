@@ -248,6 +248,7 @@ def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
     text += 'Totaling success: **%d**, crash: **%d**' % (barrel.success, barrel.crash)
     # respond
     content = TextContent.create(text=text)
+    content['format'] = 'markdown'
     emitter = Emitter()
     for receiver in supervisors:
         Log.info(msg='[Monitor] sending report to supervisor: %s, %s' % (receiver, text))
