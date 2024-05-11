@@ -79,7 +79,7 @@ class ClientProcessor(ClientMessageProcessor):
             self.__chat_client.append(request=greeting)
 
     # Override
-    def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
+    async def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
         if isinstance(content, TextContent):
             self._process_text_content(content=content, envelope=r_msg.envelope)
             return []
@@ -92,4 +92,4 @@ class ClientProcessor(ClientMessageProcessor):
                 self._process_users_content(content=content, envelope=r_msg.envelope)
             return []
         # system contents
-        return super().process_content(content=content, r_msg=r_msg)
+        return await super().process_content(content=content, r_msg=r_msg)

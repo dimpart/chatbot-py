@@ -70,7 +70,7 @@ class ChatStorage(Logging):
         filename = 'chat-%s.txt' % time.strftime('%Y-%m-%d', now.localtime)
         return os.path.join(root, str(user), filename)
 
-    def save_response(self, question: str, answer: str, identifier: ID, name: str) -> bool:
+    async def save_response(self, question: str, answer: str, identifier: ID, name: str) -> bool:
         now = DateTime.now()
         path = self.get_path(now=now)
         if path is None:

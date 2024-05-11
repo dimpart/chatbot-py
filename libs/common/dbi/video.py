@@ -33,6 +33,8 @@ from dimples import URI
 
 class Episode(Dictionary):
 
+    EXPIRES = 3600 * 24  # seconds
+
     def __init__(self, info: Dict[str, Any] = None,
                  title: str = None, url: URI = None):
         super().__init__(dictionary=info)
@@ -47,6 +49,14 @@ class Episode(Dictionary):
     def time(self) -> Optional[DateTime]:
         """ created time """
         return self.get_datetime(key='time', default=None)
+
+    def is_expired(self, now: DateTime = None) -> bool:
+        last_time = self.time
+        if last_time is None:
+            return True
+        elif now is None:
+            now = DateTime.now()
+        return now > (last_time + self.EXPIRES)
 
     # Override
     def __str__(self) -> str:
@@ -185,6 +195,8 @@ class Tube(Dictionary):
 
 class Season(Dictionary):
 
+    EXPIRES = 3600 * 5  # seconds
+
     def __init__(self, info: Dict[str, Any] = None,
                  name: str = None, cover: str = None, details: Optional[str] = None,
                  tubes: List[Tube] = None):
@@ -205,6 +217,14 @@ class Season(Dictionary):
     def time(self) -> Optional[DateTime]:
         """ created time """
         return self.get_datetime(key='time', default=None)
+
+    def is_expired(self, now: DateTime = None) -> bool:
+        last_time = self.time
+        if last_time is None:
+            return True
+        elif now is None:
+            now = DateTime.now()
+        return now > (last_time + self.EXPIRES)
 
     # Override
     def __str__(self) -> str:
@@ -272,25 +292,25 @@ class Season(Dictionary):
 class VideoDBI(ABC):
 
     @abstractmethod
-    def save_episode(self, episode: Episode, url: URI) -> bool:
+    async def save_episode(self, episode: Episode, url: URI) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def load_episode(self, url: URI) -> Optional[Episode]:
+    async def load_episode(self, url: URI) -> Optional[Episode]:
         raise NotImplemented
 
     @abstractmethod
-    def save_season(self, season: Season, url: URI) -> bool:
+    async def save_season(self, season: Season, url: URI) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def load_season(self, url: URI) -> Optional[Season]:
+    async def load_season(self, url: URI) -> Optional[Season]:
         raise NotImplemented
 
     @abstractmethod
-    def save_search_results(self, results: List[URI], keywords: str) -> bool:
+    async def save_search_results(self, results: List[URI], keywords: str) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+    async def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
         raise NotImplemented

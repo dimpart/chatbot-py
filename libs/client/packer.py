@@ -37,18 +37,18 @@ from .emitter import Emitter
 class ClientPacker(ClientMessagePacker):
 
     # Override
-    def encrypt_message(self, msg: InstantMessage) -> Optional[SecureMessage]:
+    async def encrypt_message(self, msg: InstantMessage) -> Optional[SecureMessage]:
         # make sure visa.key exists before encrypting message
         content = msg.content
         if isinstance(content, FileContent):
             if content.get('data') is not None:  # and content.get('URL') is not None:
-                key = self.messenger.get_encrypt_key(msg=msg)
+                key = await self.messenger.get_encrypt_key(msg=msg)
                 assert key is not None, 'failed to get msg key for: %s -> %s' % (msg.sender, msg.receiver)
                 # call emitter to encrypt & upload file data before send out
-                send_file_message(msg=msg, password=key)
+                await send_file_message(msg=msg, password=key)
                 return None
         try:
-            s_msg = super().encrypt_message(msg=msg)
+            s_msg = await super().encrypt_message(msg=msg)
         except Exception as error:
             self.error(msg='failed to encrypt message: %s' % error)
             return None
@@ -62,19 +62,19 @@ class ClientPacker(ClientMessagePacker):
         return s_msg
 
     # Override
-    def decrypt_message(self, msg: SecureMessage) -> Optional[InstantMessage]:
-        i_msg = super().decrypt_message(msg=msg)
+    async def decrypt_message(self, msg: SecureMessage) -> Optional[InstantMessage]:
+        i_msg = await super().decrypt_message(msg=msg)
         if i_msg is not None:
             content = i_msg.content
             if isinstance(content, FileContent):
                 if content.password is None and content.url is not None:
-                    key = self.messenger.get_decrypt_key(msg=msg)
+                    key = await self.messenger.get_decrypt_key(msg=msg)
                     assert key is not None, 'failed to get password: %s -> %s' % (i_msg.sender, i_msg.receiver)
                     # keep password to decrypt data after downloaded
                     content.password = key
         return i_msg
 
 
-def send_file_message(msg: InstantMessage, password: SymmetricKey):
+async def send_file_message(msg: InstantMessage, password: SymmetricKey):
     emitter = Emitter()
-    emitter.send_file_message(msg=msg, password=password)
+    return await emitter.send_file_message(msg=msg, password=password)

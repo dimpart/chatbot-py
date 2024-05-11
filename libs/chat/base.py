@@ -96,6 +96,7 @@ class Greeting(Request, Logging):
         self.__identifier = identifier
         self.__when = DateTime.now()
         self.__facebook = facebook
+        self.__text = None
 
     @property
     def facebook(self) -> CommonFacebook:
@@ -111,18 +112,23 @@ class Greeting(Request, Logging):
 
     @property  # Override
     def text(self) -> Optional[str]:
+        return self.__text
+
+    async def build(self):
         sender = self.identifier
         assert sender.is_user, 'greeting sender error: %s' % sender
-        name = get_nickname(identifier=sender, facebook=self.facebook)
+        name = await get_nickname(identifier=sender, facebook=self.facebook)
         if name is None or len(name) == 0:
             self.error(msg='failed to get nickname for sender: %s' % sender)
             return None
         language = get_language(identifier=sender, facebook=self.facebook)
-        return 'My name is "%s", my current language environment code is "%s".' \
+        text = 'My name is "%s", my current language environment code is "%s".' \
                ' Please try to greet me in a language that suits me,' \
                ' considering my language habits and location.' \
                ' Please keep our names unchanged and' \
                ' not to translate them in your response.' % (name, language)
+        self.__text = text
+        return text
 
 
 class ChatRequest(Request, Logging):
@@ -133,6 +139,7 @@ class ChatRequest(Request, Logging):
         self.__envelope = envelope
         self.__content = content
         self.__facebook = facebook
+        self.__text = None
 
     @property
     def facebook(self) -> CommonFacebook:
@@ -159,12 +166,16 @@ class ChatRequest(Request, Logging):
 
     @property  # Override
     def text(self) -> Optional[str]:
-        question = self.content.get('text')
-        if question is not None and len(question) > 0:
-            question = self.__filter(text=question)
-        return question
+        return self.__text
 
-    def __filter(self, text: str) -> Optional[str]:
+    async def build(self):
+        text = self.content.get('text')
+        if text is not None and len(text) > 0:
+            text = await self.__filter(text=text)
+        self.__text = text
+        return text
+
+    async def __filter(self, text: str) -> Optional[str]:
         sender = self.envelope.sender
         if EntityType.BOT == sender.type:
             self.info('ignore message from another bot: %s, "%s"' % (sender, text))
@@ -188,7 +199,7 @@ class ChatRequest(Request, Logging):
         # checking '@nickname '
         receiver = self.envelope.receiver
         facebook = self.facebook
-        bot_name = get_nickname(identifier=receiver, facebook=facebook)
+        bot_name = await get_nickname(identifier=receiver, facebook=facebook)
         assert bot_name is not None and len(bot_name) > 0, 'receiver error: %s' % receiver
         at = '@%s ' % bot_name
         naked = text.replace(at, '')
@@ -203,8 +214,8 @@ class ChatRequest(Request, Logging):
 #
 #   Nickname
 #
-def get_nickname(identifier: ID, facebook: CommonFacebook) -> Optional[str]:
-    visa = facebook.document(identifier=identifier)
+async def get_nickname(identifier: ID, facebook: CommonFacebook) -> Optional[str]:
+    visa = await facebook.get_document(identifier=identifier)
     if visa is not None:
         return visa.name
 
@@ -212,8 +223,8 @@ def get_nickname(identifier: ID, facebook: CommonFacebook) -> Optional[str]:
 #
 #   Language
 #
-def get_language(identifier: ID, facebook: CommonFacebook) -> str:
-    visa = facebook.document(identifier=identifier)
+async def get_language(identifier: ID, facebook: CommonFacebook) -> str:
+    visa = await facebook.get_document(identifier=identifier)
     if visa is None:
         return 'en'
     # check 'app:language'

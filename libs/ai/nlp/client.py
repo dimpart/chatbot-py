@@ -82,11 +82,11 @@ class NLPChatBox(ChatBox):
             return answer
 
     # Override
-    def _say_hi(self, prompt: str, request: Request):
+    async def _say_hi(self, prompt: str, request: Request):
         return True
 
     # Override
-    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
         try:
             answer = self._ask_bots(question=prompt, identifier=request.identifier)
             if answer is None:
@@ -96,14 +96,14 @@ class NLPChatBox(ChatBox):
         except URLError as error:
             self.error('%s' % error)
             return False
-        self.respond_text(text=answer, request=request)
-        self._save_response(prompt=prompt, text=answer, request=request)
+        await self.respond_text(text=answer, request=request)
+        await self._save_response(prompt=prompt, text=answer, request=request)
         return True
 
     # Override
-    def _send_content(self, content: Content, receiver: ID):
+    async def _send_content(self, content: Content, receiver: ID):
         emitter = Emitter()
-        emitter.send_content(content=content, receiver=receiver)
+        await emitter.send_content(content=content, receiver=receiver)
 
 
 class NLPChatClient(ChatClient):

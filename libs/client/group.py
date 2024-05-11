@@ -96,90 +96,90 @@ class SharedGroupManager(GroupDataSource, Logging):
             self.__emitter = delegate = GroupEmitter(delegate=self.delegate)
         return delegate
 
-    def build_group_name(self, members: List[ID]) -> str:
+    async def build_group_name(self, members: List[ID]) -> str:
         delegate = self.delegate
-        return delegate.build_group_name(members=members)
+        return await delegate.build_group_name(members=members)
 
     #
     #   Entity DataSource
     #
 
     # Override
-    def meta(self, identifier: ID) -> Optional[Meta]:
+    async def get_meta(self, identifier: ID) -> Optional[Meta]:
         delegate = self.delegate
-        return delegate.meta(identifier=identifier)
+        return await delegate.get_meta(identifier=identifier)
 
     # Override
-    def documents(self, identifier: ID) -> List[Document]:
+    async def get_documents(self, identifier: ID) -> List[Document]:
         delegate = self.delegate
-        return delegate.documents(identifier=identifier)
+        return await delegate.get_documents(identifier=identifier)
 
     #
     #   Group DataSource
     #
 
     # Override
-    def founder(self, identifier: ID) -> Optional[ID]:
+    async def get_founder(self, identifier: ID) -> Optional[ID]:
         delegate = self.delegate
-        return delegate.founder(identifier=identifier)
+        return await delegate.get_founder(identifier=identifier)
 
     # Override
-    def owner(self, identifier: ID) -> Optional[ID]:
+    async def get_owner(self, identifier: ID) -> Optional[ID]:
         delegate = self.delegate
-        return delegate.owner(identifier=identifier)
+        return await delegate.get_owner(identifier=identifier)
 
     # Override
-    def members(self, identifier: ID) -> List[ID]:
+    async def get_members(self, identifier: ID) -> List[ID]:
         delegate = self.delegate
-        return delegate.members(identifier=identifier)
+        return await delegate.get_members(identifier=identifier)
 
     # Override
-    def assistants(self, identifier: ID) -> List[ID]:
+    async def get_assistants(self, identifier: ID) -> List[ID]:
         delegate = self.delegate
-        return delegate.assistants(identifier=identifier)
+        return await delegate.get_assistants(identifier=identifier)
 
-    def administrators(self, identifier: ID) -> List[ID]:
+    async def get_administrators(self, identifier: ID) -> List[ID]:
         delegate = self.delegate
-        return delegate.administrators(group=identifier)
+        return await delegate.get_administrators(group=identifier)
 
-    def is_owner(self, user: ID, group: ID) -> bool:
+    async def is_owner(self, user: ID, group: ID) -> bool:
         delegate = self.delegate
-        return delegate.is_owner(user=user, group=group)
+        return await delegate.is_owner(user=user, group=group)
 
-    def broadcast_document(self, document: Document) -> bool:
+    async def broadcast_document(self, document: Document) -> bool:
         assert isinstance(document, Bulletin), 'group document error: %s' % document
         delegate = self.admin
-        return delegate.broadcast_document(document=document)
+        return await delegate.broadcast_document(document=document)
 
     #
     #   Group Manage
     #
 
-    def create_group(self, members: List[ID]) -> Optional[ID]:
+    async def create_group(self, members: List[ID]) -> Optional[ID]:
         """ Create new group with members """
         delegate = self.manager
-        return delegate.create_group(members=members)
+        return await delegate.create_group(members=members)
 
-    def update_administrators(self, administrators: List[ID], group: ID) -> bool:
+    async def update_administrators(self, administrators: List[ID], group: ID) -> bool:
         """ Update 'administrators' in bulletin document """
         delegate = self.admin
-        return delegate.update_administrators(administrators=administrators, group=group)
+        return await delegate.update_administrators(administrators=administrators, group=group)
 
-    def reset_members(self, members: List[ID], group: ID) -> bool:
+    async def reset_members(self, members: List[ID], group: ID) -> bool:
         """ Reset group members """
         delegate = self.manager
-        return delegate.reset_members(members=members, group=group)
+        return await delegate.reset_members(members=members, group=group)
 
-    def expel_members(self, members: List[ID], group: ID) -> bool:
+    async def expel_members(self, members: List[ID], group: ID) -> bool:
         """ Expel members from this group """
         assert group.is_group and len(members) > 0, 'params error: %s, %s' % (group, members)
         user = self.facebook.current_user
         assert user is not None, 'failed to get current user'
         me = user.identifier
         delegate = self.delegate
-        old_members = delegate.members(identifier=group)
-        is_owner = delegate.is_owner(user=me, group=group)
-        is_admin = delegate.is_administrator(user=me, group=group)
+        old_members = await delegate.get_members(identifier=group)
+        is_owner = await delegate.is_owner(user=me, group=group)
+        is_admin = await delegate.is_administrator(user=me, group=group)
         # 0. check permission
         can_reset = is_owner or is_admin
         if can_reset:
@@ -192,26 +192,26 @@ class SharedGroupManager(GroupDataSource, Logging):
                     self.warning(msg='member not exists: %s, group: %s' % (item, group))
                 else:
                     all_members.pop(pos)
-            return self.reset_members(members=all_members, group=group)
+            return await self.reset_members(members=all_members, group=group)
         # not an admin/owner
         raise AssertionError('Cannot expel members from group: %s' % group)
 
-    def invite_members(self, members: List[ID], group: ID) -> bool:
+    async def invite_members(self, members: List[ID], group: ID) -> bool:
         """ Invite new members to this group """
         delegate = self.manager
-        return delegate.invite_members(members=members, group=group)
+        return await delegate.invite_members(members=members, group=group)
 
-    def quit_group(self, group: ID) -> bool:
+    async def quit_group(self, group: ID) -> bool:
         """ Quit from this group """
         delegate = self.manager
-        return delegate.quit_group(group=group)
+        return await delegate.quit_group(group=group)
 
     #
     #   Sending group message
     #
 
-    def send_message(self, msg: InstantMessage, priority: int = 0) -> Optional[ReliableMessage]:
+    async def send_message(self, msg: InstantMessage, priority: int = 0) -> Optional[ReliableMessage]:
         assert msg.content.group is not None, 'group message error: %s' % msg
         msg['GF'] = True
         delegate = self.emitter
-        return delegate.send_message(msg=msg, priority=priority)
+        return await delegate.send_message(msg=msg, priority=priority)

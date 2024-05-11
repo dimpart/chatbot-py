@@ -56,14 +56,14 @@ class EpisodeCache(Cache):
     def __key(self, url: URI) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
 
-    def save_episode(self, episode: Episode, url: URI) -> bool:
+    async def save_episode(self, episode: Episode, url: URI) -> bool:
         """ Save episode with page URL """
         key = self.__key(url=url)
         value = encode_map(info=episode)
         self.set(name=key, value=value, expires=self.EXPIRES)
         return True
 
-    def load_episode(self, url: URI) -> Optional[Episode]:
+    async def load_episode(self, url: URI) -> Optional[Episode]:
         """ Load episode with page URL """
         key = self.__key(url=url)
         value = self.get(name=key)
@@ -93,14 +93,14 @@ class SeasonCache(Cache):
     def __key(self, url: URI) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
 
-    def save_season(self, season: Season, url: URI) -> bool:
+    async def save_season(self, season: Season, url: URI) -> bool:
         """ Save season with page URL """
         key = self.__key(url=url)
         value = encode_map(info=season)
         self.set(name=key, value=value, expires=self.EXPIRES)
         return True
 
-    def load_season(self, url: URI) -> Optional[Season]:
+    async def load_season(self, url: URI) -> Optional[Season]:
         """ Load season with page URL """
         key = self.__key(url=url)
         value = self.get(name=key)
@@ -130,7 +130,7 @@ class VideoSearchCache(Cache):
     def __key(self, keywords: URI) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, keywords)
 
-    def save_results(self, results: List[URI], keywords: str) -> bool:
+    async def save_results(self, results: List[URI], keywords: str) -> bool:
         """ Save season with page URL """
         info = {
             'time': DateTime.current_timestamp(),
@@ -141,7 +141,7 @@ class VideoSearchCache(Cache):
         self.set(name=key, value=value, expires=self.EXPIRES)
         return True
 
-    def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+    async def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
         """ Load season with page URL """
         key = self.__key(keywords=keywords)
         value = self.get(name=key)

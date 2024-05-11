@@ -44,29 +44,29 @@ class VideoBox(ChatBox, ABC):
         assert isinstance(db, VideoDBI), 'database error: %s' % db
         return db
 
-    def save_episode(self, episode: Episode, url: URI) -> bool:
+    async def save_episode(self, episode: Episode, url: URI) -> bool:
         db = self.database
-        return db.save_episode(episode=episode, url=url)
+        return await db.save_episode(episode=episode, url=url)
 
-    def load_episode(self, url: URI) -> Optional[Episode]:
+    async def load_episode(self, url: URI) -> Optional[Episode]:
         db = self.database
-        return db.load_episode(url=url)
+        return await db.load_episode(url=url)
 
-    def save_season(self, season: Season, url: URI) -> bool:
+    async def save_season(self, season: Season, url: URI) -> bool:
         db = self.database
-        return db.save_season(season=season, url=url)
+        return await db.save_season(season=season, url=url)
 
-    def load_season(self, url: URI) -> Optional[Season]:
+    async def load_season(self, url: URI) -> Optional[Season]:
         db = self.database
-        return db.load_season(url=url)
+        return await db.load_season(url=url)
 
-    def save_search_results(self, results: List[URI], keywords: str) -> bool:
+    async def save_search_results(self, results: List[URI], keywords: str) -> bool:
         db = self.database
-        return db.save_search_results(results=results, keywords=keywords)
+        return await db.save_search_results(results=results, keywords=keywords)
 
-    def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+    async def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
         db = self.database
-        return db.load_search_results(keywords=keywords)
+        return await db.load_search_results(keywords=keywords)
 
 
 def build_season(season: Season, index: int, total: int) -> str:

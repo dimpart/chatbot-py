@@ -54,14 +54,14 @@ class EpisodeTable:
     #   Video DBI
     #
 
-    def save_episode(self, episode: Episode, url: URI) -> bool:
+    async def save_episode(self, episode: Episode, url: URI) -> bool:
         # 1. store into redis server
-        if self.__redis.save_episode(episode=episode, url=url):
+        if await self.__redis.save_episode(episode=episode, url=url):
             # 2. clear cache to reload
             self.__cache.erase(key=url)
             return True
 
-    def load_episode(self, url: URI) -> Optional[Episode]:
+    async def load_episode(self, url: URI) -> Optional[Episode]:
         now = DateTime.now()
         # 1. check memory cache
         value, holder = self.__cache.fetch(key=url, now=now)
@@ -77,7 +77,7 @@ class EpisodeTable:
                 # cache expired, wait to reload
                 holder.renewal(duration=self.CACHE_REFRESHING, now=now)
             # 2. check redis server
-            value = self.__redis.load_episode(url=url)
+            value = await self.__redis.load_episode(url=url)
             # 3. update memory cache
             self.__cache.update(key=url, value=value, life_span=self.CACHE_EXPIRES, now=now)
         # OK, return cached value
@@ -105,14 +105,14 @@ class SeasonTable:
     #   Video DBI
     #
 
-    def save_season(self, season: Season, url: URI) -> bool:
+    async def save_season(self, season: Season, url: URI) -> bool:
         # 1. store into redis server
-        if self.__redis.save_season(season=season, url=url):
+        if await self.__redis.save_season(season=season, url=url):
             # 2. clear cache to reload
             self.__cache.erase(key=url)
             return True
 
-    def load_season(self, url: URI) -> Optional[Season]:
+    async def load_season(self, url: URI) -> Optional[Season]:
         now = DateTime.now()
         # 1. check memory cache
         value, holder = self.__cache.fetch(key=url, now=now)
@@ -128,7 +128,7 @@ class SeasonTable:
                 # cache expired, wait to reload
                 holder.renewal(duration=self.CACHE_REFRESHING, now=now)
             # 2. check redis server
-            value = self.__redis.load_season(url=url)
+            value = await self.__redis.load_season(url=url)
             # 3. update memory cache
             self.__cache.update(key=url, value=value, life_span=self.CACHE_EXPIRES, now=now)
         # OK, return cached value
@@ -156,14 +156,14 @@ class VideoSearchTable:
     #   Video DBI
     #
 
-    def save_results(self, results: List[URI], keywords: str) -> bool:
+    async def save_results(self, results: List[URI], keywords: str) -> bool:
         # 1. store into redis server
-        if self.__redis.save_results(results=results, keywords=keywords):
+        if await self.__redis.save_results(results=results, keywords=keywords):
             # 2. clear cache to reload
             self.__cache.erase(key=keywords)
             return True
 
-    def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+    async def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
         now = DateTime.now()
         # 1. check memory cache
         value, holder = self.__cache.fetch(key=keywords, now=now)
@@ -179,7 +179,7 @@ class VideoSearchTable:
                 # cache expired, wait to reload
                 holder.renewal(duration=self.CACHE_REFRESHING, now=now)
             # 2. check redis server
-            value = self.__redis.load_results(keywords=keywords)
+            value = await self.__redis.load_results(keywords=keywords)
             # 3. update memory cache
             self.__cache.update(key=keywords, value=value, life_span=self.CACHE_EXPIRES, now=now)
         # OK, return cached value

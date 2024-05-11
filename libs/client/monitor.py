@@ -26,7 +26,7 @@
 import threading
 from typing import Optional, ValuesView, List
 
-from startrek.fsm import Runner, Daemon
+from startrek.fsm import DaemonRunner
 from dimples.utils import Config
 from dimples import DateTime
 from dimples import ID
@@ -138,7 +138,7 @@ class Barrel:
 
 
 @Singleton
-class Monitor(Runner, Logging):
+class Monitor(DaemonRunner, Logging):
 
     TIME_INTERVAL = 3600  # seconds
 
@@ -149,10 +149,6 @@ class Monitor(Runner, Logging):
         self.__config = None
         # start ticking
         self.__report_time = None
-        self.__daemon = Daemon(target=self)
-
-    def start(self):
-        self.__daemon.start()
 
     @property
     def config(self) -> Optional[Config]:
@@ -220,7 +216,7 @@ class Monitor(Runner, Logging):
         return ID.convert(array=supervisors)
 
     # Override
-    def process(self) -> bool:
+    async def process(self) -> bool:
         now = self._check_report_time()
         if now is None:
             return False
@@ -231,13 +227,13 @@ class Monitor(Runner, Logging):
         # try to report one by one
         for bar in barrels:
             try:
-                _report(barrel=bar, now=now, supervisors=admins)
+                await _report(barrel=bar, now=now, supervisors=admins)
             except Exception as error:
                 self.error(msg='failed to report barrel: %s, error: %s' % (bar, error))
         return False
 
 
-def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
+async def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
     # build report
     text = '[%s] -> [%s]\n' % (barrel.time, now)
     text += '## **%s**:\n' % barrel.service
@@ -252,4 +248,4 @@ def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
     emitter = Emitter()
     for receiver in supervisors:
         Log.info(msg='[Monitor] sending report to supervisor: %s, %s' % (receiver, text))
-        emitter.send_content(content=content, receiver=receiver)
+        await emitter.send_content(content=content, receiver=receiver)

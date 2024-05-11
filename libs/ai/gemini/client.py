@@ -63,7 +63,7 @@ class GeminiChatBox(ChatBox):
         gemini.presume(system_content=setting.text)
         self.__gemini = gemini
 
-    def _query(self, prompt: str) -> Optional[str]:
+    async def _query(self, prompt: str) -> Optional[str]:
         monitor = Monitor()
         service = 'Gemini'
         # agent = 'GoogleAPI'
@@ -81,31 +81,31 @@ class GeminiChatBox(ChatBox):
         return answer
 
     # Override
-    def _say_hi(self, prompt: str, request: Request) -> bool:
-        answer = self._query(prompt=prompt)
+    async def _say_hi(self, prompt: str, request: Request) -> bool:
+        answer = await self._query(prompt=prompt)
         if answer is not None and len(answer) > 0:
-            self.respond_text(text=answer, request=request)
-        self._save_response(prompt=prompt, text=answer, request=request)
+            await self.respond_text(text=answer, request=request)
+        await self._save_response(prompt=prompt, text=answer, request=request)
         return True
 
     # Override
-    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
-        answer = self._query(prompt=prompt)
+    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+        answer = await self._query(prompt=prompt)
         if answer is None:
             answer = self.NOT_FOUND
-            self.respond_text(text=answer, request=request)
+            await self.respond_text(text=answer, request=request)
         elif len(answer) == 0:
             answer = self.NO_CONTENT
-            self.respond_text(text=answer, request=request)
+            await self.respond_text(text=answer, request=request)
         else:
-            self.respond_markdown(text=answer, request=request)
-        self._save_response(prompt=prompt, text=answer, request=request)
+            await self.respond_markdown(text=answer, request=request)
+        await self._save_response(prompt=prompt, text=answer, request=request)
         return True
 
     # Override
-    def _send_content(self, content: Content, receiver: ID) -> bool:
+    async def _send_content(self, content: Content, receiver: ID) -> bool:
         emitter = Emitter()
-        emitter.send_content(content=content, receiver=receiver)
+        await emitter.send_content(content=content, receiver=receiver)
         return True
 
 

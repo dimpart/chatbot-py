@@ -87,7 +87,7 @@ class GPTChatBox(ChatBox):
         # OK
         return messages
 
-    def _query(self, prompt: str, identifier: ID) -> Tuple[Optional[str], Optional[GPTHandler]]:
+    async def _query(self, prompt: str, identifier: ID) -> Tuple[Optional[str], Optional[GPTHandler]]:
         """ query by handler """
         all_handlers = self.__handlers
         if len(all_handlers) == 0:
@@ -100,7 +100,7 @@ class GPTChatBox(ChatBox):
         for handler in all_handlers:
             # try to query by each handler
             try:
-                msg = handler.query(messages=messages, identifier=identifier)
+                msg = await handler.query(messages=messages, identifier=identifier)
             except Exception as error:
                 self.error(msg='failed to query handler: %s, error: %s' % (handler, error))
                 msg = None
@@ -131,46 +131,46 @@ class GPTChatBox(ChatBox):
         return None, None
 
     # Override
-    def _say_hi(self, prompt: str, request: Request) -> bool:
+    async def _say_hi(self, prompt: str, request: Request) -> bool:
         identifier = request.identifier
-        answer, handler = self._query(prompt=prompt, identifier=identifier)
+        answer, handler = await self._query(prompt=prompt, identifier=identifier)
         if answer is not None and len(answer) > 0:
-            self.respond_text(text=answer, request=request)
+            await self.respond_text(text=answer, request=request)
         # save response with handler
         if handler is None:
             text = answer
         else:
             text = '[%s] %s' % (handler.agent, answer)
-        self._save_response(prompt=prompt, text=text, request=request)
+        await self._save_response(prompt=prompt, text=text, request=request)
         return True
 
     # Override
-    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
         identifier = request.identifier
-        name = get_nickname(identifier=identifier, facebook=self.facebook)
+        name = await get_nickname(identifier=identifier, facebook=self.facebook)
         self.info(msg='<<< received prompt from "%s": "%s"' % (name, prompt))
-        answer, handler = self._query(prompt=prompt, identifier=identifier)
+        answer, handler = await self._query(prompt=prompt, identifier=identifier)
         self.info(msg='>>> responding answer to "%s": "%s"' % (name, answer))
         if answer is None:
             answer = self.NOT_FOUND
-            self.respond_text(text=answer, request=request)
+            await self.respond_text(text=answer, request=request)
         elif len(answer) == 0:
             answer = self.NO_CONTENT
-            self.respond_text(text=answer, request=request)
+            await self.respond_text(text=answer, request=request)
         else:
-            self.respond_markdown(text=answer, request=request)
+            await self.respond_markdown(text=answer, request=request)
         # save response with handler
         if handler is None:
             text = answer
         else:
             text = '[%s] %s' % (handler.agent, answer)
-        self._save_response(prompt=prompt, text=text, request=request)
+        await self._save_response(prompt=prompt, text=text, request=request)
         return True
 
     # Override
-    def _send_content(self, content: Content, receiver: ID) -> bool:
+    async def _send_content(self, content: Content, receiver: ID) -> bool:
         emitter = Emitter()
-        emitter.send_content(content=content, receiver=receiver)
+        await emitter.send_content(content=content, receiver=receiver)
         return True
 
 

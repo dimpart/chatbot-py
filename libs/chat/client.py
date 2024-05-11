@@ -31,13 +31,14 @@ from typing import Optional, Set
 from dimples import DateTime
 from dimples import ID
 
-from ..utils import Runner, Logging
+from ..utils import Logging
+from ..utils import Runner, DaemonRunner
 
 from .base import Request
 from .box import ChatBox
 
 
-class ChatClient(Runner, Logging, ABC):
+class ChatClient(DaemonRunner, Logging, ABC):
     """ Chat Boxes Pool """
 
     def __init__(self):
@@ -96,14 +97,14 @@ class ChatClient(Runner, Logging, ABC):
         return count
 
     # Override
-    def process(self) -> bool:
+    async def process(self) -> bool:
         request = self._next()
         if request is not None:
             box = self._get_box(identifier=request.identifier)
             if box is not None:
                 # try to process the request
                 try:
-                    box.process_request(request=request)
+                    await box.process_request(request=request)
                 except Exception as error:
                     self.error(msg='failed to process request: %s, error: %s' % (request, error))
                     return False
@@ -113,7 +114,3 @@ class ChatClient(Runner, Logging, ABC):
         # nothing to do now
         self._purge()
         return False
-
-    def start(self):
-        thread = threading.Thread(target=self.run, daemon=True)
-        thread.start()

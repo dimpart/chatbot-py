@@ -66,7 +66,7 @@ class Emitter(Logging):
         # TODO: remove expired messages in the map
         pass
 
-    def upload_success(self, filename: str, url: str):
+    async def upload_success(self, filename: str, url: str):
         """ callback when file data uploaded to CDN and download URL responded """
         msg = self._pop_task(filename=filename)
         if msg is None:
@@ -79,9 +79,9 @@ class Emitter(Logging):
         assert isinstance(content, FileContent), 'file content error: %s' % content
         # content.data = None
         content.url = url
-        self._send_instant_message(msg=msg)
+        await self._send_instant_message(msg=msg)
 
-    def upload_failed(self, filename: str):
+    async def upload_failed(self, filename: str):
         """ callback when failed to upload file data """
         msg = self._pop_task(filename=filename)
         if msg is None:
@@ -92,28 +92,28 @@ class Emitter(Logging):
         msg['error'] = {
             'message': 'failed to upload file'
         }
-        self._save_instant_message(msg=msg)
+        await self._save_instant_message(msg=msg)
 
-    def _save_instant_message(self, msg: InstantMessage):
+    async def _save_instant_message(self, msg: InstantMessage):
         # TODO: save into local storage
         pass
 
-    def _send_instant_message(self, msg: InstantMessage) -> Optional[ReliableMessage]:
+    async def _send_instant_message(self, msg: InstantMessage) -> Optional[ReliableMessage]:
         self.info(msg='send message (type=%d): %s -> %s' % (msg.content.type, msg.sender, msg.receiver))
         receiver = msg.receiver
         if receiver.is_group:
             # send by group manager
             g_man = SharedGroupManager()
-            r_msg = g_man.send_message(msg=msg)
+            r_msg = await g_man.send_message(msg=msg)
         else:
             # send by shared messenger
             messenger = self.messenger
-            r_msg = messenger.send_instant_message(msg=msg, priority=1)
+            r_msg = await messenger.send_instant_message(msg=msg, priority=1)
         # save instant message
-        self._save_instant_message(msg=msg)
+        await self._save_instant_message(msg=msg)
         return r_msg
 
-    def send_content(self, content: Content, receiver: ID) -> Tuple[InstantMessage, Optional[ReliableMessage]]:
+    async def send_content(self, content: Content, receiver: ID) -> Tuple[InstantMessage, Optional[ReliableMessage]]:
         if receiver.is_group:
             assert 'group' not in content or content.group == receiver, 'group ID error: %s, %s' % (receiver, content)
             content.group = receiver
@@ -129,12 +129,12 @@ class Emitter(Logging):
         if isinstance(content, FileContent):
             # encrypt & upload file data before send out
             if content.data is not None:  # and content.url is None:
-                key = messenger.get_encrypt_key(msg=i_msg)
+                key = await messenger.get_encrypt_key(msg=i_msg)
                 assert key is not None, 'failed to get msg key for: %s -> %s' % (i_msg.sender, i_msg.receiver)
-                r_msg = self.send_file_message(msg=i_msg, password=key)
+                r_msg = await self.send_file_message(msg=i_msg, password=key)
                 return i_msg, r_msg
         # 3. send
-        r_msg = self._send_instant_message(msg=i_msg)
+        r_msg = await self._send_instant_message(msg=i_msg)
         if r_msg is None and not i_msg.receiver.is_group:
             self.warning(msg='not send yet (type=%d): %s' % (content.type, receiver))
         return i_msg, r_msg
@@ -143,7 +143,7 @@ class Emitter(Logging):
     #   File Message
     #
 
-    def send_file_message(self, msg: InstantMessage, password: EncryptKey) -> Optional[ReliableMessage]:
+    async def send_file_message(self, msg: InstantMessage, password: EncryptKey) -> Optional[ReliableMessage]:
         """
         Send file content message with password
 
@@ -156,18 +156,18 @@ class Emitter(Logging):
         data = content.data
         filename = content.filename
         assert data is not None and filename is not None, 'file content error: %s' % content
-        size = cache_file_data(data=data, filename=filename)
+        size = await cache_file_data(data=data, filename=filename)
         if size != len(data):
             self.error(msg='failed to save file data (len=%d): %s' % (len(data), filename))
             return
         # 2. save instant message without file data
         content.data = None
-        self._save_instant_message(msg=msg)
+        await self._save_instant_message(msg=msg)
         # 3. add upload task with encrypted data
         encrypted = password.encrypt(data=data, extra=msg.dictionary)
         filename = filename_from_data(data=encrypted, filename=filename)
         sender = msg.sender
-        url = upload_encrypted_data(data=encrypted, filename=filename, sender=sender)
+        url = await upload_encrypted_data(data=encrypted, filename=filename, sender=sender)
         if url is None:
             # uploading in background thread
             self.info(msg='wait for uploading: %s -> %s' % (content.filename, filename))
@@ -176,9 +176,9 @@ class Emitter(Logging):
             # uploaded before
             self.info(msg='uploaded filename: %s -> %s => %s' % (content.filename, filename, url))
             content.url = url
-            return self._send_instant_message(msg=msg)
+            return await self._send_instant_message(msg=msg)
 
-    def send_image_message(self, image: bytes, thumbnail: bytes, receiver: ID):
+    async def send_image_message(self, image: bytes, thumbnail: bytes, receiver: ID):
         """
         Send image message to receiver
 
@@ -191,9 +191,9 @@ class Emitter(Logging):
         content = FileContent.image(filename=filename, data=ted)
         content['length'] = len(image)
         content.thumbnail = thumbnail
-        self.send_content(content=content, receiver=receiver)
+        return await self.send_content(content=content, receiver=receiver)
 
-    def send_text_message(self, text: str, receiver: ID):
+    async def send_text_message(self, text: str, receiver: ID):
         """
         Send text message to receiver
 
@@ -201,7 +201,7 @@ class Emitter(Logging):
         :param receiver: destination
         """
         content = TextContent.create(text=text)
-        self.send_content(content=content, receiver=receiver)
+        return await self.send_content(content=content, receiver=receiver)
 
 
 #
@@ -209,14 +209,14 @@ class Emitter(Logging):
 #
 
 
-def cache_file_data(data: bytes, filename: str) -> int:
+async def cache_file_data(data: bytes, filename: str) -> int:
     # TODO: save file data
     size = len(data)
     Log.info(msg='save file: %s, length: %d' % (filename, size))
     return size
 
 
-def upload_encrypted_data(data: bytes, filename: str, sender: ID) -> Optional[str]:
+async def upload_encrypted_data(data: bytes, filename: str, sender: ID) -> Optional[str]:
     # TODO: save file data
     size = len(data)
     Log.info(msg='upload file: %s, length: %d, sender: %s' % (filename, size, sender))

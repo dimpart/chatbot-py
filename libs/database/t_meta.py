@@ -56,21 +56,21 @@ class MetaTable(MetaDBI):
     #
 
     # Override
-    def save_meta(self, meta: Meta, identifier: ID) -> bool:
+    async def save_meta(self, meta: Meta, identifier: ID) -> bool:
         # 0. check old record
-        old = self.meta(identifier=identifier)
+        old = await self.get_meta(identifier=identifier)
         if old is not None:
             # meta exists, no need to update it
             return True
         # 1. store into memory cache
         self.__cache.update(key=identifier, value=meta, life_span=self.CACHE_EXPIRES)
         # 2. store into redis server
-        self.__redis.save_meta(meta=meta, identifier=identifier)
+        await self.__redis.save_meta(meta=meta, identifier=identifier)
         # 3. store into local storage
-        return self.__dos.save_meta(meta=meta, identifier=identifier)
+        return await self.__dos.save_meta(meta=meta, identifier=identifier)
 
     # Override
-    def meta(self, identifier: ID) -> Optional[Meta]:
+    async def get_meta(self, identifier: ID) -> Optional[Meta]:
         now = DateTime.now()
         # 1. check memory cache
         value, holder = self.__cache.fetch(key=identifier, now=now)
@@ -86,13 +86,13 @@ class MetaTable(MetaDBI):
                 # meta expired, wait to reload
                 holder.renewal(duration=self.CACHE_REFRESHING, now=now)
             # 2. check redis server
-            value = self.__redis.meta(identifier=identifier)
+            value = await self.__redis.get_meta(identifier=identifier)
             if value is None:
                 # 3. check local storage
-                value = self.__dos.meta(identifier=identifier)
+                value = await self.__dos.get_meta(identifier=identifier)
                 if value is not None:
                     # update redis server
-                    self.__redis.save_meta(meta=value, identifier=identifier)
+                    await self.__redis.save_meta(meta=value, identifier=identifier)
             # update memory cache
             self.__cache.update(key=identifier, value=value, life_span=self.CACHE_EXPIRES, now=now)
         # OK, return cached value

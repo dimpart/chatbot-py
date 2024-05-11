@@ -60,9 +60,9 @@ class ChatBox(Logging, ABC):
     def facebook(self) -> CommonFacebook:
         return self.__facebook
 
-    def get_name(self, identifier: ID) -> str:
+    async def get_name(self, identifier: ID) -> str:
         # return self.__facebook.get_name(identifier=identifier)
-        name = get_nickname(identifier=identifier, facebook=self.__facebook)
+        name = await get_nickname(identifier=identifier, facebook=self.__facebook)
         if name is None or len(name) == 0:
             name = identifier.name
             if name is None or len(name) == 0:
@@ -126,12 +126,13 @@ class ChatBox(Logging, ABC):
     #   Request
     #
 
-    def process_request(self, request: Request) -> bool:
+    async def process_request(self, request: Request) -> bool:
         # refresh last active time
         self._refresh_time(when=request.time)
         # chatting
         if isinstance(request, ChatRequest):
             # question from user
+            await request.build()
             self.__greeted = True
         elif self.__greeted:
             assert isinstance(request, Greeting), 'request error: %s' % request
@@ -139,21 +140,22 @@ class ChatBox(Logging, ABC):
             return True
         else:
             assert isinstance(request, Greeting), 'request error: %s' % request
+            await request.build()
             # say hi
             text = request.text
             if text is not None and len(text) > 0:
-                self.__greeted = self._say_hi(prompt=text, request=request)
+                self.__greeted = await self._say_hi(prompt=text, request=request)
             return self.__greeted
         # process request content
         content = request.content
         if isinstance(content, TextContent):
-            return self._process_text_content(content=content, request=request)
+            return await self._process_text_content(content=content, request=request)
         elif isinstance(content, FileContent):
-            return self._process_file_content(content=content, request=request)
+            return await self._process_file_content(content=content, request=request)
         else:
             self.error(msg='unsupported content: %s, envelope: %s' % (content, request.envelope))
 
-    def _process_text_content(self, content: TextContent, request: ChatRequest) -> bool:
+    async def _process_text_content(self, content: TextContent, request: ChatRequest) -> bool:
         # text message
         text = request.text
         if text is None:
@@ -163,56 +165,56 @@ class ChatBox(Logging, ABC):
         if len(text) == 0:
             self.warning(msg='ignore empty text content: %s from %s' % (content, request.identifier))
             return False
-        return self._ask_question(prompt=text, content=content, request=request)
+        return await self._ask_question(prompt=text, content=content, request=request)
 
-    def _process_file_content(self, content: FileContent, request: ChatRequest) -> bool:
+    async def _process_file_content(self, content: FileContent, request: ChatRequest) -> bool:
         # file message
         if isinstance(content, ImageContent):
             # image message
-            return self._process_image_content(content=content, request=request)
+            return await self._process_image_content(content=content, request=request)
         elif isinstance(content, AudioContent):
             # audio message
-            return self._process_audio_content(content=content, request=request)
+            return await self._process_audio_content(content=content, request=request)
         elif isinstance(content, VideoContent):
             # video message
-            return self._process_video_content(content=content, request=request)
+            return await self._process_video_content(content=content, request=request)
         else:
             self.error(msg='unsupported file content: %s, envelope: %s' % (content, request.envelope))
 
-    def _process_image_content(self, content: ImageContent, request: ChatRequest) -> bool:
+    async def _process_image_content(self, content: ImageContent, request: ChatRequest) -> bool:
         """ Process image message """
         pass
 
-    def _process_audio_content(self, content: AudioContent, request: ChatRequest) -> bool:
+    async def _process_audio_content(self, content: AudioContent, request: ChatRequest) -> bool:
         """ Process audio message """
         pass
 
-    def _process_video_content(self, content: VideoContent, request: ChatRequest) -> bool:
+    async def _process_video_content(self, content: VideoContent, request: ChatRequest) -> bool:
         """ Process video message """
         pass
 
-    def _say_hi(self, prompt: str, request: Request) -> bool:
+    async def _say_hi(self, prompt: str, request: Request) -> bool:
         """ Build greeting message & query the server """
         pass
 
     @abstractmethod
-    def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
         """ Build message(s) & query the server """
         raise NotImplemented
 
-    def _save_response(self, text: str, prompt: str, request: Request) -> bool:
+    async def _save_response(self, text: str, prompt: str, request: Request) -> bool:
         """ Save response text with prompt """
         # check request type
         if isinstance(request, ChatRequest):
             # sender
             sender = request.envelope.sender
-            sender_name = self.get_name(identifier=sender)
+            sender_name = await self.get_name(identifier=sender)
             # check group
             group = request.content.group
             if group is not None:
                 # group message: "sender_name (group_name)"
                 identifier = group
-                group_name = self.get_name(identifier=group)
+                group_name = await self.get_name(identifier=group)
                 name = '%s (%s)' % (sender_name, group_name)
             else:
                 # personal message: "sender_name"
@@ -221,35 +223,35 @@ class ChatBox(Logging, ABC):
         else:
             # greeting: "sender_name"
             identifier = request.identifier
-            name = self.get_name(identifier=identifier)
+            name = await self.get_name(identifier=identifier)
         # OK
         storage = ChatStorage()
-        return storage.save_response(question=prompt, answer=text, identifier=identifier, name=name)
+        return await storage.save_response(question=prompt, answer=text, identifier=identifier, name=name)
 
     #
     #   Respond
     #
 
-    def respond_text(self, text: str, request: Request) -> int:
+    async def respond_text(self, text: str, request: Request) -> int:
         content = TextContent.create(text=text)
         calibrate_time(content=content, request=request)
-        return self.respond(responses=[content], request=request)
+        return await self.respond(responses=[content], request=request)
 
-    def respond_markdown(self, text: str, request: Request) -> int:
+    async def respond_markdown(self, text: str, request: Request) -> int:
         content = TextContent.create(text=text)
         content['format'] = 'markdown'
         calibrate_time(content=content, request=request)
-        return self.respond(responses=[content], request=request)
+        return await self.respond(responses=[content], request=request)
 
-    def respond(self, responses: List[Content], request: Request) -> int:
+    async def respond(self, responses: List[Content], request: Request) -> int:
         # all content time in responses must be calibrated with the request time
         receiver = request.identifier
         for res in responses:
-            self._send_content(content=res, receiver=receiver)
+            await self._send_content(content=res, receiver=receiver)
         return len(responses)
 
     @abstractmethod
-    def _send_content(self, content: Content, receiver: ID) -> bool:
+    async def _send_content(self, content: Content, receiver: ID) -> bool:
         """ Send message to DIM station """
         raise NotImplemented
 

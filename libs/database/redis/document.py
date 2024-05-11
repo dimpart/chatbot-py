@@ -56,7 +56,7 @@ class DocumentCache(Cache):
     def __cache_name(self, identifier: ID) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, identifier)
 
-    def documents(self, identifier: ID) -> Optional[List[Document]]:
+    async def get_documents(self, identifier: ID) -> Optional[List[Document]]:
         array = []
         name = self.__cache_name(identifier=identifier)
         value = self.get(name=name)
@@ -79,7 +79,7 @@ class DocumentCache(Cache):
             assert info is None, 'document error: %s' % value
         return array
 
-    def save_documents(self, documents: List[Document], identifier: ID) -> bool:
+    async def save_documents(self, documents: List[Document], identifier: ID) -> bool:
         array = []
         for doc in documents:
             assert doc.identifier == identifier, 'document ID not matched: %s, %s' % (identifier, doc)

@@ -98,7 +98,7 @@ class GPTHandler(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def query(self, messages: List[Dict], identifier: ID) -> Optional[Dict]:
+    async def query(self, messages: List[Dict], identifier: ID) -> Optional[Dict]:
         """ Build query data and post to remote server
             return message item with content text
         """

@@ -54,7 +54,7 @@ class MetaCache(Cache):
     def __key(self, identifier: ID) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, identifier)
 
-    def save_meta(self, meta: Meta, identifier: ID) -> bool:
+    async def save_meta(self, meta: Meta, identifier: ID) -> bool:
         dictionary = meta.dictionary
         js = json_encode(obj=dictionary)
         value = utf8_encode(string=js)
@@ -62,7 +62,7 @@ class MetaCache(Cache):
         self.set(name=key, value=value, expires=self.EXPIRES)
         return True
 
-    def meta(self, identifier: ID) -> Optional[Meta]:
+    async def get_meta(self, identifier: ID) -> Optional[Meta]:
         key = self.__key(identifier=identifier)
         value = self.get(name=key)
         if value is None:

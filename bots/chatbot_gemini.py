@@ -38,7 +38,7 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.utils import Log
+from libs.utils import Log, Runner
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 from libs.client import Monitor
@@ -56,7 +56,7 @@ class BotMessageProcessor(ClientProcessor):
     def _create_chat_client(self) -> ChatClient:
         api_key = shared.config.get_string(section='gemini', option='google_api_key')
         client = GeminiChatClient(facebook=self.facebook, api_key=api_key)
-        client.start()
+        Runner.async_run(coroutine=client.start())
         return client
 
 
@@ -72,11 +72,22 @@ DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 shared = GlobalVariable()
 
 
+async def main():
+    # create & start bot
+    client = await start_bot(default_config=DEFAULT_CONFIG,
+                             app_name='ChatBot: Gemini',
+                             ans_name='gege',
+                             processor_class=BotMessageProcessor)
+    # start monitor
+    monitor = Monitor()
+    monitor.start()
+    # main run loop
+    while True:
+        await Runner.sleep(seconds=1.0)
+        if not client.running:
+            break
+    Log.warning(msg='bot stopped: %s' % client)
+
+
 if __name__ == '__main__':
-    # start chat bot
-    g_terminal = start_bot(default_config=DEFAULT_CONFIG,
-                           app_name='ChatBot: Gemini',
-                           ans_name='gege',
-                           processor_class=BotMessageProcessor)
-    g_monitor = Monitor()
-    g_monitor.start()
+    Runner.sync_run(main=main())

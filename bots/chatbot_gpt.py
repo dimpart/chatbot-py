@@ -38,9 +38,10 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.utils import Log
+from libs.utils import Log, Runner
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
+from libs.client import Monitor
 
 from libs.ai.chatgpt import GPTChatClient
 
@@ -52,7 +53,8 @@ class BotMessageProcessor(ClientProcessor):
     # Override
     def _create_chat_client(self) -> ChatClient:
         client = GPTChatClient(facebook=self.facebook)
-        client.start()
+        # TODO: add GPT handler(s)
+        Runner.async_run(coroutine=client.start())
         return client
 
 
@@ -65,9 +67,22 @@ Log.LEVEL = Log.DEVELOP
 DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
+async def main():
+    # create & start bot
+    client = await start_bot(default_config=DEFAULT_CONFIG,
+                             app_name='ChatBot: GPT',
+                             ans_name='gigi',
+                             processor_class=BotMessageProcessor)
+    # start monitor
+    monitor = Monitor()
+    await monitor.start()
+    # main run loop
+    while True:
+        await Runner.sleep(seconds=1.0)
+        if not client.running:
+            break
+    Log.warning(msg='bot stopped: %s' % client)
+
+
 if __name__ == '__main__':
-    # start chat bot
-    g_terminal = start_bot(default_config=DEFAULT_CONFIG,
-                           app_name='ChatBot: GPT',
-                           ans_name='gigi',
-                           processor_class=BotMessageProcessor)
+    Runner.sync_run(main=main())

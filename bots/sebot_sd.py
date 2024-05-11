@@ -38,7 +38,7 @@ path = Path.dir(path=path)
 path = Path.dir(path=path)
 Path.add(path=path)
 
-from libs.utils import Log
+from libs.utils import Log, Runner
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
@@ -52,7 +52,7 @@ class BotMessageProcessor(ClientProcessor):
     # Override
     def _create_chat_client(self) -> ChatClient:
         client = SDChatClient(facebook=self.facebook)
-        client.start()
+        Runner.async_run(coroutine=client.start())
         return client
 
 
@@ -65,9 +65,19 @@ Log.LEVEL = Log.DEVELOP
 DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
+async def main():
+    # create & start bot
+    client = await start_bot(default_config=DEFAULT_CONFIG,
+                             app_name='ChatBot: Stable Diffusion',
+                             ans_name='simon',
+                             processor_class=BotMessageProcessor)
+    # main run loop
+    while True:
+        await Runner.sleep(seconds=1.0)
+        if not client.running:
+            break
+    Log.warning(msg='bot stopped: %s' % client)
+
+
 if __name__ == '__main__':
-    # start chat bot
-    g_terminal = start_bot(default_config=DEFAULT_CONFIG,
-                           app_name='ChatBot: Stable Diffusion',
-                           ans_name='simon',
-                           processor_class=BotMessageProcessor)
+    Runner.sync_run(main=main())
