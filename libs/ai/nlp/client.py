@@ -34,7 +34,7 @@ from dimples import CommonFacebook
 
 from ...client import Emitter
 
-from ...chat import Request
+from ...chat import Greeting, ChatRequest
 from ...chat import ChatBox, ChatClient
 
 from .chatbot import NLPBot
@@ -82,11 +82,11 @@ class NLPChatBox(ChatBox):
             return answer
 
     # Override
-    async def _say_hi(self, prompt: str, request: Request):
+    async def _say_hi(self, prompt: str, request: Greeting):
         return True
 
     # Override
-    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+    async def _ask_question(self, prompt: str, content: TextContent, request: ChatRequest) -> bool:
         try:
             answer = self._ask_bots(question=prompt, identifier=request.identifier)
             if answer is None:

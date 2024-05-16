@@ -31,7 +31,7 @@ from dimples import Content, TextContent
 from dimples import CommonFacebook
 
 from ...chat.base import get_nickname
-from ...chat import Request, Setting
+from ...chat import Setting, Greeting, ChatRequest
 from ...chat import ChatBox, ChatClient
 from ...client import Emitter
 from ...client import Monitor
@@ -131,7 +131,7 @@ class GPTChatBox(ChatBox):
         return None, None
 
     # Override
-    async def _say_hi(self, prompt: str, request: Request) -> bool:
+    async def _say_hi(self, prompt: str, request: Greeting) -> bool:
         identifier = request.identifier
         answer, handler = await self._query(prompt=prompt, identifier=identifier)
         if answer is not None and len(answer) > 0:
@@ -145,7 +145,7 @@ class GPTChatBox(ChatBox):
         return True
 
     # Override
-    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+    async def _ask_question(self, prompt: str, content: TextContent, request: ChatRequest) -> bool:
         identifier = request.identifier
         name = await get_nickname(identifier=identifier, facebook=self.facebook)
         self.info(msg='<<< received prompt from "%s": "%s"' % (name, prompt))

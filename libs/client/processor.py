@@ -75,7 +75,7 @@ class ClientProcessor(ClientMessageProcessor):
                 self.warning(msg='ignore user: %s' % item)
                 continue
             self.info(msg='say hi for %s' % identifier)
-            greeting = Greeting(identifier=identifier, facebook=self.facebook)
+            greeting = Greeting(identifier=identifier, content=content, envelope=envelope, facebook=self.facebook)
             self.__chat_client.append(request=greeting)
 
     # Override

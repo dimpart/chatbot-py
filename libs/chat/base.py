@@ -91,10 +91,11 @@ class Setting(Request):
 class Greeting(Request, Logging):
     """ Say Hi """
 
-    def __init__(self, identifier: ID, facebook: CommonFacebook):
+    def __init__(self, identifier: ID, envelope: Envelope, content: Content, facebook: CommonFacebook):
         super().__init__()
         self.__identifier = identifier
-        self.__when = DateTime.now()
+        self.__envelope = envelope
+        self.__content = content
         self.__facebook = facebook
         self.__text = None
 
@@ -102,13 +103,21 @@ class Greeting(Request, Logging):
     def facebook(self) -> CommonFacebook:
         return self.__facebook
 
+    @property
+    def envelope(self) -> Envelope:
+        return self.__envelope
+
+    @property
+    def content(self) -> Content:
+        return self.__content
+
     @property  # Override
     def identifier(self) -> ID:
         return self.__identifier
 
     @property  # Override
     def time(self) -> Optional[DateTime]:
-        return self.__when
+        return self.content.time
 
     @property  # Override
     def text(self) -> Optional[str]:
@@ -121,7 +130,7 @@ class Greeting(Request, Logging):
         if name is None or len(name) == 0:
             self.error(msg='failed to get nickname for sender: %s' % sender)
             return None
-        language = get_language(identifier=sender, facebook=self.facebook)
+        language = await get_language(identifier=sender, facebook=self.facebook)
         text = 'My name is "%s", my current language environment code is "%s".' \
                ' Please try to greet me in a language that suits me,' \
                ' considering my language habits and location.' \

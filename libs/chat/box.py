@@ -193,12 +193,12 @@ class ChatBox(Logging, ABC):
         """ Process video message """
         pass
 
-    async def _say_hi(self, prompt: str, request: Request) -> bool:
+    async def _say_hi(self, prompt: str, request: Greeting) -> bool:
         """ Build greeting message & query the server """
         pass
 
     @abstractmethod
-    async def _ask_question(self, prompt: str, content: TextContent, request: Request) -> bool:
+    async def _ask_question(self, prompt: str, content: TextContent, request: ChatRequest) -> bool:
         """ Build message(s) & query the server """
         raise NotImplemented
 
