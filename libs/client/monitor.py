@@ -26,7 +26,7 @@
 import threading
 from typing import Optional, ValuesView, List
 
-from startrek.fsm import DaemonRunner
+from startrek.skywalker import Runner
 from dimples.utils import Config
 from dimples import DateTime
 from dimples import ID
@@ -138,7 +138,7 @@ class Barrel:
 
 
 @Singleton
-class Monitor(DaemonRunner, Logging):
+class Monitor(Runner, Logging):
 
     TIME_INTERVAL = 3600  # seconds
 
@@ -149,6 +149,7 @@ class Monitor(DaemonRunner, Logging):
         self.__config = None
         # start ticking
         self.__report_time = None
+        Runner.thread_run(runner=self)
 
     @property
     def config(self) -> Optional[Config]:
@@ -214,6 +215,14 @@ class Monitor(DaemonRunner, Logging):
             return []
         supervisors = config.get_list(section='monitor', option='supervisors')
         return ID.convert(array=supervisors)
+
+    # Override
+    async def setup(self):
+        pass
+
+    # Override
+    async def finish(self):
+        pass
 
     # Override
     async def process(self) -> bool:

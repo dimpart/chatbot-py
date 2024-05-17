@@ -52,7 +52,8 @@ class BotMessageProcessor(ClientProcessor):
     # Override
     def _create_chat_client(self) -> ChatClient:
         client = SDChatClient(facebook=self.facebook)
-        Runner.async_run(coroutine=client.start())
+        # Runner.async_run(coroutine=client.start())
+        Runner.thread_run(runner=client)
         return client
 
 
@@ -72,10 +73,9 @@ async def main():
                              ans_name='simon',
                              processor_class=BotMessageProcessor)
     # main run loop
-    while True:
-        await Runner.sleep(seconds=1.0)
-        if not client.running:
-            break
+    await client.start()
+    await client.run()
+    # await client.stop()
     Log.warning(msg='bot stopped: %s' % client)
 
 

@@ -32,13 +32,13 @@ from dimples import DateTime
 from dimples import ID
 
 from ..utils import Logging
-from ..utils import Runner, DaemonRunner
+from ..utils import Runner
 
 from .base import Request
 from .box import ChatBox
 
 
-class ChatClient(DaemonRunner, Logging, ABC):
+class ChatClient(Runner, Logging, ABC):
     """ Chat Boxes Pool """
 
     def __init__(self):
@@ -95,6 +95,14 @@ class ChatClient(DaemonRunner, Logging, ABC):
                     self.__boxes.discard(box)
                     count += 1
         return count
+
+    # Override
+    async def setup(self):
+        pass
+
+    # Override
+    async def finish(self):
+        pass
 
     # Override
     async def process(self) -> bool:

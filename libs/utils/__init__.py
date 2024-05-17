@@ -33,8 +33,8 @@
                                              -- Albert Moky @ Jan. 23, 2019
 """
 
-from startrek.fsm import Runnable, Runner
-from startrek.fsm import Daemon, DaemonRunner
+from startrek.skywalker import Runnable, Runner
+from startrek.skywalker import Daemon
 
 from dimples.utils import *
 
@@ -86,7 +86,7 @@ __all__ = [
     'Converter',
 
     'Runnable', 'Runner',
-    'Daemon', 'DaemonRunner',
+    'Daemon',
 
     'Singleton',
     'Log', 'Logging',

@@ -56,7 +56,8 @@ class BotMessageProcessor(ClientProcessor):
         shared = GlobalVariable()
         bots = chat_bots(names=['xiaoi'], shared=shared)  # chat bot
         client = NLPChatClient(bots=bots, facebook=self.facebook)
-        Runner.async_run(coroutine=client.start())
+        # Runner.async_run(coroutine=client.start())
+        Runner.thread_run(runner=client)
         return client
 
 
@@ -76,10 +77,9 @@ async def main():
                              ans_name='xiao',
                              processor_class=BotMessageProcessor)
     # main run loop
-    while True:
-        await Runner.sleep(seconds=1.0)
-        if not client.running:
-            break
+    await client.start()
+    await client.run()
+    # await client.stop()
     Log.warning(msg='bot stopped: %s' % client)
 
 

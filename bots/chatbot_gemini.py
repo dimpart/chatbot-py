@@ -41,7 +41,6 @@ Path.add(path=path)
 from libs.utils import Log, Runner
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
-from libs.client import Monitor
 
 from libs.ai.gemini import GeminiChatClient
 
@@ -56,7 +55,8 @@ class BotMessageProcessor(ClientProcessor):
     def _create_chat_client(self) -> ChatClient:
         api_key = shared.config.get_string(section='gemini', option='google_api_key')
         client = GeminiChatClient(facebook=self.facebook, api_key=api_key)
-        Runner.async_run(coroutine=client.start())
+        # Runner.async_run(coroutine=client.start())
+        Runner.thread_run(runner=client)
         return client
 
 
@@ -78,14 +78,10 @@ async def main():
                              app_name='ChatBot: Gemini',
                              ans_name='gege',
                              processor_class=BotMessageProcessor)
-    # start monitor
-    monitor = Monitor()
-    monitor.start()
     # main run loop
-    while True:
-        await Runner.sleep(seconds=1.0)
-        if not client.running:
-            break
+    await client.start()
+    await client.run()
+    # await client.stop()
     Log.warning(msg='bot stopped: %s' % client)
 
 
