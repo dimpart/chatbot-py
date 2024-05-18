@@ -33,9 +33,6 @@
                                              -- Albert Moky @ Jan. 23, 2019
 """
 
-from startrek.skywalker import Runnable, Runner
-from startrek.skywalker import Daemon
-
 from dimples.utils import *
 
 from dimples.group.manager import find

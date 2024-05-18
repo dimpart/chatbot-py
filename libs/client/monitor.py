@@ -26,13 +26,14 @@
 import threading
 from typing import Optional, ValuesView, List
 
-from startrek.skywalker import Runner
 from dimples.utils import Config
 from dimples import DateTime
 from dimples import ID
 from dimples import TextContent
 
-from ..utils import Singleton, Log, Logging
+from ..utils import Runner
+from ..utils import Singleton
+from ..utils import Log, Logging
 from .emitter import Emitter
 
 
