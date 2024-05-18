@@ -232,16 +232,20 @@ class ChatBox(Logging, ABC):
     #   Respond
     #
 
-    async def respond_text(self, text: str, request: Request) -> int:
+    async def respond_text(self, text: str, request: Request) -> TextContent:
         content = TextContent.create(text=text)
         calibrate_time(content=content, request=request)
-        return await self.respond(responses=[content], request=request)
+        await self.respond(responses=[content], request=request)
+        return content
 
-    async def respond_markdown(self, text: str, request: Request) -> int:
+    async def respond_markdown(self, text: str, request: Request, sn: int = 0) -> TextContent:
         content = TextContent.create(text=text)
         content['format'] = 'markdown'
+        if sn > 0:
+            content['sn'] = sn
         calibrate_time(content=content, request=request)
-        return await self.respond(responses=[content], request=request)
+        await self.respond(responses=[content], request=request)
+        return content
 
     async def respond(self, responses: List[Content], request: Request) -> int:
         # all content time in responses must be calibrated with the request time
