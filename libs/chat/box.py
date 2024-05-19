@@ -238,11 +238,13 @@ class ChatBox(Logging, ABC):
         await self.respond(responses=[content], request=request)
         return content
 
-    async def respond_markdown(self, text: str, request: Request, sn: int = 0) -> TextContent:
+    async def respond_markdown(self, text: str, request: Request, sn: int = 0, muted: str = None) -> TextContent:
         content = TextContent.create(text=text)
         content['format'] = 'markdown'
         if sn > 0:
             content['sn'] = sn
+        if muted is not None:
+            content['muted'] = muted
         calibrate_time(content=content, request=request)
         await self.respond(responses=[content], request=request)
         return content

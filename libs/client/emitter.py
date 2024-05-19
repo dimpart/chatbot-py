@@ -125,6 +125,9 @@ class Emitter(Logging):
         # 1. pack instant message
         env = Envelope.create(sender=sender, receiver=receiver)
         i_msg = InstantMessage.create(head=env, body=content)
+        muted = content.get('muted', None)
+        if muted is not None:
+            i_msg['muted'] = muted
         # 2. check file content
         if isinstance(content, FileContent):
             # encrypt & upload file data before send out
