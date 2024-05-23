@@ -198,11 +198,14 @@ class Season(Dictionary):
     EXPIRES = 3600 * 5  # seconds
 
     def __init__(self, info: Dict[str, Any] = None,
+                 page: URI = None,
                  name: str = None, cover: str = None, details: Optional[str] = None,
                  tubes: List[Tube] = None):
         super().__init__(dictionary=info)
         if info is None:
             self.set_datetime(key='time', value=DateTime.now())
+        if page is not None:
+            self['page'] = page
         if name is not None:
             self['name'] = name
         if cover is not None:
@@ -245,6 +248,10 @@ class Season(Dictionary):
             children += '%s\n' % item
         return '<%s name="%s" cover="%s">%s' \
                '</%s module="%s">' % (cname, self.name, self.cover, children, cname, mod)
+
+    @property
+    def page(self) -> URI:
+        return self.get_str(key='page', default='')
 
     @property
     def name(self) -> str:

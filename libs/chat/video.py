@@ -70,20 +70,27 @@ class VideoBox(ChatBox, ABC):
 
 
 def build_season(season: Season, index: int, total: int) -> str:
-    text = _md_build_season(season=season, index=index, total=total)
-    if total > 5 and index > 2:
-        # "data:text/plain;charset=UTF-8;base64,"
-        base64 = base64_encode(data=utf8_encode(string=text))
-        href = 'data:text/plain;charset=UTF-8;base64,%s' % base64
-        text = '(%d/%d) [%s](%s "")' % (index + 1, total, season.name, href)
-        if total < 10 or index < 7:
-            cover = season.cover
-            if cover is not None:
-                text = '![](%s "")\n\n%s' % (cover, text)
+    if total <= 5 or index < 3:
+        return build_season_full(season=season, index=index, total=total)
+    else:
+        link = build_season_link(season=season, index=index, total=total)
+    text = '(%d/%d) %s' % (index + 1, total, link)
+    if total < 10 or index < 7:
+        cover = season.cover
+        if cover is not None:
+            text = '![](%s "")\n\n%s' % (cover, text)
     return text
 
 
-def _md_build_season(season: Season, index: int, total: int) -> str:
+def build_season_link(season: Season, index: int, total: int) -> str:
+    text = build_season_full(season=season, index=index, total=total)
+    # "data:text/plain;charset=UTF-8;base64,"
+    base64 = base64_encode(data=utf8_encode(string=text))
+    href = 'data:text/plain;charset=UTF-8;base64,%s' % base64
+    return '[%s](%s "")' % (season.name, href)
+
+
+def build_season_full(season: Season, index: int, total: int) -> str:
     cover = season.cover
     name = md_esc(text=season.name)
     desc = season.details

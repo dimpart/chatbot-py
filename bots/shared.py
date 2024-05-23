@@ -129,22 +129,7 @@ def create_config(app_name: str, default_config: str) -> Config:
     return config
 
 
-async def create_database(config: Config) -> Database:
-    """ Step 2: create database """
-    root = config.database_root
-    public = config.database_public
-    private = config.database_private
-    # create database
-    db = Database(root=root, public=public, private=private)
-    db.show_info()
-    # default provider
-    provider = ProviderInfo.GSP
-    # add neighbors
-    neighbors = config.neighbors
-    for node in neighbors:
-        print('adding neighbor node: %s' % node)
-        await db.add_station(identifier=None, host=node.host, port=node.port, provider=provider)
-    # config redis server
+def _config_redis(config: Config) -> bool:
     redis_enable = config.get_boolean(section='redis', option='enable')
     if redis_enable:
         # redis host
@@ -161,6 +146,27 @@ async def create_database(config: Config) -> Database:
             RedisCache.set_redis_password(password=password)
         # enable redis
         RedisCache.set_redis_enable(enable=True)
+    return redis_enable
+
+
+async def create_database(config: Config) -> Database:
+    """ Step 2: create database """
+    root = config.database_root
+    public = config.database_public
+    private = config.database_private
+    # create database
+    db = Database(root=root, public=public, private=private)
+    db.show_info()
+    # config redis before updating database
+    _config_redis(config=config)
+    # update neighbor stations (default provider)
+    provider = ProviderInfo.GSP
+    neighbors = config.neighbors
+    if len(neighbors) > 0:
+        # await db.remove_stations(provider=provider)
+        for node in neighbors:
+            print('adding neighbor node: %s' % node)
+            await db.add_station(identifier=None, host=node.host, port=node.port, provider=provider)
     # config chat storage
     cs = ChatStorage()
     cs.root = config.get_string(section='history', option='root')
@@ -228,13 +234,6 @@ def create_messenger(facebook: CommonFacebook, database: MessageDBI,
     return messenger
 
 
-async def create_terminal(messenger: ClientMessenger) -> Terminal:
-    terminal = Terminal(messenger=messenger)
-    messenger.terminal = terminal
-    await terminal.start()
-    return terminal
-
-
 #
 #   DIM Bot
 #
@@ -287,8 +286,8 @@ async def start_bot(default_config: str, app_name: str, ans_name: str, processor
     # set config to monitor
     monitor = Monitor()
     monitor.config = config
-    # create & start terminal
-    return await create_terminal(messenger=messenger)
+    # create terminal
+    return Terminal(messenger=messenger)
 
 
 #
