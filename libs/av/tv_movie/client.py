@@ -39,6 +39,7 @@ from ...client import Emitter
 from ...client import Monitor
 
 from .engine import Task, Engine
+from .engine import KeywordManager
 
 
 class SearchBox(VideoBox):
@@ -111,6 +112,12 @@ class SearchBox(VideoBox):
         thr.start()
 
     async def _search(self, task: Task):
+        keywords = task.keywords
+        request = task.request
+        key_man = KeywordManager()
+        if len(keywords) == 14 and keywords.lower() == 'search history':
+            await _respond_204(history=key_man.keywords, keywords=keywords, request=request, box=self)
+            return 0
         all_engines = self.__engines
         count = len(all_engines)
         if count == 0:
@@ -147,6 +154,7 @@ class SearchBox(VideoBox):
         #
         if failed == count:
             # failed to get answer
+            await _respond_204(history=key_man.keywords, keywords=keywords, request=request, box=self)
             monitor.report_crash(service=self.service)
             return False
         elif 0 < index < count:
@@ -155,6 +163,18 @@ class SearchBox(VideoBox):
             self.__engines.insert(0, engine)
             self.warning(msg='move engine position: %d, %s' % (index, engine))
         return True
+
+
+async def _respond_204(history: List[str], keywords: str, request: ChatRequest, box: VideoBox):
+    if history is None or len(history) == 0:
+        text = 'No contents for "%s", please try another keywords.' % keywords
+        return await box.respond_text(text=text, request=request)
+    else:
+        text = 'No contents for **"%s"**, you can try the following keywords:\n' % keywords
+        text += '\n----\n'
+        for his in history:
+            text += '- **%s**\n' % his
+        return await box.respond_markdown(text=text, request=request)
 
 
 class SearchClient(ChatClient):
