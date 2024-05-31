@@ -29,59 +29,8 @@ from dimples import URI
 from dimples import DateTime
 from dimples.utils import CacheManager
 
-from ..common import Episode, Season
-from .redis import EpisodeCache, SeasonCache, VideoSearchCache
-
-
-class EpisodeTable:
-    """ Implementations of VideoDBI """
-
-    CACHE_EXPIRES = 3600  # seconds
-    CACHE_REFRESHING = 8  # seconds
-
-    # noinspection PyUnusedLocal
-    def __init__(self, root: str = None, public: str = None, private: str = None):
-        super().__init__()
-        self.__redis = EpisodeCache()
-        man = CacheManager()
-        self.__cache = man.get_pool(name='video_episodes')  # URL => Episode
-
-    # noinspection PyMethodMayBeStatic
-    def show_info(self):
-        print('!!! episodes cached in memory only !!!')
-
-    #
-    #   Video DBI
-    #
-
-    async def save_episode(self, episode: Episode, url: URI) -> bool:
-        # 1. store into redis server
-        if await self.__redis.save_episode(episode=episode, url=url):
-            # 2. clear cache to reload
-            self.__cache.erase(key=url)
-            return True
-
-    async def load_episode(self, url: URI) -> Optional[Episode]:
-        now = DateTime.now()
-        # 1. check memory cache
-        value, holder = self.__cache.fetch(key=url, now=now)
-        if value is None:
-            # cache empty
-            if holder is None:
-                # cache not load yet, wait to load
-                self.__cache.update(key=url, life_span=self.CACHE_REFRESHING, now=now)
-            else:
-                if holder.is_alive(now=now):
-                    # cache not exists
-                    return None
-                # cache expired, wait to reload
-                holder.renewal(duration=self.CACHE_REFRESHING, now=now)
-            # 2. check redis server
-            value = await self.__redis.load_episode(url=url)
-            # 3. update memory cache
-            self.__cache.update(key=url, value=value, life_span=self.CACHE_EXPIRES, now=now)
-        # OK, return cached value
-        return value
+from ..common import Season
+from .redis import SeasonCache, VideoSearchCache
 
 
 class SeasonTable:
@@ -184,4 +133,3 @@ class VideoSearchTable:
             self.__cache.update(key=keywords, value=value, life_span=self.CACHE_EXPIRES, now=now)
         # OK, return cached value
         return value
-

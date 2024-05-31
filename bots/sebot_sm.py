@@ -52,7 +52,9 @@ class BotMessageProcessor(ClientProcessor):
     # Override
     def _create_chat_client(self) -> ChatClient:
         client = SearchClient(facebook=self.facebook)
-        # Runner.async_run(coroutine=client.start())
+        # TODO: add search engines
+        # ...
+        # Runner.async_task(coro=client.start())
         Runner.thread_run(runner=client)
         return client
 

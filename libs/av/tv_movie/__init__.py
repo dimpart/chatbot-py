@@ -30,9 +30,12 @@
     Search Engine
 """
 
+# from .client import SearchBox
+from .client import SearchClient
 
 __all__ = [
 
+    # 'SearchBox',
     'SearchClient',
 
 ]

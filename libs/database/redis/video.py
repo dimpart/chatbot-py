@@ -29,46 +29,9 @@ from dimples import json_encode, json_decode, utf8_encode, utf8_decode
 from dimples import URI, DateTime
 from dimples import Mapper
 
-from ...common import Episode, Season
+from ...common import Season
 
 from .base import Cache
-
-
-class EpisodeCache(Cache):
-
-    # episode cached in Redis will be removed after 7 days.
-    EXPIRES = 3600 * 24 * 7  # seconds
-
-    @property  # Override
-    def db_name(self) -> Optional[str]:
-        return 'video'
-
-    @property  # Override
-    def tbl_name(self) -> str:
-        return 'episode'
-
-    """
-        Episode
-        ~~~~~~
-
-        redis key: 'video.episode.{URL}'
-    """
-    def __key(self, url: URI) -> str:
-        return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
-
-    async def save_episode(self, episode: Episode, url: URI) -> bool:
-        """ Save episode with page URL """
-        key = self.__key(url=url)
-        value = encode_map(info=episode)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
-
-    async def load_episode(self, url: URI) -> Optional[Episode]:
-        """ Load episode with page URL """
-        key = self.__key(url=url)
-        value = self.get(name=key)
-        dictionary = decode_map(data=value)
-        return Episode.parse_episode(episode=dictionary)
 
 
 class SeasonCache(Cache):

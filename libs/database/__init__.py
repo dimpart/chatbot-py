@@ -73,7 +73,8 @@ __all__ = [
     'DocumentCache',
     'GroupCache', 'GroupHistoryCache',
 
-    'EpisodeCache', 'SeasonCache',
+    'SeasonCache',
+    'VideoSearchCache',
 
     #
     #   Database

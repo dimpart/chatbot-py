@@ -41,15 +41,14 @@ from dimples import ProviderInfo, StationInfo
 from dimples.database.t_private import PrivateKeyTable
 from dimples.database.t_cipherkey import CipherKeyTable
 
-from ..common import Episode, Season, VideoDBI
+from ..common import Season, VideoDBI
 
-# from .t_ans import AddressNameTable
 from .t_meta import MetaTable
 from .t_document import DocumentTable
 from .t_group import GroupTable
 from .t_grp_history import GroupHistoryTable
 
-from .t_video import EpisodeTable, SeasonTable, VideoSearchTable
+from .t_video import SeasonTable, VideoSearchTable
 
 
 class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
@@ -69,7 +68,6 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
         # # ANS
         # self.__ans_table = AddressNameTable(root=root, public=public, private=private)
         # Video
-        self.__episode_table = EpisodeTable(root=root, public=public, private=private)
         self.__season_table = SeasonTable(root=root, public=public, private=private)
         self.__search_table = VideoSearchTable(root=root, public=public, private=private)
 
@@ -85,8 +83,8 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
         # # ANS
         # self.__ans_table.show_info()
         # Video
-        self.__episode_table.show_info()
         self.__season_table.show_info()
+        self.__search_table.show_info()
 
     """
         Private Key file for Users
@@ -437,14 +435,6 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
     #
     #   Video DBI
     #
-
-    # Override
-    async def save_episode(self, episode: Episode, url: URI) -> bool:
-        return await self.__episode_table.save_episode(episode=episode, url=url)
-
-    # Override
-    async def load_episode(self, url: URI) -> Optional[Episode]:
-        return await self.__episode_table.load_episode(url=url)
 
     # Override
     async def save_season(self, season: Season, url: URI) -> bool:

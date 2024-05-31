@@ -29,7 +29,7 @@ from typing import Optional, List, Tuple
 from dimples import URI, DateTime
 
 from ..utils import md_esc, utf8_encode, base64_encode
-from ..common import Episode, Season, VideoDBI
+from ..common import Season, VideoDBI
 
 from .box import ChatBox
 
@@ -43,14 +43,6 @@ class VideoBox(ChatBox, ABC):
         db = archivist.database
         assert isinstance(db, VideoDBI), 'database error: %s' % db
         return db
-
-    async def save_episode(self, episode: Episode, url: URI) -> bool:
-        db = self.database
-        return await db.save_episode(episode=episode, url=url)
-
-    async def load_episode(self, url: URI) -> Optional[Episode]:
-        db = self.database
-        return await db.load_episode(url=url)
 
     async def save_season(self, season: Season, url: URI) -> bool:
         db = self.database

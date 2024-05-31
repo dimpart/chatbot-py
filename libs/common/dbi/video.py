@@ -299,14 +299,6 @@ class Season(Dictionary):
 class VideoDBI(ABC):
 
     @abstractmethod
-    async def save_episode(self, episode: Episode, url: URI) -> bool:
-        raise NotImplemented
-
-    @abstractmethod
-    async def load_episode(self, url: URI) -> Optional[Episode]:
-        raise NotImplemented
-
-    @abstractmethod
     async def save_season(self, season: Season, url: URI) -> bool:
         raise NotImplemented
 

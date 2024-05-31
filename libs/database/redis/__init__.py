@@ -37,7 +37,7 @@ from .document import DocumentCache
 from .group import GroupCache
 from .grp_history import GroupHistoryCache
 
-from .video import EpisodeCache, SeasonCache, VideoSearchCache
+from .video import SeasonCache, VideoSearchCache
 
 
 __all__ = [
@@ -49,7 +49,7 @@ __all__ = [
     'DocumentCache',
     'GroupCache', 'GroupHistoryCache',
 
-    'EpisodeCache', 'SeasonCache',
+    'SeasonCache',
     'VideoSearchCache',
 
 ]

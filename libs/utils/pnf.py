@@ -135,4 +135,4 @@ def _is_encoded(filename: str, ext: Optional[str]) -> bool:
     return len(filename) == 32 and _hex.match(filename) is not None
 
 
-_hex = re.compile('^[\dA-Fa-f]+$')
+_hex = re.compile(r'^[\dA-Fa-f]+$')
