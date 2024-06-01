@@ -24,14 +24,16 @@
 # ==============================================================================
 
 import random
-from typing import Optional, List
+import threading
+from typing import Optional, List, Dict
 
+from dimples import DateTime
 from dimples import ID
 from dimples import Content
 from dimples import TextContent
 from dimples import CommonFacebook
 
-from ...utils import Runner
+from ...utils import Singleton, Runner
 from ...chat import ChatRequest
 from ...chat import ChatBox, VideoBox, ChatClient
 from ...chat.base import get_nickname
@@ -95,14 +97,19 @@ class SearchBox(VideoBox):
         kw_len = len(keywords)
         if kw_len == 0:
             return
-        elif kw_len == 6 and keywords.lower() == 'cancel':
-            self._cancel_task()
-            return
-        elif kw_len == 4 and keywords.lower() == 'stop':
-            self._cancel_task()
+        elif kw_len == 12 and keywords.lower() == 'show history':
+            his_man = HistoryManager()
+            await _respond_history(history=his_man.commands, request=request, box=self)
             return
         else:
             self._cancel_task()
+            his_man = HistoryManager()
+            his_man.add_command(cmd=keywords, when=request.time, sender=sender, group=group)
+        # cancel command
+        if kw_len == 6 and keywords.lower() == 'cancel':
+            return
+        elif kw_len == 4 and keywords.lower() == 'stop':
+            return
         #
         #  2. search
         #
@@ -112,12 +119,6 @@ class SearchBox(VideoBox):
         thr.start()
 
     async def _search(self, task: Task):
-        keywords = task.keywords
-        request = task.request
-        key_man = KeywordManager()
-        if len(keywords) == 14 and keywords.lower() == 'search history':
-            await _respond_204(history=key_man.keywords, keywords=keywords, request=request, box=self)
-            return 0
         all_engines = self.__engines
         count = len(all_engines)
         if count == 0:
@@ -152,9 +153,11 @@ class SearchBox(VideoBox):
         #
         #  2. check result
         #
+        if index == count:
+            key_man = KeywordManager()
+            await _respond_204(history=key_man.keywords, keywords=task.keywords, request=task.request, box=self)
         if failed == count:
             # failed to get answer
-            await _respond_204(history=key_man.keywords, keywords=keywords, request=request, box=self)
             monitor.report_crash(service=self.service)
             return False
         elif 0 < index < count:
@@ -175,6 +178,50 @@ async def _respond_204(history: List[str], keywords: str, request: ChatRequest, 
         for his in history:
             text += '- **%s**\n' % his
         return await box.respond_markdown(text=text, request=request)
+
+
+async def _respond_history(history: List[Dict], request: ChatRequest, box: VideoBox):
+    text = 'Search history:\n'
+    text += '| From | Keyword | Time |\n'
+    text += '|------|---------|------|\n'
+    for his in history:
+        sender = his.get('sender')
+        group = his.get('group')
+        when = his.get('when')
+        cmd = his.get('cmd')
+        assert sender is not None and cmd is not None, 'history error: %s' % his
+        sender = ID.parse(identifier=sender)
+        group = ID.parse(identifier=group)
+        user = '**"%s"**' % await box.get_name(identifier=sender)
+        if group is not None:
+            user += ' (%s)' % await box.get_name(identifier=group)
+        text += '| %s | %s | %s |\n' % (user, cmd, when)
+    return await box.respond_markdown(text=text, request=request)
+
+
+@Singleton
+class HistoryManager:
+
+    MAX_LENGTH = 50
+
+    def __init__(self):
+        super().__init__()
+        self.__commands: List[Dict] = []
+        self.__lock = threading.Lock()
+
+    @property
+    def commands(self) -> List[Dict]:
+        with self.__lock:
+            return self.__commands.copy()
+
+    def add_command(self, cmd: str, when: DateTime, sender: ID, group: Optional[ID]):
+        with self.__lock:
+            self.__commands.append({
+                'sender': sender,
+                'group': group,
+                'when': when,
+                'cmd': cmd,
+            })
 
 
 class SearchClient(ChatClient):
