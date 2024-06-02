@@ -50,6 +50,7 @@ from libs.client import Terminal
 from libs.client import Emitter, Monitor
 from libs.client import SharedGroupManager
 
+from libs.av.tv_movie import LiveLoader
 from libs.ai.nlp import NLPBot, Tuling, XiaoI
 
 
@@ -125,6 +126,10 @@ def create_config(app_name: str, default_config: str) -> Config:
             bot = {}
             config['bot'] = bot
         bot['id'] = str(identifier)
+    # config tvbox
+    loader = LiveLoader()
+    loader.entrance = config.get_string(section='tvbox', option='entrance')
+    loader.local_path = config.get_string(section='tvbox', option='lives')
     # OK
     return config
 

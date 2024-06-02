@@ -42,6 +42,7 @@ from ...client import Monitor
 
 from .engine import Task, Engine
 from .engine import KeywordManager
+from .tv import LiveLoader
 
 
 class SearchBox(VideoBox):
@@ -96,6 +97,11 @@ class SearchBox(VideoBox):
         keywords = prompt.strip()
         kw_len = len(keywords)
         if kw_len == 0:
+            return
+        elif kw_len == 11 and keywords.lower() == 'tv channels':
+            task = self._new_task(keywords=keywords, request=request)
+            tv = LiveLoader()
+            await tv.search(task=task)
             return
         elif kw_len == 12 and keywords.lower() == 'show history':
             his_man = HistoryManager()
@@ -169,15 +175,16 @@ class SearchBox(VideoBox):
 
 
 async def _respond_204(history: List[str], keywords: str, request: ChatRequest, box: VideoBox):
-    if history is None or len(history) == 0:
-        text = 'No contents for "%s", please try another keywords.' % keywords
-        return await box.respond_text(text=text, request=request)
-    else:
-        text = 'No contents for **"%s"**, you can try the following keywords:\n' % keywords
-        text += '\n----\n'
-        for his in history:
-            text += '- **%s**\n' % his
-        return await box.respond_markdown(text=text, request=request)
+    if history is None:
+        history = []
+    text = 'No contents for **"%s"**, you can try the following keywords:\n' % keywords
+    text += '\n----\n'
+    for his in history:
+        text += '- **%s**\n' % his
+    text += '\n'
+    text += 'You can also input this command to scan TV channels:\n'
+    text += '\n- **TV channels**'
+    return await box.respond_markdown(text=text, request=request)
 
 
 async def _respond_history(history: List[Dict], request: ChatRequest, box: VideoBox):
