@@ -23,18 +23,19 @@
 # SOFTWARE.
 # ==============================================================================
 
+import threading
 from typing import Optional, Set
 
 import requests
 
-from dimples import URI
+from dimples import URI, DateTime
 
 from ...utils import Log, Logging
 from ...utils import TextFile
 from ...utils import md_esc
 from ...utils import get_filename, get_extension
 
-from ..tvbox import LiveChannel
+from ..tvbox import LiveSource, LiveChannel
 from ..tvbox import LiveParser, LockedParser
 
 from .engine import Task
@@ -45,6 +46,7 @@ class LiveScanner(Logging):
     def __init__(self, parser: LiveParser = None):
         super().__init__()
         self.__parser = LockedParser() if parser is None else parser
+        self.__lock = threading.Lock()
 
     @property  # protected
     def parser(self) -> LiveParser:
@@ -78,6 +80,7 @@ class LiveScanner(Logging):
         channel_count = len(all_channels)
         channel_index = 0
         sn = 0
+        next_time = 0
         for channel in all_channels:
             channel_index += 1
             if task is not None and task.cancelled:
@@ -97,7 +100,11 @@ class LiveScanner(Logging):
                 #
                 #  respond results partially
                 #
-                if request is not None and box is not None:
+                now = DateTime.current_timestamp()
+                if request is not None and box is not None and now > next_time:
+                    next_time = now + 2  # next respond time (at lease 2 seconds later)
+                    self.info(msg='respond scanning channel "%s" (%d/%d) to %s'
+                                  % (name, source_index, source_count, request.envelope.sender))
                     title = '**"%s"**' % name
                     if source_count > 1:
                         title += ' - Line %d' % source_index
@@ -111,8 +118,7 @@ class LiveScanner(Logging):
                 #  Check sources
                 #
                 self.info(msg='checking channel source: (%d/%d) "%s" => %s' % (channel_index, channel_count, name, src))
-                if src.available is None or src.is_expired():
-                    src.set_available(await _http_check(url=src.url, timeout=timeout))
+                await self._check_m3u8(source=src, timeout=timeout)
             #
             #  2. add channel if sources available
             #
@@ -122,6 +128,7 @@ class LiveScanner(Logging):
         #  respond results
         #
         if request is not None and box is not None:
+            self.info(msg='respond %d channels to %s' % (len(available_channels), request.envelope.sender))
             text = _build_channel_response(channels=available_channels)
             if task.cancelled:
                 text += '\n----\n'
@@ -129,10 +136,28 @@ class LiveScanner(Logging):
             await box.respond_markdown(text=text, request=request, sn=sn, muted='true')
         return available_channels
 
+    async def _check_m3u8(self, source: LiveSource, timeout: float = None):
+        # 1. check update time before lock
+        if not (source.available is None or source.is_expired()):
+            # last result not expired yet,
+            # no need to check again now
+            return source.available
+        with self.__lock:
+            # 2. check update time after lock
+            if source.available is None or source.is_expired():
+                # 3. check remote URL
+                valid = await _http_check(url=source.url, timeout=timeout)
+                source.set_available(valid)
+        # return source valid
+        return source.available
+
 
 def _build_channel_response(channels: Set[LiveChannel]) -> str:
     if len(channels) == 0:
-        return 'Channels not found'
+        return 'Channels not found.'
+    else:
+        channels = list(channels)
+        channels.sort(key=lambda c: c.name)
     text = 'Channels:\n'
     text += '\n----\n'
     for item in channels:
@@ -148,28 +173,35 @@ def _build_channel_response(channels: Set[LiveChannel]) -> str:
             continue
         elif count == 1:
             line = valid_sources[0]
-            url = _md_live_url(name=name, url=line.url)
+            url = _md_live_link(name=name, url=line.url)
             text += '- %s\n' % url
             continue
         text += '- **%s**' % name
         for index in range(count):
             line = valid_sources[index]
-            url = _md_live_url(name=name, url=line.url)
+            url = _md_live_link(name=name, url=line.url)
             text += ' > %d. %s' % (index + 1, url)
         text += '\n'
     return text
 
 
-def _md_live_url(name: str, url: URI) -> str:
+def _md_live_link(name: str, url: URI) -> str:
     if url is None or url.find('://') < 0:
         Log.error(msg='live url error: "%s" -> %s' % (name, url))
-        return name
+        return '_%s_' % name
+    # check file extension
     ext = get_extension(filename=get_filename(path=url))
     if ext is None or len(ext) == 0:
-        url += '#live.m3u8'
+        url += '#live/stream.m3u8'
     else:
         url += '#live'
-    return '[%s](%s "%s - Live")' % (name, url, name)
+    # check for title
+    if url.lower().find('.m3u8') < 0:
+        title = name
+    else:
+        title = '%s - LIVE' % name
+    # build the link
+    return '[%s](%s "%s")' % (name, url, title)
 
 
 async def _http_get(url: URI) -> Optional[str]:

@@ -167,7 +167,7 @@ class LiveParser:
         if pos < 1:
             return None, set()
         else:
-            name = line[:pos]
+            name = line[:pos].strip()
             pos += 1  # skip ','
             text = line[pos:]
         # check sources
@@ -177,20 +177,15 @@ class LiveParser:
             if pos > 0:
                 # split for next url
                 sources.add(self.get_source(url=text[:pos]))
-                pos += 1
+                pos += 1  # skip '#'
                 text = text[pos:]
-                continue
-            if pos == 0:
-                # error
-                text = text[1:]
                 continue
             # remove the tail
             pos = text.find('$')
             if pos > 0:
                 text = text[:pos]
-            if len(text) == 0:
-                # error
-                break
+            else:
+                text = text.rstrip()
             # last url
             sources.add(self.get_source(url=text))
             break
