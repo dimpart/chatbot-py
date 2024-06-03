@@ -148,9 +148,8 @@ class LiveLoader(Runner, Logging):
             text = 'Lives not found'
             await box.respond_text(text=text, request=request)
             return False
-        coro = self.scanner.scan_channels(live_path=local_path, timeout=32, task=task)
-        thr = Runner.async_thread(coro=coro)
-        thr.start()
+        # scan live channels from local path
+        await self.scanner.scan_channels(live_path=local_path, timeout=32, task=task)
 
 
 async def _save_channels(channels: Iterable[LiveChannel], path: str):

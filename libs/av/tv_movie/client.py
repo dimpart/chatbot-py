@@ -98,29 +98,29 @@ class SearchBox(VideoBox):
         kw_len = len(keywords)
         if kw_len == 0:
             return
-        elif kw_len == 11 and keywords.lower() == 'tv channels':
-            task = self._new_task(keywords=keywords, request=request)
-            tv = LiveLoader()
-            await tv.search(task=task)
-            return
-        elif kw_len == 12 and keywords.lower() == 'show history':
-            his_man = HistoryManager()
-            await _respond_history(history=his_man.commands, request=request, box=self)
-            return
         else:
             self._cancel_task()
+            # save command in history
             his_man = HistoryManager()
             his_man.add_command(cmd=keywords, when=request.time, sender=sender, group=group)
-        # cancel command
+        # system commands
         if kw_len == 6 and keywords.lower() == 'cancel':
             return
         elif kw_len == 4 and keywords.lower() == 'stop':
+            return
+        elif kw_len == 12 and keywords.lower() == 'show history':
+            await _respond_history(history=his_man.commands, request=request, box=self)
             return
         #
         #  2. search
         #
         task = self._new_task(keywords=keywords, request=request)
-        coro = self._search(task=task)
+        if kw_len == 11 and keywords.lower() == 'tv channels':
+            tv = LiveLoader()
+            coro = tv.search(task=task)
+        else:
+            coro = self._search(task=task)
+        # searching in background
         thr = Runner.async_thread(coro=coro)
         thr.start()
 
