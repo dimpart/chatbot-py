@@ -32,6 +32,7 @@ from dimples import URI
 from ...utils import Log, Logging
 from ...utils import TextFile
 from ...utils import md_esc
+from ...utils import get_filename, get_extension
 
 from ..tvbox import LiveChannel
 from ..tvbox import LiveParser, LockedParser
@@ -147,14 +148,28 @@ def _build_channel_response(channels: Set[LiveChannel]) -> str:
             continue
         elif count == 1:
             line = valid_sources[0]
-            text += '- [%s](%s "%s - Live")\n' % (name, line.url, name)
+            url = _md_live_url(name=name, url=line.url)
+            text += '- %s\n' % url
             continue
         text += '- **%s**' % name
         for index in range(count):
             line = valid_sources[index]
-            text += ' > %d. [%s](%s "%s - Live")' % (index + 1, name, line.url, name)
+            url = _md_live_url(name=name, url=line.url)
+            text += ' > %d. %s' % (index + 1, url)
         text += '\n'
     return text
+
+
+def _md_live_url(name: str, url: URI) -> str:
+    if url is None or url.find('://') < 0:
+        Log.error(msg='live url error: "%s" -> %s' % (name, url))
+        return name
+    ext = get_extension(filename=get_filename(path=url))
+    if ext is None or len(ext) == 0:
+        url += '#live.m3u8'
+    else:
+        url += '#live'
+    return '[%s](%s "%s - Live")' % (name, url, name)
 
 
 async def _http_get(url: URI) -> Optional[str]:

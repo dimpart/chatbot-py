@@ -119,6 +119,7 @@ class LiveLoader(Runner, Logging):
             self.warning(msg='path for "lives.txt" not found')
             return False
         else:
+            self.info(msg='scanning live channels: %s -> %s' % (live_urls, local_path))
             is_first = not Path.exists(path=local_path)
         # 2. scan each url
         all_channels = set()
@@ -131,8 +132,10 @@ class LiveLoader(Runner, Logging):
                 all_channels.add(channel)
             # 3. save available channels
             if is_first:
+                self.info(msg='saving channels: %d, %s' % (len(all_channels), local_path))
                 await _save_channels(channels=all_channels, path=local_path)
         if not is_first:
+            self.info(msg='saving all channels: %d, %s' % (len(all_channels), local_path))
             await _save_channels(channels=all_channels, path=local_path)
 
     async def search(self, task: Task):
