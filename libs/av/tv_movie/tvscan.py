@@ -60,7 +60,7 @@ class LiveScanner(Logging):
             text = await _http_get(url=live_url)
         elif live_path is not None:
             self.info(msg='loading channels from "%s"...' % live_path)
-            text = TextFile(path=live_path).read()
+            text = await TextFile(path=live_path).read()
         else:
             assert False, 'live url/path empty'
         if text is None:
@@ -109,9 +109,11 @@ class LiveScanner(Logging):
                     if source_count > 1:
                         title += ' - Line %d' % source_index
                     partial = 'Scanning %s (%d/%d)...' % (title, channel_index, channel_count)
+                    partial += '\n\n----\n'
+                    partial += Task.CANCEL_PROMPT
                     if len(available_channels) > 0:
                         text = _build_channel_response(channels=available_channels)
-                        partial = '%s\n\n----\n%s' % (text, partial)
+                        partial = '%s\n\n%s' % (text, partial)
                     res = await box.respond_markdown(text=partial, request=request, sn=sn, muted='true')
                     sn = res['sn']
                 #

@@ -85,4 +85,4 @@ class ChatStorage(Logging):
         }
         text = '%s,\n' % json_encode(info)
         self.info(msg='saving response for %s into %s' % (identifier, path))
-        return Storage.append_text(text=text, path=path)
+        return await Storage.append_text(text=text, path=path)

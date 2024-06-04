@@ -93,7 +93,7 @@ class LiveLoader(Runner, Logging):
             self.warning(msg='path for "tvbox.json" not found')
             return None
         # load 'tvbox.json'
-        container = JSONFile(path=entrance).read()
+        container = await JSONFile(path=entrance).read()
         if isinstance(container, Dict):
             container = container.get('lives')
         if not isinstance(container, List):
@@ -120,7 +120,7 @@ class LiveLoader(Runner, Logging):
             return False
         else:
             self.info(msg='scanning live channels: %s -> %s' % (live_urls, local_path))
-            is_first = not Path.exists(path=local_path)
+            is_first = not await Path.exists(path=local_path)
         # 2. scan each url
         all_channels = set()
         for url in live_urls:
@@ -168,4 +168,4 @@ async def _save_channels(channels: Iterable[LiveChannel], path: str):
             text += '%s,%s\n' % (item.name, urls)
     if len(text) == 0:
         return False
-    return TextFile(path=path).write(text=text)
+    return await TextFile(path=path).write(text=text)

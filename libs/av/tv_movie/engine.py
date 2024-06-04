@@ -39,6 +39,13 @@ from ...chat import ChatRequest, VideoBox
 class Task:
     """ Search Task """
 
+    CANCEL_PROMPT = '_If this task takes too long, you can input the commands below to stop it:_\n' \
+                    '- **cancel**\n' \
+                    '- **stop**\n' \
+                    '\n' \
+                    '### NOTICE:\n' \
+                    '_Another new task will interrupt the previous task too._'
+
     def __init__(self, keywords: str, request: Optional[ChatRequest], box: VideoBox):
         super().__init__()
         self.__keywords = keywords
