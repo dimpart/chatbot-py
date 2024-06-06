@@ -41,6 +41,7 @@ from .channel import LiveChannel
 from .genre import LiveGenre
 
 from .parser import LiveParser, LockedParser
+from .scanner import LiveStreamScanner
 
 
 __all__ = [
@@ -48,5 +49,6 @@ __all__ = [
     'LiveStream', 'LiveChannel', 'LiveGenre',
 
     'LiveParser', 'LockedParser',
+    'LiveStreamScanner',
 
 ]

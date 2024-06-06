@@ -36,6 +36,7 @@
 
 from .lives import LiveStream, LiveChannel, LiveGenre
 from .lives import LiveParser, LockedParser
+from .lives import LiveStreamScanner
 
 
 name = 'TV-Box'
@@ -47,5 +48,6 @@ __all__ = [
 
     'LiveStream', 'LiveChannel', 'LiveGenre',
     'LiveParser', 'LockedParser',
+    'LiveStreamScanner',
 
 ]
