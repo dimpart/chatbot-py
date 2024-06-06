@@ -72,6 +72,33 @@ class LiveStream(MapInfo):
             when = _get_time_str(timestamp=when)
         return '<%s time="%s" ttl=%d url="%s" />' % (cname, when, self.ttl, self.url)
 
+    # Override
+    def __hash__(self) -> int:
+        """ Return hash(self). """
+        return self.url.__hash__()
+
+    # Override
+    def __eq__(self, x: str) -> bool:
+        """ Return self==value. """
+        if isinstance(x, LiveStream):
+            if self is x:
+                # same object
+                return True
+            x = x.url
+        # check url
+        return self.url.__eq__(x)
+
+    # Override
+    def __ne__(self, x: str) -> bool:
+        """ Return self!=value. """
+        if isinstance(x, LiveStream):
+            if self is x:
+                # same object
+                return False
+            x = x.url
+        # check url
+        return self.url.__ne__(x)
+
     @property
     def url(self) -> URI:
         """ m3u8 """
@@ -88,7 +115,7 @@ class LiveStream(MapInfo):
         return self.get(key='ttl', default=None)
 
     @property
-    def time(self) -> Optional[time]:
+    def time(self) -> Optional[float]:
         return self.get(key='time', default=None)
 
     def set_ttl(self, ttl: float, now: float = None):
@@ -136,4 +163,6 @@ class LiveStream(MapInfo):
         for item in streams:
             if isinstance(item, MapInfo):
                 array.append(item.dictionary)
+            elif isinstance(item, Dict):
+                array.append(item)
         return array

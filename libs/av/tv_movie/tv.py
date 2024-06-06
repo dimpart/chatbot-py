@@ -27,11 +27,12 @@ from typing import Optional, Iterable, List, Dict
 
 from dimples import URI, DateTime
 
+from tvbox import LiveGenre
+
 from ...utils import Runner
 from ...utils import Singleton, Logging
 from ...utils import Path, TextFile, JSONFile
 
-from ..tvbox import LiveChannel
 from .tvscan import LiveScanner
 from .engine import Task
 
@@ -122,21 +123,24 @@ class LiveLoader(Runner, Logging):
             self.info(msg='scanning live channels: %s -> %s' % (live_urls, local_path))
             is_first = not await Path.exists(path=local_path)
         # 2. scan each url
-        all_channels = set()
+        all_groups: List[LiveGenre] = []
+        channel_count = 0
         for url in live_urls:
-            available_channels = await self.scanner.scan_channels(live_url=url, timeout=64)
-            if len(available_channels) == 0:
-                self.warning(msg='no available channel found: %s' % url)
-                continue
-            for channel in available_channels:
-                all_channels.add(channel)
+            genres = await self.scanner.scan(live_url=url, timeout=64)
+            for group in genres:
+                count = len(group.channels)
+                if count > 0:
+                    channel_count += count
+                    all_groups.append(group)
+                else:
+                    self.warning(msg='no available channel found: %s' % url)
             # 3. save available channels
             if is_first:
-                self.info(msg='saving channels: %d, %s' % (len(all_channels), local_path))
-                await _save_channels(channels=all_channels, path=local_path)
+                self.info(msg='saving channels: %d -> %s' % (channel_count, local_path))
+                await _save_channels(genres=all_groups, path=local_path)
         if not is_first:
-            self.info(msg='saving all channels: %d, %s' % (len(all_channels), local_path))
-            await _save_channels(channels=all_channels, path=local_path)
+            self.info(msg='saving all channels: %d -> %s' % (channel_count, local_path))
+            await _save_channels(genres=all_groups, path=local_path)
 
     async def search(self, task: Task):
         request = task.request
@@ -152,20 +156,23 @@ class LiveLoader(Runner, Logging):
             await box.respond_text(text=text, request=request)
             return False
         # scan live channels from local path
-        await self.scanner.scan_channels(live_path=local_path, timeout=32, task=task)
+        await self.scanner.scan(live_path=local_path, timeout=32, task=task)
 
 
-async def _save_channels(channels: Iterable[LiveChannel], path: str):
+async def _save_channels(genres: Iterable[LiveGenre], path: str):
     text = ''
-    for item in channels:
-        urls = ''
-        sources = item.sources
-        for src in sources:
-            if src.available:
-                urls += '#%s' % src.url
-        if len(urls) > 0:
-            urls = urls[1:]  # skip first '#'
-            text += '%s,%s\n' % (item.name, urls)
+    for group in genres:
+        text += '%s,#genre#\n'
+        channels = group.channels
+        for item in channels:
+            urls = ''
+            sources = item.streams
+            for src in sources:
+                if src.available:
+                    urls += '#%s' % src.url
+            if len(urls) > 0:
+                urls = urls[1:]  # skip first '#'
+                text += '%s,%s\n' % (item.name, urls)
     if len(text) == 0:
         return False
     return await TextFile(path=path).write(text=text)

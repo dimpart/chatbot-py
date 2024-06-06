@@ -84,6 +84,7 @@ class LiveParser:
             for src in sources:
                 streams.add(self.get_stream(url=src))
             channel.add_streams(streams=streams)
+            current.add_channel(channel=channel)
         # add last group
         if len(current.channels) > 0:
             all_groups.append(current)

@@ -150,4 +150,6 @@ class LiveChannel(MapInfo):
         for item in channels:
             if isinstance(item, MapInfo):
                 array.append(item.dictionary)
+            elif isinstance(item, Dict):
+                array.append(item)
         return array

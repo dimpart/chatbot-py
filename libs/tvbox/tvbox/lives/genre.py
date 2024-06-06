@@ -135,9 +135,11 @@ class LiveGenre(MapInfo):
         return groups
 
     @classmethod
-    def revert(cls, groups: Iterable) -> List[Dict]:
+    def revert(cls, genres: Iterable) -> List[Dict]:
         array: List[Dict] = []
-        for item in groups:
+        for item in genres:
             if isinstance(item, MapInfo):
                 array.append(item.dictionary)
+            elif isinstance(item, Dict):
+                array.append(item)
         return array
