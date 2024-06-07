@@ -28,11 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
-from typing import Optional, Tuple, List, Dict, Set
+from typing import Optional, Set, Tuple, List
 
 from ..types import URI
-from .stream import LiveStream
+from .stream import LiveStream, LiveStreamFactory
 from .channel import LiveChannel
 from .genre import LiveGenre
 
@@ -41,15 +40,14 @@ class LiveParser:
 
     def __init__(self):
         super().__init__()
-        # caches
-        self.__streams: Dict[URI, LiveStream] = {}
+        self.__factory = LiveStreamFactory()
+
+    @property
+    def stream_factory(self) -> LiveStreamFactory:
+        return self.__factory
 
     def get_stream(self, url: URI) -> LiveStream:
-        src = self.__streams.get(url)
-        if src is None:
-            src = LiveStream(url=url)
-            self.__streams[url] = src
-        return src
+        return self.stream_factory.get_stream(url=url)
 
     def parse(self, text: str) -> List[LiveGenre]:
         lines = text.splitlines()
@@ -62,6 +60,10 @@ class LiveParser:
         for item in lines:
             text = item.strip()
             if len(text) == 0:
+                continue
+            elif text.startswith(r'#'):
+                continue
+            elif text.startswith(r'//'):
                 continue
             # 1. check group name
             title = fetch_genre(text=text)
@@ -133,16 +135,3 @@ def fetch_streams(text: str) -> List[URI]:
         sources.append(text)
         break
     return sources
-
-
-class LockedParser(LiveParser):
-    """ Threading Safe Parser """
-
-    def __init__(self):
-        super().__init__()
-        self.__lock = threading.Lock()
-
-    # Override
-    def get_stream(self, url: URI) -> LiveStream:
-        with self.__lock:
-            return super().get_stream(url=url)

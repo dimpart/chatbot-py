@@ -28,22 +28,17 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
+import threading
 from typing import Optional, Any, List, Dict
 from typing import Iterable
 
 from ..types import URI, MapInfo
-
-
-def _get_time_str(timestamp: float) -> str:
-    localtime = time.localtime(timestamp)
-    return time.strftime('%Y-%m-%d %H:%M:%S', localtime)
+from ..utils import DateTime
+from ..utils import Singleton
 
 
 class LiveStream(MapInfo):
     """ M3U8 """
-
-    EXPIRES = 3600 * 6
 
     def __init__(self, info: Dict = None, url: URI = None):
         """
@@ -61,16 +56,16 @@ class LiveStream(MapInfo):
         cname = self.__class__.__name__
         when = self.time
         if when is not None:
-            when = _get_time_str(timestamp=when)
-        return '<%s time="%s" ttl=%d url="%s" />' % (cname, when, self.ttl, self.url)
+            when = DateTime.full_string(timestamp=when)
+        return '<%s time="%s" ttl=%s url="%s" />' % (cname, when, self.ttl, self.url)
 
     # Override
     def __repr__(self) -> str:
         cname = self.__class__.__name__
         when = self.time
         if when is not None:
-            when = _get_time_str(timestamp=when)
-        return '<%s time="%s" ttl=%d url="%s" />' % (cname, when, self.ttl, self.url)
+            when = DateTime.full_string(timestamp=when)
+        return '<%s time="%s" ttl=%s url="%s" />' % (cname, when, self.ttl, self.url)
 
     # Override
     def __hash__(self) -> int:
@@ -121,17 +116,9 @@ class LiveStream(MapInfo):
     def set_ttl(self, ttl: float, now: float = None):
         """ update speed """
         if now is None:
-            now = time.time()
+            now = DateTime.current_timestamp()
         self.set(key='ttl', value=ttl)
         self.set(key='time', value=now)
-
-    def is_expired(self, now: float = None) -> bool:
-        last_time = self.time
-        if last_time is None:
-            return False
-        elif now is None:
-            now = time.time()
-        return now > (last_time + self.EXPIRES)
 
     #
     #   Factories
@@ -145,8 +132,9 @@ class LiveStream(MapInfo):
             return info
         elif isinstance(info, MapInfo):
             info = info.dictionary
-        if 'url' in info:
-            return cls(info=info)
+        # if 'url' in info:
+        #     return cls(info=info)
+        return _shared_stream_factory.new_stream(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveStream]:
@@ -166,3 +154,66 @@ class LiveStream(MapInfo):
             elif isinstance(item, Dict):
                 array.append(item)
         return array
+
+
+@Singleton
+class LiveStreamFactory:
+
+    def __init__(self):
+        super().__init__()
+        self.__streams: Dict[URI, LiveStream] = {}
+        self.__lock = threading.Lock()
+
+    def new_stream(self, info: Dict) -> Optional[LiveStream]:
+        url = info.get('url')
+        if url is None or not isinstance(url, str) or len(url) == 0:
+            return None
+        with self.__lock:
+            src = self.__streams.get(url)
+            if src is None:
+                src = LiveStream(info=info)
+                self.__streams[url] = src
+            return src
+
+    def get_stream(self, url: URI) -> LiveStream:
+        with self.__lock:
+            src = self.__streams.get(url)
+            if src is None:
+                src = LiveStream(url=url)
+                self.__streams[url] = src
+            return src
+
+    def set_stream(self, stream: LiveStream):
+        url = stream.url
+        with self.__lock:
+            old = self.__streams.get(url)
+            if old is not None:
+                merge_stream(new=stream, old=old)
+            self.__streams[url] = stream
+
+
+def merge_stream(new: LiveStream, old: LiveStream) -> LiveStream:
+    if new is old:
+        return new
+    new_time = new.time
+    old_time = old.time
+    if new_time is None and old_time is None:
+        # neither of them were checked
+        return new
+    elif new_time is None:
+        # copy old info
+        new.set_ttl(ttl=old.ttl, now=old_time)
+    elif old_time is None:
+        # copy new info
+        old.set_ttl(ttl=new.ttl, now=new_time)
+    elif new_time < old_time:
+        # copy old info
+        new.set_ttl(ttl=old.ttl, now=old_time)
+    elif old_time < new_time:
+        # copy new info
+        old.set_ttl(ttl=new.ttl, now=new_time)
+    # OK
+    return new
+
+
+_shared_stream_factory = LiveStreamFactory()

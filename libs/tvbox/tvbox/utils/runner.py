@@ -60,7 +60,7 @@ class AsyncRunner(ABC):
 
     # protected
     async def run(self):
-        while True:
+        while self.running:
             try:
                 ok = await self.process()
             except Exception as error:

@@ -12,7 +12,7 @@ import io
 
 from setuptools import setup, find_packages
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 
@@ -38,6 +38,12 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
+    entry_points={
+        'console_scripts': [
+            'tvbox=tvbox.run:main',
+        ]
+    },
     install_requires=[
+        'aiou>=0.1.0',
     ]
 )

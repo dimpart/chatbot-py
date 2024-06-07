@@ -29,13 +29,13 @@
 # ==============================================================================
 
 import threading
-import time
 from typing import Optional, List, Dict
 
 import requests
 
 from ..types import URI
-from ..types import AsyncRunner as Runner
+from ..utils import DateTime
+from ..utils import AsyncRunner as Runner
 from .stream import LiveStream
 
 
@@ -43,14 +43,24 @@ class LiveStreamScanner(Runner):
 
     def __init__(self):
         super().__init__(interval=2)
-        self.__caches: Dict[URI, LiveStream] = {}
-        self.__queue: List[LiveStream] = []
+        # caches
+        self.__checkers: Dict[URI, LiveStreamChecker] = {}
+        self.__queue: List[LiveStreamChecker] = []
         self.__lock = threading.Lock()
         # background thread
         thr = Runner.async_thread(coro=self.start())
         thr.start()
 
-    async def scan_stream(self, stream: LiveStream) -> Optional[LiveStream]:
+    def _get_checker(self, stream: LiveStream):
+        with self.__lock:
+            url = stream.url
+            checker = self.__checkers.get(url)
+            if checker is None:
+                checker = LiveStreamChecker(stream=stream)
+                self.__checkers[url] = checker
+            return checker
+
+    async def scan_stream(self, stream: LiveStream, timeout: float = None) -> Optional[LiveStream]:
         """
         Check whether the stream source is available
 
@@ -62,83 +72,86 @@ class LiveStreamScanner(Runner):
                return None, else return the stream.
 
         :param stream: live stream
+        :param timeout:
         :return: None on invalid
         """
-        if stream.available and not stream.is_expired():
-            # no need to check again now
-            return stream
-        url = stream.url
+        checker = self._get_checker(stream=stream)
         with self.__lock:
-            #
-            #  cache stream
-            #
-            old = self.__caches.get(url)
-            if old is not None:
-                stream = merge_stream(new=stream, old=old)
-            self.__caches[url] = stream
-            #
-            #  check stream
-            #
-            if stream.available and not stream.is_expired():
-                # no need to check again now
-                return stream
-            elif not (stream.ttl is None or stream.time is None):
-                # this stream was checked before, but expired not
-                # so add it in the waiting queue to check it in background thread
-                self.__queue.append(stream)
-            elif await check_stream(stream=stream) is None:
-                # first check, failed
-                return None
-            # OK
+            if checker.is_checked():
+                # this stream was checked recently,
+                # no need to check again.
+                is_first = False
+            elif stream.time is not None:
+                # this stream was checked before, but expired now; so
+                # add it in the waiting queue to check it in background thread.
+                self.__queue.append(checker)
+                is_first = False
+            else:
+                # first check
+                is_first = True
+        if is_first:
+            await checker.check(timeout=timeout)
+        if stream.available:
             return stream
 
     # Override
     async def process(self) -> bool:
-        # get next task
         with self.__lock:
-            if len(self.__queue) > 0:
-                stream = self.__queue.pop(0)
-            else:
-                stream = None
-        if stream is None:
+            if len(self.__queue) == 0:
+                # nothing to do now
+                return False
+            checker = self.__queue.pop(0)
+        try:
+            await checker.check(timeout=64)
+        except Exception as error:
+            print('[TVBox] failed to scan stream: %s, error: %s' % (checker.stream, error))
+
+
+class LiveStreamChecker:
+
+    SCAN_INTERVAL = 3600 * 2
+
+    def __init__(self, stream: LiveStream):
+        super().__init__()
+        self.__stream = stream
+        self.__lock = threading.Lock()
+
+    @property
+    def stream(self) -> LiveStream:
+        return self.__stream
+
+    def is_checked(self, now: float = None) -> bool:
+        """ whether checked recently """
+        last_time = self.stream.time
+        if last_time is None:
+            # never checked yet
             return False
-        # scan it
-        await self.scan_stream(stream=stream)
-        return True
+        elif now is None:
+            now = DateTime.current_timestamp()
+        # check interval
+        return now < (last_time + self.SCAN_INTERVAL)
+
+    async def check(self, timeout: float = None) -> bool:
+        stream = self.stream
+        with self.__lock:
+            if self.is_checked():
+                # no need to check again now
+                return True
+            # check it again
+            ttl = await check_stream(stream=stream, timeout=timeout)
+            return ttl is not None and ttl > 0
 
 
-def merge_stream(new: LiveStream, old: LiveStream) -> LiveStream:
-    if new is old:
-        return new
-    new_time = new.time
-    old_time = old.time
-    if new_time is None and old_time is None:
-        # neither of them were checked
-        return new
-    elif new_time is None:
-        # copy old info
-        new.set_ttl(ttl=old.ttl, now=old_time)
-    elif old_time is None:
-        # copy new info
-        old.set_ttl(ttl=new.ttl, now=new_time)
-    elif new_time < old_time:
-        # copy old info
-        new.set_ttl(ttl=old.ttl, now=old_time)
-    elif old_time < new_time:
-        # copy new info
-        old.set_ttl(ttl=new.ttl, now=new_time)
-    # OK
-    return new
-
-
-async def check_stream(stream: LiveStream) -> Optional[float]:
-    start_time = time.time()
-    available = await _http_check(url=stream.url, timeout=64)
+async def check_stream(stream: LiveStream, timeout: float = None) -> Optional[float]:
+    start_time = DateTime.current_timestamp()
+    available = await _http_check(url=stream.url, timeout=timeout)
+    end_time = DateTime.current_timestamp()
     if available:
-        end_time = time.time()
         ttl = end_time - start_time
-        stream.set_ttl(ttl=ttl, now=end_time)
-        return ttl
+    else:
+        ttl = None
+    stream.set_ttl(ttl=ttl, now=end_time)
+    return ttl
 
 
 async def _http_check(url: URI, timeout: float = None, is_m3u8: bool = None) -> bool:

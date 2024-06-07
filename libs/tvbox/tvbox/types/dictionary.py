@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Any, Optional, Iterator, Dict
+from typing import Optional, Iterator, Any, Dict
 from typing import ItemsView, KeysView, ValuesView
 
 
@@ -48,14 +48,17 @@ class MapInfo:
         """ D.clear() -> None.  Remove all items from D. """
         self.__dictionary.clear()
 
-    def get(self, key: str, default: Any = None) -> Optional[Any]:
+    def get(self, key: str, default: Any = None) -> Any:
         """ Return the value for key if key is in the dictionary, else default. """
         return self.__dictionary.get(key, default)
 
-    def set(self, key: str, value: Any):
-        if isinstance(value, MapInfo):
-            value = value.dictionary
-        self.__dictionary[key] = value
+    def set(self, key: str, value: Optional[Any]):
+        if value is None:
+            self.__dictionary.pop(key, None)
+        else:
+            if isinstance(value, MapInfo):
+                value = value.dictionary
+            self.__dictionary[key] = value
 
     def items(self) -> ItemsView[str, Any]:
         """ D.items() -> a set-like object providing a view on D's items """

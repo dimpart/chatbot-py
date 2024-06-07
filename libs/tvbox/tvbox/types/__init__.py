@@ -29,7 +29,6 @@
 # ==============================================================================
 
 from .dictionary import MapInfo
-from .runner import AsyncRunner
 
 
 URI = str
@@ -39,7 +38,5 @@ __all__ = [
 
     'URI',
     'MapInfo',
-
-    'AsyncRunner',
 
 ]
