@@ -42,7 +42,7 @@ from ...client import Monitor
 
 from .engine import Task, Engine
 from .engine import KeywordManager
-from .tv import LiveLoader
+from .tvscan import TVScan, LiveConfig
 
 
 class SearchBox(VideoBox):
@@ -52,6 +52,23 @@ class SearchBox(VideoBox):
         super().__init__(identifier=identifier, facebook=facebook)
         self.__engines = engines
         self.__task: Optional[Task] = None
+        # TODO: LiveConfig for TV channels
+        config = LiveConfig(info={
+            'tvbox': {
+                'sources': [
+                    TVScan.INDEX_URI,
+                ],
+
+                'base-url': 'http://tfs.dim.chat/tvbox/',
+
+                'output-dir': '/var/www/html/tvbox/',
+
+                'index-file': 'tvbox.json',
+                'lives-file': 'lives-{HASH}.txt',
+                'source-file': 'source-{HASH}.txt',
+            }
+        })
+        self.__tv = TVScan(config=config)
 
     def _cancel_task(self):
         task = self.__task
@@ -116,7 +133,7 @@ class SearchBox(VideoBox):
         #
         task = self._new_task(keywords=keywords, request=request)
         if kw_len == 11 and keywords.lower() == 'tv channels':
-            tv = LiveLoader()
+            tv = self.__tv
             coro = tv.search(task=task)
         else:
             coro = self._search(task=task)

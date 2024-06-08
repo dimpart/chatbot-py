@@ -33,13 +33,13 @@
 # from .client import SearchBox
 from .client import SearchClient
 
-from .tv import LiveLoader
+from .tvscan import TVScan
 
 __all__ = [
 
     # 'SearchBox',
     'SearchClient',
 
-    'LiveLoader',
+    'TVScan',
 
 ]

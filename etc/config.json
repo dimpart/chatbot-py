@@ -1,0 +1,32 @@
+# -*- coding: utf-8 -*-
+#
+#   TV-Box: Live Stream
+#
+
+{
+
+  // config for TV Box
+  "tvbox": {
+
+    // list of url for index: 'tvbox.json'
+    "sources": [
+    ],
+
+    // list of dict with 'url' for lives: 'lives.txt'
+    "lives": [
+    ],
+
+    // base url for output files
+    "base-url": "http://tfs.dim.chat/tvbox/",
+
+    // base path for output files
+    "output-dir": "/var/www/html/tvbox/",
+
+    // output files
+    "index-file": "tvbox.json",
+    "lives-file": "lives-{HASH}.txt",
+    "source-file": "source-{HASH}.txt"
+
+  }
+
+}
