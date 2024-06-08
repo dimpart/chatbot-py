@@ -43,8 +43,10 @@ path = os.path.dirname(path)
 path = os.path.dirname(path)
 sys.path.insert(0, path)
 
-from tvbox.utils import Log, Config
+from tvbox.utils import Log
 from tvbox.utils import AsyncRunner as Runner
+from tvbox.config import LiveConfig
+from tvbox.source import LiveHandler
 from tvbox.loader import LiveLoader
 
 
@@ -99,13 +101,14 @@ async def async_main():
         Log.error(msg='config file not exists: %s' % config_file)
         sys.exit(0)
     # load config
-    config = await Config.load(path=config_file)
+    config = await LiveConfig.load(path=config_file)
     # initializing
     Log.info(msg='!!!')
     Log.info(msg='!!! Init with config: %s => %s' % (config_file, config))
     Log.info(msg='!!!')
     loader = LiveLoader(config=config)
-    await loader.run()
+    handler = LiveHandler(config=config)
+    await loader.load(handler=handler)
     Log.info(msg='!!!')
     Log.info(msg='!!! Mission Accomplished.')
     Log.info(msg='!!!')

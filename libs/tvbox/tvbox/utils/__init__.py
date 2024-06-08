@@ -30,11 +30,7 @@
 
 import hashlib
 import json
-from typing import Optional, Union, Any, List, Dict
-
-from aiou import TextFile
-
-from ..types import MapInfo
+from typing import Optional, Union, List, Dict
 
 from .log import DateTime
 from .log import Log, Logging
@@ -59,20 +55,6 @@ class Singleton(object):
 
     def __getattr__(self, key):
         return getattr(self.__cls, key, None)
-
-
-class Config(MapInfo):
-
-    def get_option(self, section: str, option: str) -> Optional[Any]:
-        sub: Dict = self.get(key=section, default={})
-        return sub.get(option)
-
-    @classmethod
-    async def load(cls, path: str):
-        info = await TextFile(path=path).read()
-        if info is not None:
-            info = parse_json(text=info)
-            return cls(info=info)
 
 
 def parse_json(text: str) -> Union[Dict, List, None]:
@@ -129,8 +111,6 @@ __all__ = [
     'AsyncRunner',
 
     'Singleton',
-
-    'Config',
 
     'parse_json', 'purify_json',
 
