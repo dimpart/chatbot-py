@@ -36,7 +36,7 @@ from .utils import parse_json
 
 from .config import join_path
 from .config import LiveConfig
-from .scanner import LiveScanner
+from .scanner import LiveScanner, ScanContext
 from .source import SourceLoader, LiveHandler
 
 
@@ -72,7 +72,7 @@ class LiveLoader(Logging):
             # 1.1. load
             text = await self._load_resource(src=src)
             if text is None:
-                self.error(msg='failed to load resources: %s' % src)
+                self.error(msg='ignore index: %s' % src)
                 continue
             # 1.2. parse
             info = parse_json(text=text)
@@ -108,14 +108,14 @@ class LiveLoader(Logging):
         self.info(msg='loading resource from: "%s"' % src)
         res = await self.loader.load_text(src=src)
         if res is None:
-            self.error(msg='failed to load resource: "%s" % src')
+            self.error(msg='failed to load resource: "%s"' % src)
         return res
 
     #
     #   Running
     #
 
-    async def load(self, handler: LiveHandler):
+    async def load(self, handler: LiveHandler, context: ScanContext):
         scanner = self.scanner
         available_lives: List[Dict] = []
         # scan lives
@@ -130,7 +130,7 @@ class LiveLoader(Logging):
                 await handler.update_source(text=text, url=url)
             count = len(text.splitlines())
             self.info(msg='scanning lives: %s => %d lines' % (url, count))
-            genres = await scanner.scan(text=text, timeout=64, handler=handler)
+            genres = await scanner.scan(text=text, context=context, handler=handler)
             if len(genres) == 0:
                 self.warning(msg='ignore empty lives: %s => %d lines' % (url, count))
             else:

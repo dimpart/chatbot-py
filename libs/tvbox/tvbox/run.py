@@ -48,6 +48,7 @@ from tvbox.utils import AsyncRunner as Runner
 from tvbox.config import LiveConfig
 from tvbox.source import LiveHandler
 from tvbox.loader import LiveLoader
+from tvbox.scanner import ScanContext
 
 
 #
@@ -107,8 +108,8 @@ async def async_main():
     Log.info(msg='!!! Init with config: %s => %s' % (config_file, config))
     Log.info(msg='!!!')
     loader = LiveLoader(config=config)
-    handler = LiveHandler(config=config)
-    await loader.load(handler=handler)
+    await loader.load(handler=LiveHandler(config=config),
+                      context=ScanContext(params={'timeout': 64}))
     Log.info(msg='!!!')
     Log.info(msg='!!! Mission Accomplished.')
     Log.info(msg='!!!')

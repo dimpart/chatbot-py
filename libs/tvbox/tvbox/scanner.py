@@ -38,9 +38,9 @@ from .lives import LiveParser
 
 class ScanContext:
 
-    def __init__(self):
+    def __init__(self, params: Dict[str, Any] = None):
         super().__init__()
-        self.__vars: Dict[str, Any] = {}
+        self.__vars: Dict[str, Any] = {} if params is None else params
 
     def get_value(self, key: str, default: Any = None) -> Optional[Any]:
         return self.__vars.get(key, default)
@@ -109,15 +109,13 @@ class LiveScanner:
     def stream_scanner(self) -> LiveStreamScanner:
         return self.__scanner
 
-    async def scan(self, text: str, timeout: float, handler: ScanEventHandler) -> List[LiveGenre]:
+    async def scan(self, text: str, context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
         """ Get non-empty channel groups """
         groups: List[LiveGenre] = []
         genres = self.live_parser.parse(text=text)
         total_genres = len(genres)
         total_channels, total_streams = _count_channel_streams(genres=genres)
         # prepare scan context
-        context = ScanContext()
-        context.set_value(key='timeout', value=timeout)
         context.set_value(key='all_genres', value=genres)
         context.set_value(key='available_genres', value=groups)
         context.set_value(key='total_genres', value=total_genres)
@@ -137,8 +135,8 @@ class LiveScanner:
             await handler.on_scan_genre_start(context=context, genre=item)
             # scan genre start
             channels = await self._scan_genre(genre=item, context=context, handler=handler)
+            item.channels = channels
             if len(channels) > 0:
-                item.channels = channels
                 groups.append(item)
             # scan genre finished
             await handler.on_scan_genre_finished(context=context, genre=item)
@@ -164,9 +162,11 @@ class LiveScanner:
             await handler.on_scan_channel_start(context=context, genre=genre, channel=item)
             # scan channel start
             streams = await self._scan_channel(channel=item, context=context, handler=handler)
+            item.streams = streams
             if len(streams) > 0:
-                item.streams = streams
                 available_channels.append(item)
+                cnt = context.get_value(key='available_channel_count', default=0)
+                context.set_value(key='available_channel_count', value=(cnt + 1))
             # scan channel finished
             await handler.on_scan_channel_finished(context=context, genre=genre, channel=item)
             # increase positions

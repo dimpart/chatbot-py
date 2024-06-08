@@ -30,9 +30,7 @@
 
 from typing import Optional, Any, List, Dict
 
-from aiou import Path
-
-from aiou import TextFile
+from aiou import Path, TextFile
 
 from .types import URI, MapInfo
 from .utils import Log
