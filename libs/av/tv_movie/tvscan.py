@@ -45,7 +45,7 @@ from .engine import Task
 class SearchContext(ScanContext):
 
     def __init__(self, timeout: Optional[float], task: Optional[Task]):
-        super().__init__(params={'timeout': timeout})
+        super().__init__(timeout=timeout)
         self.__task = task
 
     @property
@@ -69,6 +69,16 @@ class SearchContext(ScanContext):
         task = self.task
         if task is not None:
             return task.cancelled
+
+    @property  # Override
+    def cancelled(self) -> bool:
+        task = self.task
+        stopped = False if task is None else task.cancelled
+        return stopped or super().cancelled
+
+    @cancelled.setter  # Override
+    def cancelled(self, flag: bool):
+        self.set(key='cancelled', value=flag)
 
 
 class TVScan(LiveHandler):
@@ -98,17 +108,20 @@ class TVScan(LiveHandler):
 
     # Override
     async def update_index(self, lives: List[Dict]) -> bool:
-        self.info(msg='scanned from %d lives: %s' % (len(lives), lives))
+        count = len(lives)
+        self.info(msg='finished scanning %d lives: %s' % (count, lives))
         return True
 
     # Override
     async def update_lives(self, genres: List[LiveGenre], url: URI) -> bool:
+        count = len(genres)
+        self.info(msg='got lives in %d genres from %s' % (count, url))
         return True
 
     # Override
     async def update_source(self, text: str, url: URI) -> bool:
-        lines = 0 if text is None else len(text.splitlines())
-        self.info(msg='scanning %d lines in lives: %s' % (lines, url))
+        count = 0 if text is None else len(text.splitlines())
+        self.info(msg='got source file (%d lines) from %s' % (count, url))
         return True
 
     #
@@ -117,16 +130,19 @@ class TVScan(LiveHandler):
 
     # Override
     async def on_scan_start(self, context: ScanContext):
-        context.set_value(key='sn', value=0)
-        context.set_value(key='available_channel_count', value=0)
+        await super().on_scan_start(context=context)
+        context.set(key='sn', value=0)
+        context.set(key='available_channel_count', value=0)
 
     # Override
     async def on_scan_finished(self, context: SearchContext):
         # respond full results
         await _respond_genres(context=context)
+        await super().on_scan_finished(context=context)
 
     # Override
     async def on_scan_stream_start(self, context: SearchContext, channel: LiveChannel, stream: LiveStream):
+        await super().on_scan_stream_start(context=context, channel=channel, stream=stream)
         # respond partially
         expired = self.__respond_time + 2
         now = DateTime.now()
@@ -136,19 +152,20 @@ class TVScan(LiveHandler):
 
 
 async def _respond_partial(context: SearchContext):
+    count = context.get(key='available_channel_count', default=0)
+    offset = context.get(key='channel_offset', default=0)
+    total = context.get(key='channel_total_count', default=0)
+    Log.info(msg='scanning %d/%d channels...' % (offset + 1, total))
+    # check for respond
     request = context.request
     box = context.box
     if request is None or box is None:
         return False
     now = DateTime.current_timestamp()
-    next_time = context.get_value(key='next_time', default=0)
+    next_time = context.get(key='next_time', default=0)
     if now < next_time:
         return False
-    count = context.get_value(key='available_channel_count', default=0)
-    offset = context.get_value(key='channel_offset', default=0)
-    total = context.get_value(key='total_channels', default=0)
-    Log.info(msg='scanning %d/%d channels...' % (offset + 1, total))
-    if count == 0:
+    elif count == 0:
         text = ''
     else:
         text = _build_live_channels(context=context)
@@ -156,10 +173,10 @@ async def _respond_partial(context: SearchContext):
     text += 'Scanning **%d/%d** channels ...\n' % (offset + 1, total)
     text += '\n%s' % Task.CANCEL_PROMPT
     # respond with sn
-    sn = context.get_value(key='sn', default=0)
+    sn = context.get(key='sn', default=0)
     res = await box.respond_markdown(text=text, request=request, sn=sn, muted='true')
     sn = res['sn']
-    context.set_value(key='sn', value=sn)
+    context.set(key='sn', value=sn)
 
 
 async def _respond_genres(context: SearchContext):
@@ -167,7 +184,7 @@ async def _respond_genres(context: SearchContext):
     box = context.box
     if request is None or box is None:
         return False
-    count = context.get_value(key='available_channel_count', default=0)
+    count = context.get(key='available_channel_count', default=0)
     text = _build_live_channels(context=context)
     text += '\n----\n'
     if context.task_cancelled:
@@ -175,17 +192,17 @@ async def _respond_genres(context: SearchContext):
     else:
         text += '**%d** channels available.' % count
     # respond with sn
-    sn = context.get_value(key='sn', default=0)
+    sn = context.get(key='sn', default=0)
     res = await box.respond_markdown(text=text, request=request, sn=sn, muted='true')
     sn = res['sn']
-    context.set_value(key='sn', value=sn)
+    context.set(key='sn', value=sn)
 
 
 def _build_live_channels(context: SearchContext) -> Optional[str]:
-    genres_index = context.get_value(key='genre_index', default=0)
-    channel_index = context.get_value(key='channel_index', default=0)
-    stream_index = context.get_value(key='stream_index', default=0)
-    genres: List[LiveGenre] = context.get_value(key='all_genres', default=[])
+    genres_index = context.get(key='genre_index', default=0)
+    channel_index = context.get(key='channel_index', default=0)
+    stream_index = context.get(key='stream_index', default=0)
+    genres: List[LiveGenre] = context.get(key='all_genres', default=[])
     text = ''
     #
     #  1. scan genres

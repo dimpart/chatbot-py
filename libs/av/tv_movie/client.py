@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-import random
+# import random
 import threading
 from typing import Optional, List, Dict
 
@@ -263,7 +263,7 @@ class SearchClient(ChatClient):
         facebook = self.__facebook
         # copy engines in random order
         engines = self.__engines.copy()
-        count = len(engines)
-        if count > 1:
-            engines = random.sample(engines, count)
+        # count = len(engines)
+        # if count > 1:
+        #     engines = random.sample(engines, count)
         return SearchBox(identifier=identifier, facebook=facebook, engines=engines)
