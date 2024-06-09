@@ -44,7 +44,7 @@ from .lives import LiveParser
 from .scanner import ScanContext, ScanEventHandler
 from .scanner import LiveScanner
 
-from .config import LiveConfig  # , Config
+from .config import LiveConfig
 from .source import SourceLoader, LiveHandler
 from .loader import LiveLoader
 
@@ -66,7 +66,7 @@ __all__ = [
     'ScanContext', 'ScanEventHandler',
     'LiveScanner',
 
-    'LiveConfig',  # 'Config',
+    'LiveConfig',
     'SourceLoader', 'LiveHandler',
     'LiveLoader',
 

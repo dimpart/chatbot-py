@@ -28,114 +28,151 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Any, List, Dict
+from typing import Optional, Union, Any, List, Dict
 
 from aiou import Path, TextFile
 
 from .types import URI, MapInfo
 from .utils import Log
-from .utils import parse_json
+from .utils import json_encode, json_decode
 from .utils import hex_md5
 
 
-class Config(MapInfo):
+class LiveConfig(MapInfo):
 
-    def get_option(self, section: str, option: str) -> Optional[Any]:
-        sub: Dict = self.get(key=section, default={})
+    SECTION_NAME = 'tvbox'
+
+    def get_section(self, section: str) -> Dict[str, Any]:
+        return self.get(key=section, default={})
+
+    def get_option(self, option: str, section: str = None) -> Optional[Any]:
+        if section is None:
+            section = self.SECTION_NAME
+        sub = self.get_section(section=section)
         return sub.get(option)
 
-    @classmethod
-    async def load(cls, path: str):
-        info = await _file_read(path=path)
-        if info is not None:
-            info = parse_json(text=info)
-            return cls(info=info)
-
-
-class LiveConfig(Config):
+    #
+    #   Source URLs
+    #
 
     @property
     def sources(self) -> List[URI]:
-        array = self.get_option(section='tvbox', option='sources')
+        array = self.get_option(option='sources')
         return [] if array is None else array
 
     @property
     def lives(self) -> List[URI]:
-        array = self.get_option(section='tvbox', option='lives')
+        array = self.get_option(option='lives')
         return [] if array is None else array
 
     @property
     def base_url(self) -> Optional[URI]:
         """ base url """
-        return self.get_option(section='tvbox', option='base-url')
+        return self.get_option(option='base-url')
 
     @property
     def output_dir(self) -> Optional[str]:
         """ output directory """
-        return self.get_option(section='tvbox', option='output-dir')
-
-    def get_index_file(self) -> Optional[str]:
-        return self.get_option(section='tvbox', option='index-file')
-
-    def get_lives_file(self, url: URI) -> Optional[str]:
-        file = self.get_option(section='tvbox', option='lives-file')
-        if file is not None:
-            digest = hex_md5(data=url)
-            return file.replace(r'{HASH}', digest)
-
-    def get_source_file(self, url: URI) -> Optional[str]:
-        file = self.get_option(section='tvbox', option='source-file')
-        if file is not None:
-            digest = hex_md5(data=url)
-            return file.replace(r'{HASH}', digest)
+        return self.get_option(option='output-dir')
 
     #
-    #   Output file path
+    #   Output file names
     #
 
-    def get_output_index_path(self) -> str:
+    def get_index_file(self) -> str:
+        file: str = self.get_option(option='index-file')
+        if file is None:
+            return 'tvbox.json'
+        else:
+            return file
+
+    def get_lives_file(self, url: URI) -> str:
+        file: str = self.get_option(option='lives-file')
+        if file is None or file.find(r'{HASH}') < 0:
+            file = 'lives-{HASH}.txt'
+        digest = hex_md5(data=url)
+        return file.replace(r'{HASH}', digest)
+
+    def get_source_file(self, url: URI) -> str:
+        file: str = self.get_option(option='source-file')
+        if file is None or file.find(r'{HASH}') < 0:
+            file = 'source-{HASH}.txt'
+        digest = hex_md5(data=url)
+        return file.replace(r'{HASH}', digest)
+
+    #
+    #   Output file paths
+    #
+
+    def get_output_index_path(self) -> Optional[str]:
         """ output index """
-        file = self.get_index_file()
-        return join_path(base=self.output_dir, file=file)
+        base = self.output_dir
+        if base is not None:
+            file = self.get_index_file()
+            return Path.join(base, file)
 
-    def get_output_lives_path(self, url: URI) -> str:
+    def get_output_lives_path(self, url: URI) -> Optional[str]:
         """ output lives """
-        file = self.get_lives_file(url=url)
-        return join_path(base=self.output_dir, file=file)
+        base = self.output_dir
+        if base is not None:
+            file = self.get_lives_file(url=url)
+            return Path.join(base, file)
 
-    def get_output_source_path(self, url: URI) -> str:
-        file = self.get_source_file(url=url)
-        return join_path(base=self.output_dir, file=file)
+    def get_output_source_path(self, url: URI) -> Optional[str]:
+        base = self.output_dir
+        if base is not None:
+            file = self.get_source_file(url=url)
+            return Path.join(base, file)
 
     #
-    #   Output URL
+    #   Output URLs
     #
 
     def get_output_index_url(self) -> Optional[URI]:
-        file = self.get_index_file()
-        return join_path(base=self.base_url, file=file)
+        base = self.base_url
+        if base is not None:
+            file = self.get_index_file()
+            return Path.join(base, file)
 
-    def get_output_lives_url(self, url: URI):
-        file = self.get_lives_file(url=url)
-        return join_path(base=self.base_url, file=file)
+    def get_output_lives_url(self, url: URI) -> Optional[URI]:
+        base = self.base_url
+        if base is not None:
+            file = self.get_lives_file(url=url)
+            return Path.join(base, file)
+
+    #
+    #   Factory
+    #
+
+    @classmethod
+    async def load(cls, path: str):
+        info = await json_file_read(path=path)
+        if info is not None:
+            return cls(info=info)
 
 
-def join_path(base: str, file: str) -> str:
-    assert base is not None and len(base) > 0, 'base path empty, file: %s' % file
-    assert file is not None and len(file) > 0, 'file name empty, path: %s' % base
-    # standard base path
-    if base.endswith(r'/'):
-        base = base.rstrip(r'/')
-    else:
-        base = Path.dir(path=base)
-    # standard file name
-    if file.startswith(r'./'):
-        file = file[2:]
-    return '%s/%s' % (base, file)
+async def json_file_read(path: str) -> Union[Dict, List, None]:
+    text = await text_file_read(path=path)
+    if text is None or len(text) < 2:
+        return None
+    return json_decode(text=text)
 
 
-async def _file_read(path: str) -> Optional[str]:
+async def text_file_read(path: str) -> Optional[str]:
     try:
         return await TextFile(path=path).read()
     except Exception as error:
         Log.error(msg='failed to read file: %s, error: %s' % (path, error))
+
+
+async def json_file_write(container: Union[Dict, List], path: str) -> bool:
+    text = json_encode(container=container)
+    return await text_file_write(text=text, path=path)
+
+
+async def text_file_write(text: str, path: str) -> bool:
+    try:
+        return await TextFile(path=path).write(text=text)
+    except Exception as error:
+        size = len(text)
+        Log.error(msg='failed to write file: %s (%d bytes), error: %s' % (path, size, error))

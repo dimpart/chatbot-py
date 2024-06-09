@@ -30,11 +30,12 @@
 
 from typing import Optional, Union, Any, Set, List, Dict
 
+from aiou import Path
+
 from .types import URI
 from .utils import Logging
-from .utils import parse_json
+from .utils import json_decode
 
-from .config import join_path
 from .config import LiveConfig
 from .scanner import LiveScanner, ScanContext
 from .source import SourceLoader, LiveHandler
@@ -75,7 +76,7 @@ class LiveLoader(Logging):
                 self.error(msg='ignore index: %s' % src)
                 continue
             # 1.2. parse
-            info = parse_json(text=text)
+            info = json_decode(text=text)
             if not isinstance(info, Dict):
                 self.error(msg='json error: %s -> %s' % (src, text))
                 continue
@@ -91,7 +92,8 @@ class LiveLoader(Logging):
                     self.error(msg='lives item error: %s' % item)
                     continue
                 elif url.find(r'://') < 0:
-                    url = join_path(base=src, file=url)
+                    base = Path.dir(src)
+                    url = Path.join(base, url)
                 live_urls.add(url)
         # 2. get from "lives"
         lives = self.config.lives

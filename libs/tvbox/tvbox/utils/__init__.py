@@ -57,22 +57,6 @@ class Singleton(object):
         return getattr(self.__cls, key, None)
 
 
-def parse_json(text: str) -> Union[Dict, List, None]:
-    text = purify_json(text=text)
-    return json.loads(text)
-
-
-def purify_json(text: str) -> str:
-    lines = text.splitlines()
-    index = len(lines)
-    while index > 0:
-        index -= 1
-        text = lines[index].lstrip()
-        if text.startswith('#') or text.startswith('//'):
-            lines.pop(index)
-    return '\n'.join(lines)
-
-
 def hex_md5(data: Union[bytes, str]) -> str:
     if isinstance(data, str):
         data = utf8_encode(string=data)
@@ -103,6 +87,29 @@ def hex_decode(string: str) -> Optional[bytes]:
     return bytes.fromhex(string)
 
 
+def json_encode(container: Union[Dict, List]) -> str:
+    return json.dumps(container)
+
+
+def json_decode(text: str) -> Union[Dict, List, None]:
+    text = purify_json(text=text)
+    try:
+        return json.loads(text)
+    except json.decoder.JSONDecodeError as jse:
+        print('JSON failed to decode: %s, error: %s' % (text, jse))
+
+
+def purify_json(text: str) -> str:
+    lines = text.splitlines()
+    index = len(lines)
+    while index > 0:
+        index -= 1
+        text = lines[index].lstrip()
+        if text.startswith('#') or text.startswith('//'):
+            lines.pop(index)
+    return '\n'.join(lines)
+
+
 __all__ = [
 
     'DateTime',
@@ -112,11 +119,12 @@ __all__ = [
 
     'Singleton',
 
-    'parse_json', 'purify_json',
-
     'hex_md5',
     'md5_digest',
     'utf8_encode', 'utf8_decode',
     'hex_encode', 'hex_decode',
+
+    'json_encode', 'json_decode',
+    'purify_json',
 
 ]

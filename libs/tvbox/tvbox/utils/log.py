@@ -54,25 +54,25 @@ class Log:
     def debug(cls, msg: str):
         if cls.LEVEL & DEBUG_FLAG == 0:
             return None
-        print('[%s] DEBUG - %s' % (current_time(), msg))
+        print('[%s]  DEBUG  | %s' % (current_time(), msg))
 
     @classmethod
     def info(cls, msg: str):
         if cls.LEVEL & INFO_FLAG == 0:
             return None
-        print('[%s] %s' % (current_time(), msg))
+        print('[%s]   LOG   | %s' % (current_time(), msg))
 
     @classmethod
     def warning(cls, msg: str):
         if cls.LEVEL & WARNING_FLAG == 0:
             return None
-        print('[%s] WARNING - %s' % (current_time(), msg))
+        print('[%s] WARNING | %s' % (current_time(), msg))
 
     @classmethod
     def error(cls, msg: str):
         if cls.LEVEL & ERROR_FLAG == 0:
             return None
-        print('[%s] ERROR - %s' % (current_time(), msg))
+        print('[%s]  ERROR  | %s' % (current_time(), msg))
 
 
 class Logging:

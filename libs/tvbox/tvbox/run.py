@@ -109,7 +109,7 @@ async def async_main():
     Log.info(msg='!!!')
     loader = LiveLoader(config=config)
     await loader.load(handler=LiveHandler(config=config),
-                      context=ScanContext(params={'timeout': 64}))
+                      context=ScanContext(timeout=64))
     Log.info(msg='!!!')
     Log.info(msg='!!! Mission Accomplished.')
     Log.info(msg='!!!')

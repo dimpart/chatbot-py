@@ -28,16 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, Tuple, List, Dict
 
 import requests
-from aiou import TextFile, JSONFile
 
 from .types import URI
 from .utils import Log, Logging
 
 from .lives import LiveStream, LiveChannel, LiveGenre
 
+from .config import text_file_read, text_file_write, json_file_write
 from .config import LiveConfig
 from .scanner import ScanContext, ScanEventHandler
 
@@ -67,14 +67,7 @@ async def _load(src: Union[str, URI]) -> Optional[str]:
     if src.find(r'://') > 0:
         return await _http_get(url=src)
     else:
-        return await _file_read(path=src)
-
-
-async def _file_read(path: str) -> Optional[str]:
-    try:
-        return await TextFile(path=path).read()
-    except Exception as error:
-        Log.error(msg='failed to read file: %s, error: %s' % (path, error))
+        return await text_file_read(path=src)
 
 
 async def _http_get(url: URI) -> Optional[str]:
@@ -112,7 +105,7 @@ class LiveHandler(ScanEventHandler, Logging):
             self.warning(msg='ignore live index: %s => %s' % (path, lives))
             return False
         self.info(msg='saving index file: %d live urls -> %s' % (len(lives), path))
-        return await JSONFile(path=path).write(container={
+        return await json_file_write(path=path, container={
             'lives': lives,
         })
 
@@ -145,7 +138,7 @@ class LiveHandler(ScanEventHandler, Logging):
         # OK
         self.info(msg='saving lives file: %d genres, %d channels -> %s' % (len(genres), count, path))
         if len(text) > 0:
-            return await TextFile(path=path).write(text=text)
+            return await text_file_write(path=path, text=text)
 
     async def update_source(self, text: str, url: URI) -> bool:
         path = self.config.get_output_source_path(url=url)
@@ -154,7 +147,7 @@ class LiveHandler(ScanEventHandler, Logging):
             return False
         self.info(msg='saving source file: %d lines -> %s' % (len(text.splitlines()), path))
         if len(text) > 0:
-            return await TextFile(path=path).write(text=text)
+            return await text_file_write(path=path, text=text)
 
     #
     #   ScanEventHandler
@@ -162,11 +155,16 @@ class LiveHandler(ScanEventHandler, Logging):
 
     # Override
     async def on_scan_start(self, context: ScanContext):
-        pass
+        genres = context.get(key='all_genres', default=[])
+        total_genres = len(genres)
+        total_channels, total_streams = _count_channel_streams(genres=genres)
+        context.set(key='genre_total_count', value=total_genres)
+        context.set(key='channel_total_count', value=total_channels)
+        context.set(key='stream_total_count', value=total_streams)
 
     # Override
     async def on_scan_finished(self, context: ScanContext):
-        pass
+        self.info(msg='Mission accomplished.')
 
     # genre events
 
@@ -196,6 +194,17 @@ class LiveHandler(ScanEventHandler, Logging):
 
     # Override
     async def on_scan_stream_finished(self, context: ScanContext, channel: LiveChannel, stream: LiveStream):
-        offset = context.get_value(key='stream_offset', default=0)
-        total = context.get_value(key='total_streams', default=0)
-        self.info(msg='scanned (%d/%d) stream: "%s"\t-> %s' % (offset, total, channel.name, stream))
+        offset = context.get(key='stream_offset', default=0)
+        total = context.get(key='stream_total_count', default=0)
+        self.info(msg='Scanned (%d/%d) stream: "%s"\t-> %s' % (offset + 1, total, channel.name, stream))
+
+
+def _count_channel_streams(genres: List[LiveGenre]) -> Tuple[int, int]:
+    total_channels = 0
+    total_streams = 0
+    for group in genres:
+        channels = group.channels
+        for item in channels:
+            total_channels += 1
+            total_streams += len(item.streams)
+    return total_channels, total_streams
