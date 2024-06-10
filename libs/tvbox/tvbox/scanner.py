@@ -111,8 +111,18 @@ class LiveScanner:
 
     def __init__(self):
         super().__init__()
-        self.__parser = LiveParser()
-        self.__scanner = LiveStreamScanner()
+        self.__parser = self._create_live_parser()
+        self.__scanner = self._create_stream_scanner()
+
+    # noinspection PyMethodMayBeStatic
+    def _create_live_parser(self) -> LiveParser:
+        # TODO: override for customized parser
+        return LiveParser()
+
+    # noinspection PyMethodMayBeStatic
+    def _create_stream_scanner(self) -> LiveStreamScanner:
+        # TODO: override for customized scanner
+        return LiveStreamScanner()
 
     @property  # protected
     def live_parser(self) -> LiveParser:
@@ -121,6 +131,9 @@ class LiveScanner:
     @property  # protected
     def stream_scanner(self) -> LiveStreamScanner:
         return self.__scanner
+
+    def clear_caches(self):
+        self.stream_scanner.clear_caches()
 
     async def scan(self, text: str, context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
         """ Get non-empty channel groups """

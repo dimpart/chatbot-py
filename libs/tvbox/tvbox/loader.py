@@ -46,8 +46,8 @@ class LiveLoader(Logging):
     def __init__(self, config: LiveConfig):
         super().__init__()
         self.__config = config
-        self.__scanner = LiveScanner()
-        self.__loader = SourceLoader()
+        self.__scanner = self._create_live_scanner()
+        self.__loader = self._create_source_loader()
 
     @property
     def config(self) -> LiveConfig:
@@ -60,6 +60,20 @@ class LiveLoader(Logging):
     @property
     def loader(self) -> SourceLoader:
         return self.__loader
+
+    # noinspection PyMethodMayBeStatic
+    def _create_live_scanner(self) -> LiveScanner:
+        # TODO: override for customized scanner
+        return LiveScanner()
+
+    # noinspection PyMethodMayBeStatic
+    def _create_source_loader(self) -> SourceLoader:
+        # TODO: override for customized loader
+        return SourceLoader()
+
+    def clear_caches(self):
+        self.scanner.clear_caches()
+        self.loader.clear_caches()
 
     #
     #   Load

@@ -51,12 +51,21 @@ class LiveStreamScanner(Runner):
         thr = Runner.async_thread(coro=self.start())
         thr.start()
 
-    def _get_checker(self, stream: LiveStream):
+    # noinspection PyMethodMayBeStatic
+    def _create_stream_checker(self, stream: LiveStream):
+        # TODO: override for customized checker
+        return LiveStreamChecker(stream=stream)
+
+    def clear_caches(self):
+        with self.__lock:
+            self.__checkers.clear()
+
+    def _get_stream_checker(self, stream: LiveStream):
         with self.__lock:
             url = stream.url
             checker = self.__checkers.get(url)
             if checker is None:
-                checker = LiveStreamChecker(stream=stream)
+                checker = self._create_stream_checker(stream=stream)
                 self.__checkers[url] = checker
             return checker
 
@@ -75,7 +84,7 @@ class LiveStreamScanner(Runner):
         :param timeout:
         :return: None on invalid
         """
-        checker = self._get_checker(stream=stream)
+        checker = self._get_stream_checker(stream=stream)
         with self.__lock:
             if checker.is_checked():
                 # this stream was checked recently,
@@ -138,8 +147,13 @@ class LiveStreamChecker:
                 # no need to check again now
                 return True
             # check it again
-            ttl = await check_stream(stream=stream, timeout=timeout)
+            ttl = await self._check_stream(stream=stream, timeout=timeout)
             return ttl is not None and ttl > 0
+
+    # noinspection PyMethodMayBeStatic
+    async def _check_stream(self, stream: LiveStream, timeout: float = None) -> Optional[float]:
+        # TODO: override for customized checking
+        return await check_stream(stream=stream, timeout=timeout)
 
 
 async def check_stream(stream: LiveStream, timeout: float = None) -> Optional[float]:

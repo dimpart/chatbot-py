@@ -48,6 +48,9 @@ class SourceLoader:
         super().__init__()
         self.__resources: Dict[str, str] = {}
 
+    def clear_caches(self):
+        self.__resources.clear()
+
     async def load_text(self, src: Union[str, URI]) -> Optional[str]:
         # 1. check caches
         res = self.__resources.get(src)
@@ -136,7 +139,7 @@ class LiveHandler(ScanEventHandler, Logging):
             text += '\n%s,#genre#\n' % group.title
             text += '\n%s\n' % '\n'.join(array)
         # OK
-        self.info(msg='saving lives file: %d genres, %d channels -> %s' % (len(genres), count, path))
+        self.info(msg='saving lives file: %d genres, %d channels, %s -> %s' % (len(genres), count, url, path))
         if len(text) > 0:
             return await text_file_write(path=path, text=text)
 
