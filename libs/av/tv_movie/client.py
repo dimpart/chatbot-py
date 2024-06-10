@@ -58,14 +58,6 @@ class SearchBox(VideoBox):
                 'sources': [
                     TVScan.INDEX_URI,
                 ],
-
-                'base-url': 'http://tfs.dim.chat/tvbox/',
-
-                'output-dir': '/var/www/html/tvbox/',
-
-                'index-file': 'tvbox.json',
-                'lives-file': 'lives-{HASH}.txt',
-                'source-file': 'source-{HASH}.txt',
             }
         })
         self.__tv = TVScan(config=config)
@@ -134,6 +126,7 @@ class SearchBox(VideoBox):
         task = self._new_task(keywords=keywords, request=request)
         if kw_len == 11 and keywords.lower() == 'tv channels':
             tv = self.__tv
+            tv.clear_caches()
             coro = tv.search(task=task)
         else:
             coro = self._search(task=task)

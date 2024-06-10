@@ -94,6 +94,9 @@ class TVScan(LiveHandler):
     def loader(self) -> LiveLoader:
         return self.__loader
 
+    def clear_caches(self):
+        self.loader.clear_caches()
+
     async def search(self, task: Task):
         request = task.request
         box = task.box
@@ -185,12 +188,13 @@ async def _respond_genres(context: SearchContext):
     if request is None or box is None:
         return False
     count = context.get(key='available_channel_count', default=0)
+    total = context.get(key='channel_total_count', default=0)
     text = _build_live_channels(context=context)
     text += '\n----\n'
     if context.task_cancelled:
-        text += 'Scanning task is cancelled.'
+        text += 'Scanning task is cancelled, above shows **%d/%d** only.' % (count, total)
     else:
-        text += '**%d** channels available.' % count
+        text += '**%d/%d** channels available.' % (count, total)
     # respond with sn
     sn = context.get(key='sn', default=0)
     res = await box.respond_markdown(text=text, request=request, sn=sn, muted='true')
