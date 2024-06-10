@@ -132,16 +132,34 @@ class TVScan(LiveHandler):
     #
 
     # Override
-    async def on_scan_start(self, context: ScanContext):
-        await super().on_scan_start(context=context)
+    async def on_scan_start(self, context: ScanContext, genres: List[LiveGenre]):
+        # await super().on_scan_start(context=context, genres=genres)
         context.set(key='sn', value=0)
+        context.set(key='all_genres', value=genres)  # genres list
         context.set(key='available_channel_count', value=0)
+        # count all channels
+        total_channels = 0
+        total_streams = 0
+        for group in genres:
+            channels = group.channels
+            for item in channels:
+                total_channels += 1
+                total_streams += len(item.streams)
+        context.set(key='channel_total_count', value=total_channels)
+        context.set(key='stream_total_count', value=total_streams)
 
     # Override
-    async def on_scan_finished(self, context: SearchContext):
+    async def on_scan_finished(self, context: SearchContext, genres: List[LiveGenre]):
         # respond full results
         await _respond_genres(context=context)
-        await super().on_scan_finished(context=context)
+        await super().on_scan_finished(context=context, genres=genres)
+
+    # Override
+    async def on_scan_channel_finished(self, context: ScanContext, genre: LiveGenre, channel: LiveChannel):
+        if channel.available:
+            cnt = context.get(key='available_channel_count', default=0)
+            context.set(key='available_channel_count', value=(cnt + 1))
+        await super().on_scan_channel_finished(context=context, genre=genre, channel=channel)
 
     # Override
     async def on_scan_stream_start(self, context: SearchContext, channel: LiveChannel, stream: LiveStream):

@@ -69,11 +69,11 @@ class ScanEventHandler(ABC):
     """ Scan callback """
 
     @abstractmethod
-    async def on_scan_start(self, context: ScanContext):
+    async def on_scan_start(self, context: ScanContext, genres: List[LiveGenre]):
         raise NotImplemented
 
     @abstractmethod
-    async def on_scan_finished(self, context: ScanContext):
+    async def on_scan_finished(self, context: ScanContext, genres: List[LiveGenre]):
         raise NotImplemented
 
     # genre events
@@ -135,17 +135,15 @@ class LiveScanner:
     async def scan(self, text: str, context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
         """ Get non-empty channel groups """
         all_genres = self.live_parser.parse(text=text)
-        # prepare scan context
-        context.set(key='all_genres', value=all_genres)  # genres list
+        # reset pointers
         context.set(key='genre_offset', value=0)
         context.set(key='channel_offset', value=0)
         context.set(key='stream_offset', value=0)
-        context.set(key='available_channel_count', value=0)
         # start mission
-        await handler.on_scan_start(context=context)
+        await handler.on_scan_start(context=context, genres=all_genres)
         groups = await self._scan_genres(genres=all_genres, context=context, handler=handler)
         # mission accomplished
-        await handler.on_scan_finished(context=context)
+        await handler.on_scan_finished(context=context, genres=all_genres)
         return groups
 
     async def _scan_genres(self, genres: List[LiveGenre],
@@ -193,8 +191,6 @@ class LiveScanner:
             item.streams = streams
             if len(streams) > 0:
                 available_channels.append(item)
-                cnt = context.get(key='available_channel_count', default=0)
-                context.set(key='available_channel_count', value=(cnt + 1))
             # scan channel finished
             await handler.on_scan_channel_finished(context=context, genre=genre, channel=item)
             index += 1
