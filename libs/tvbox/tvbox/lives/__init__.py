@@ -40,8 +40,8 @@ from .stream import LiveStream
 from .channel import LiveChannel
 from .genre import LiveGenre
 
-# from .stream import LiveStreamFactory
-# from .scanner import LiveStreamChecker
+from .factory import LiveStreamChecker, LiveStreamCreator
+from .factory import LiveStreamFactory
 
 from .scanner import LiveStreamScanner
 
@@ -52,8 +52,8 @@ __all__ = [
 
     'LiveStream', 'LiveChannel', 'LiveGenre',
 
-    # 'LiveStreamFactory',
-    # 'LiveStreamChecker',
+    'LiveStreamChecker', 'LiveStreamCreator',
+    'LiveStreamFactory',
 
     'LiveStreamScanner',
 

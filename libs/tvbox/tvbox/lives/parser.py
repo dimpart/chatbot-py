@@ -31,7 +31,8 @@
 from typing import Optional, Set, Tuple, List
 
 from ..types import URI
-from .stream import LiveStream, LiveStreamFactory
+from .stream import LiveStream
+from .factory import LiveStreamFactory
 from .channel import LiveChannel
 from .genre import LiveGenre
 
@@ -46,7 +47,7 @@ class LiveParser:
     def stream_factory(self) -> LiveStreamFactory:
         return self.__factory
 
-    def get_stream(self, url: URI) -> LiveStream:
+    def get_stream(self, url: URI) -> Optional[LiveStream]:
         return self.stream_factory.get_stream(url=url)
 
     def parse(self, text: str) -> List[LiveGenre]:
@@ -84,7 +85,9 @@ class LiveParser:
             # 3. create streams
             streams: Set[LiveStream] = set()
             for src in sources:
-                streams.add(self.get_stream(url=src))
+                m3u8 = self.get_stream(url=src)
+                if m3u8 is not None:
+                    streams.add(m3u8)
             channel.add_streams(streams=streams)
             current.add_channel(channel=channel)
         # add last group

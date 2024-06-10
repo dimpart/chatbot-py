@@ -132,9 +132,6 @@ class LiveScanner:
     def stream_scanner(self) -> LiveStreamScanner:
         return self.__scanner
 
-    def clear_caches(self):
-        self.stream_scanner.clear_caches()
-
     async def scan(self, text: str, context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
         """ Get non-empty channel groups """
         all_genres = self.live_parser.parse(text=text)

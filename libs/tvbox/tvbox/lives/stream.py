@@ -34,11 +34,12 @@ from typing import Iterable
 
 from ..types import URI, MapInfo
 from ..utils import DateTime
-from ..utils import Singleton
 
 
 class LiveStream(MapInfo):
     """ M3U8 """
+
+    SCAN_INTERVAL = 3600 * 2
 
     def __init__(self, info: Dict = None, url: URI = None):
         """
@@ -50,6 +51,8 @@ class LiveStream(MapInfo):
         super().__init__(info=info)
         if url is not None:
             self.set(key='url', value=url)
+        # checker lock
+        self.__lock = threading.Lock()
 
     # Override
     def __str__(self) -> str:
@@ -120,6 +123,28 @@ class LiveStream(MapInfo):
         self.set(key='ttl', value=ttl)
         self.set(key='time', value=now)
 
+    def is_expired(self, now: float = None) -> bool:
+        """ whether needs to check """
+        last_time = self.time
+        if last_time is None:
+            # never checked yet
+            return True
+        elif now is None:
+            now = DateTime.current_timestamp()
+        # check interval
+        return now > (last_time + self.SCAN_INTERVAL)
+
+    async def check(self, now: float = None, timeout: float = None) -> bool:
+        """ check whether ttl > 0 """
+        with self.__lock:
+            if self.is_expired(now=now):
+                # check it again
+                ttl = await stream_checker().check_stream(stream=self, timeout=timeout)
+            else:
+                # no need to check again now
+                ttl = self.ttl
+            return ttl is not None and ttl > 0
+
     #
     #   Factories
     #
@@ -134,7 +159,7 @@ class LiveStream(MapInfo):
             info = info.dictionary
         # if 'url' in info:
         #     return cls(info=info)
-        return _shared_stream_factory.new_stream(info=info)
+        return stream_factory().new_stream(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveStream]:
@@ -156,64 +181,11 @@ class LiveStream(MapInfo):
         return array
 
 
-@Singleton
-class LiveStreamFactory:
-
-    def __init__(self):
-        super().__init__()
-        self.__streams: Dict[URI, LiveStream] = {}
-        self.__lock = threading.Lock()
-
-    def new_stream(self, info: Dict) -> Optional[LiveStream]:
-        url = info.get('url')
-        if url is None or not isinstance(url, str) or len(url) == 0:
-            return None
-        with self.__lock:
-            src = self.__streams.get(url)
-            if src is None:
-                src = LiveStream(info=info)
-                self.__streams[url] = src
-            return src
-
-    def get_stream(self, url: URI) -> LiveStream:
-        with self.__lock:
-            src = self.__streams.get(url)
-            if src is None:
-                src = LiveStream(url=url)
-                self.__streams[url] = src
-            return src
-
-    def set_stream(self, stream: LiveStream):
-        url = stream.url
-        with self.__lock:
-            old = self.__streams.get(url)
-            if old is not None:
-                merge_stream(new=stream, old=old)
-            self.__streams[url] = stream
+def stream_factory():
+    from .factory import LiveStreamFactory
+    return LiveStreamFactory()
 
 
-def merge_stream(new: LiveStream, old: LiveStream) -> LiveStream:
-    if new is old:
-        return new
-    new_time = new.time
-    old_time = old.time
-    if new_time is None and old_time is None:
-        # neither of them were checked
-        return new
-    elif new_time is None:
-        # copy old info
-        new.set_ttl(ttl=old.ttl, now=old_time)
-    elif old_time is None:
-        # copy new info
-        old.set_ttl(ttl=new.ttl, now=new_time)
-    elif new_time < old_time:
-        # copy old info
-        new.set_ttl(ttl=old.ttl, now=old_time)
-    elif old_time < new_time:
-        # copy new info
-        old.set_ttl(ttl=new.ttl, now=new_time)
-    # OK
-    return new
-
-
-_shared_stream_factory = LiveStreamFactory()
+def stream_checker():
+    factory = stream_factory()
+    return factory.stream_checker

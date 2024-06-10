@@ -28,7 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union, Tuple, List, Dict
+import asyncio
+from typing import Optional, Union, Tuple, Set, List, Dict
 
 import requests
 
@@ -173,7 +174,15 @@ class LiveHandler(ScanEventHandler, Logging):
 
     # Override
     async def on_scan_genre_start(self, context: ScanContext, genre: LiveGenre):
-        pass
+        # pre-scanning
+        timeout = context.timeout
+        channels = genre.channels
+        streams = _collect_streams(channels=channels)
+        futures = [src.check(timeout=timeout) for src in streams]
+        self.info(msg='pre-scanning genre "%s": %d streams for %d channels'
+                      % (genre.title, len(streams), len(channels)))
+        done, _ = await asyncio.wait(futures)
+        self.info(msg='pre-scanning genre "%s": %d results' % (genre.title, len(done)))
 
     # Override
     async def on_scan_genre_finished(self, context: ScanContext, genre: LiveGenre):
@@ -211,3 +220,12 @@ def _count_channel_streams(genres: List[LiveGenre]) -> Tuple[int, int]:
             total_channels += 1
             total_streams += len(item.streams)
     return total_channels, total_streams
+
+
+def _collect_streams(channels: List[LiveChannel]) -> Set[LiveStream]:
+    all_streams: Set[LiveStream] = set()
+    for item in channels:
+        streams = item.streams
+        for src in streams:
+            all_streams.add(src)
+    return all_streams

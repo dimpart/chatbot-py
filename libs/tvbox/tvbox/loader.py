@@ -72,7 +72,6 @@ class LiveLoader(Logging):
         return SourceLoader()
 
     def clear_caches(self):
-        self.scanner.clear_caches()
         self.loader.clear_caches()
 
     #
@@ -149,6 +148,7 @@ class LiveLoader(Logging):
             genres = await scanner.scan(text=text, context=context, handler=handler)
             if len(genres) == 0:
                 self.warning(msg='ignore empty lives: %s => %d lines' % (url, count))
+                continue
             else:
                 # update 'lives.txt'
                 await handler.update_lives(genres=genres, url=url)
