@@ -31,11 +31,10 @@
 import threading
 from typing import Optional, Dict
 
-import requests
-
 from ..types import URI
 from ..utils import DateTime
 from ..utils import Singleton
+from ..utils import http_check_m3u8
 
 from .stream import LiveStream
 
@@ -87,6 +86,7 @@ class LiveStreamFactory:
 
     def clear_caches(self):
         with self.__lock:
+            self.__checker.clear_caches()
             self.__streams.clear()
 
     @property
@@ -159,7 +159,7 @@ def _merge_stream(new: LiveStream, old: LiveStream) -> LiveStream:
 
 async def _check_stream(stream: LiveStream, timeout: float = None) -> Optional[float]:
     start_time = DateTime.current_timestamp()
-    available = await _http_check(url=stream.url, timeout=timeout)
+    available = await http_check_m3u8(url=stream.url, timeout=timeout)
     end_time = DateTime.current_timestamp()
     if available:
         ttl = end_time - start_time
@@ -167,29 +167,3 @@ async def _check_stream(stream: LiveStream, timeout: float = None) -> Optional[f
         ttl = None
     stream.set_ttl(ttl=ttl, now=end_time)
     return ttl
-
-
-async def _http_check(url: URI, timeout: float = None, is_m3u8: bool = None) -> bool:
-    if is_m3u8 is None and url.lower().find('m3u8') > 0:
-        is_m3u8 = True
-    try:
-        response = requests.head(url, timeout=timeout)
-        status_code = response.status_code
-        if status_code == 302:
-            redirected_url = response.headers.get('Location')
-            return await _http_check(url=redirected_url, is_m3u8=is_m3u8, timeout=timeout)
-        elif status_code != 200:
-            # HTTP error
-            return False
-        elif is_m3u8:
-            return True
-        # check content type
-        content_type = response.headers.get('Content-Type')
-        content_type = '' if content_type is None else str(content_type).lower()
-        if content_type.find('application/vnd.apple.mpegurl') >= 0:
-            return True
-        elif content_type.find('application/x-mpegurl') >= 0:
-            return True
-    except Exception as error:
-        print('[TVBox] failed to query URL: %s, error: %s' % (url, error))
-    return False

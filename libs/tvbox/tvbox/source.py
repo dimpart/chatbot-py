@@ -30,15 +30,15 @@
 
 import asyncio
 from typing import Optional, Union, Tuple, Set, List, Dict
-
-import requests
+from typing import Iterable
 
 from .types import URI
-from .utils import Log, Logging
+from .utils import Logging, DateTime
+from .utils import http_get_text
+from .utils import text_file_read, text_file_write, json_file_write
 
 from .lives import LiveStream, LiveChannel, LiveGenre
 
-from .config import text_file_read, text_file_write, json_file_write
 from .config import LiveConfig
 from .scanner import ScanContext, ScanEventHandler
 
@@ -69,22 +69,40 @@ class SourceLoader:
 
 async def _load(src: Union[str, URI]) -> Optional[str]:
     if src.find(r'://') > 0:
-        return await _http_get(url=src)
+        return await http_get_text(url=src, timeout=64)
     else:
         return await text_file_read(path=src)
 
 
-async def _http_get(url: URI) -> Optional[str]:
-    try:
-        response = requests.get(url)
-        encoding = response.encoding
-        if encoding is None or len(encoding) == 0:
-            response.encoding = 'utf-8'
-        elif encoding.upper() == 'ISO-8859-1':
-            response.encoding = 'utf-8'
-        return response.text
-    except Exception as error:
-        Log.error(msg='failed to get URL: %s, error: %s' % (url, error))
+class PreScanner(Logging):
+
+    BATCH = 20
+
+    async def scan_genres(self, context: ScanContext, genres: List[LiveGenre]):
+        """ scan all streams in these genres batch by batch """
+        all_streams = _collect_streams(genres=genres)
+        count = len(all_streams)
+        index = 0
+        sources: Set[LiveStream] = set()
+        self.info(msg='pre-scanning %d stream(s) in %d genre(s) ...' % (count, len(genres)))
+        for src in all_streams:
+            index += 1
+            self.info(msg='pre-scanning stream (%d/%d) %s' % (index, count, src.url))
+            sources.add(src)
+            if len(sources) >= self.BATCH:
+                await self.scan_streams(context=context, streams=sources)
+                sources.clear()
+        if len(sources) > 0:
+            await self.scan_streams(context=context, streams=sources)
+
+    # protected
+    async def scan_streams(self, context: ScanContext, streams: Set[LiveStream]):
+        timeout = context.timeout
+        now = DateTime.current_timestamp()
+        tasks = [src.check(now=now, timeout=timeout) for src in streams]
+        done, _ = await asyncio.wait(tasks)
+        results = [item.result() for item in done if item.result()]
+        self.info(msg='pre-scanned %d stream(s) => %d result(s)' % (len(tasks), len(results)))
 
 
 class LiveHandler(ScanEventHandler, Logging):
@@ -93,10 +111,19 @@ class LiveHandler(ScanEventHandler, Logging):
     def __init__(self, config: LiveConfig):
         super().__init__()
         self.__config = config
+        self.__scanner = PreScanner()
 
     @property
     def config(self) -> LiveConfig:
         return self.__config
+
+    @property
+    def batch_scanner(self) -> PreScanner:
+        return self.__scanner
+
+    @batch_scanner.setter
+    def batch_scanner(self, scanner: PreScanner):
+        self.__scanner = scanner
 
     #
     #   Storage
@@ -165,6 +192,8 @@ class LiveHandler(ScanEventHandler, Logging):
         context.set(key='genre_total_count', value=total_genres)
         context.set(key='channel_total_count', value=total_channels)
         context.set(key='stream_total_count', value=total_streams)
+        scanner = self.batch_scanner
+        await scanner.scan_genres(context=context, genres=genres)
 
     # Override
     async def on_scan_finished(self, context: ScanContext):
@@ -174,15 +203,7 @@ class LiveHandler(ScanEventHandler, Logging):
 
     # Override
     async def on_scan_genre_start(self, context: ScanContext, genre: LiveGenre):
-        # pre-scanning
-        timeout = context.timeout
-        channels = genre.channels
-        streams = _collect_streams(channels=channels)
-        futures = [src.check(timeout=timeout) for src in streams]
-        self.info(msg='pre-scanning genre "%s": %d streams for %d channels'
-                      % (genre.title, len(streams), len(channels)))
-        done, _ = await asyncio.wait(futures)
-        self.info(msg='pre-scanning genre "%s": %d results' % (genre.title, len(done)))
+        pass
 
     # Override
     async def on_scan_genre_finished(self, context: ScanContext, genre: LiveGenre):
@@ -211,7 +232,7 @@ class LiveHandler(ScanEventHandler, Logging):
         self.info(msg='Scanned (%d/%d) stream: "%s"\t-> %s' % (offset + 1, total, channel.name, stream))
 
 
-def _count_channel_streams(genres: List[LiveGenre]) -> Tuple[int, int]:
+def _count_channel_streams(genres: Iterable[LiveGenre]) -> Tuple[int, int]:
     total_channels = 0
     total_streams = 0
     for group in genres:
@@ -222,10 +243,12 @@ def _count_channel_streams(genres: List[LiveGenre]) -> Tuple[int, int]:
     return total_channels, total_streams
 
 
-def _collect_streams(channels: List[LiveChannel]) -> Set[LiveStream]:
+def _collect_streams(genres: Iterable[LiveGenre]) -> Set[LiveStream]:
     all_streams: Set[LiveStream] = set()
-    for item in channels:
-        streams = item.streams
-        for src in streams:
-            all_streams.add(src)
+    for group in genres:
+        channels = group.channels
+        for item in channels:
+            streams = item.streams
+            for src in streams:
+                all_streams.add(src)
     return all_streams

@@ -28,14 +28,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union, Any, List, Dict
-
-from aiou import Path, TextFile
+from typing import Optional, Any, List, Dict
 
 from .types import URI, MapInfo
-from .utils import Log
-from .utils import json_encode, json_decode
 from .utils import hex_md5
+from .utils import path_join
+from .utils import json_file_read
 
 
 class LiveConfig(MapInfo):
@@ -109,20 +107,20 @@ class LiveConfig(MapInfo):
         base = self.output_dir
         if base is not None:
             file = self.get_index_file()
-            return Path.join(base, file)
+            return path_join(base, file)
 
     def get_output_lives_path(self, url: URI) -> Optional[str]:
         """ output lives """
         base = self.output_dir
         if base is not None:
             file = self.get_lives_file(url=url)
-            return Path.join(base, file)
+            return path_join(base, file)
 
     def get_output_source_path(self, url: URI) -> Optional[str]:
         base = self.output_dir
         if base is not None:
             file = self.get_source_file(url=url)
-            return Path.join(base, file)
+            return path_join(base, file)
 
     #
     #   Output URLs
@@ -132,13 +130,13 @@ class LiveConfig(MapInfo):
         base = self.base_url
         if base is not None:
             file = self.get_index_file()
-            return Path.join(base, file)
+            return path_join(base, file)
 
     def get_output_lives_url(self, url: URI) -> Optional[URI]:
         base = self.base_url
         if base is not None:
             file = self.get_lives_file(url=url)
-            return Path.join(base, file)
+            return path_join(base, file)
 
     #
     #   Factory
@@ -149,30 +147,3 @@ class LiveConfig(MapInfo):
         info = await json_file_read(path=path)
         if info is not None:
             return cls(info=info)
-
-
-async def json_file_read(path: str) -> Union[Dict, List, None]:
-    text = await text_file_read(path=path)
-    if text is None or len(text) < 2:
-        return None
-    return json_decode(text=text)
-
-
-async def text_file_read(path: str) -> Optional[str]:
-    try:
-        return await TextFile(path=path).read()
-    except Exception as error:
-        Log.error(msg='failed to read file: %s, error: %s' % (path, error))
-
-
-async def json_file_write(container: Union[Dict, List], path: str) -> bool:
-    text = json_encode(container=container)
-    return await text_file_write(text=text, path=path)
-
-
-async def text_file_write(text: str, path: str) -> bool:
-    try:
-        return await TextFile(path=path).write(text=text)
-    except Exception as error:
-        size = len(text)
-        Log.error(msg='failed to write file: %s (%d bytes), error: %s' % (path, size, error))

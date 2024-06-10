@@ -28,62 +28,59 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .crypto import hex_md5, md5_digest
-from .crypto import utf8_encode, utf8_decode
-from .crypto import hex_encode, hex_decode
-from .crypto import json_encode, json_decode, purify_json
-
-from .aio import http_head, http_get
-from .aio import http_get_text, http_check_m3u8
-
-from .aio import path_parent, path_join
-from .aio import text_file_read, text_file_write
-from .aio import json_file_read, json_file_write
-
-from .log import DateTime
-from .log import Log, Logging
-
-from .runner import AsyncRunner
+import hashlib
+import json
+from typing import Optional, Union, List, Dict
 
 
-class Singleton(object):
-
-    __instances = {}
-
-    def __init__(self, cls):
-        self.__cls = cls
-
-    def __call__(self, *args, **kwargs):
-        cls = self.__cls
-        instance = self.__instances.get(cls, None)
-        if instance is None:
-            instance = cls(*args, **kwargs)
-            self.__instances[cls] = instance
-        return instance
-
-    def __getattr__(self, key):
-        return getattr(self.__cls, key, None)
+def hex_md5(data: Union[bytes, str]) -> str:
+    if isinstance(data, str):
+        data = utf8_encode(string=data)
+    return hex_encode(data=md5_digest(data=data))
 
 
-__all__ = [
+def md5_digest(data: bytes) -> bytes:
+    hash_obj = hashlib.md5()
+    hash_obj.update(data)
+    return hash_obj.digest()
 
-    'hex_md5', 'md5_digest',
-    'utf8_encode', 'utf8_decode',
-    'hex_encode', 'hex_decode',
-    'json_encode', 'json_decode', 'purify_json',
 
-    'http_head', 'http_get',
-    'http_get_text', 'http_check_m3u8',
+def utf8_encode(string: str) -> bytes:
+    return string.encode('utf-8')
 
-    'path_parent', 'path_join',
-    'text_file_read', 'text_file_write',
-    'json_file_read', 'json_file_write',
 
-    'DateTime',
-    'Log', 'Logging',
+def utf8_decode(data: bytes) -> Optional[str]:
+    return data.decode('utf-8')
 
-    'AsyncRunner',
 
-    'Singleton',
+def hex_encode(data: bytes) -> str:
+    # return binascii.b2a_hex(data).decode('utf-8')
+    return data.hex()
 
-]
+
+def hex_decode(string: str) -> Optional[bytes]:
+    # return binascii.a2b_hex(string)
+    return bytes.fromhex(string)
+
+
+def json_encode(container: Union[Dict, List]) -> str:
+    return json.dumps(container)
+
+
+def json_decode(text: str) -> Union[Dict, List, None]:
+    text = purify_json(text=text)
+    try:
+        return json.loads(text)
+    except json.decoder.JSONDecodeError as jse:
+        print('JSON failed to decode: %s, error: %s' % (text, jse))
+
+
+def purify_json(text: str) -> str:
+    lines = text.splitlines()
+    index = len(lines)
+    while index > 0:
+        index -= 1
+        text = lines[index].lstrip()
+        if text.startswith('#') or text.startswith('//'):
+            lines.pop(index)
+    return '\n'.join(lines)

@@ -44,6 +44,13 @@ setup(
         ]
     },
     install_requires=[
+        'aiohttp',     # 3.9.5
+        # 'aiosignal',   # 1.3.1
+        # 'attrs',       # 23.2.0
+        # 'frozenlist',  # 1.4.1
+        # 'multidict',   # 6.0.5
+        # 'yarl',        # 1.9.4
+
         'aiou>=0.1.0',
     ]
 )

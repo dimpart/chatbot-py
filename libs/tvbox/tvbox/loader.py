@@ -30,11 +30,10 @@
 
 from typing import Optional, Union, Any, Set, List, Dict
 
-from aiou import Path
-
 from .types import URI
 from .utils import Logging
 from .utils import json_decode
+from .utils import path_parent, path_join
 
 from .config import LiveConfig
 from .scanner import LiveScanner, ScanContext
@@ -105,8 +104,8 @@ class LiveLoader(Logging):
                     self.error(msg='lives item error: %s' % item)
                     continue
                 elif url.find(r'://') < 0:
-                    base = Path.dir(src)
-                    url = Path.join(base, url)
+                    base = path_parent(src)
+                    url = path_join(base, url)
                 live_urls.add(url)
         # 2. get from "lives"
         lives = self.config.lives
