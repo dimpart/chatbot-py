@@ -30,7 +30,10 @@
 
 import hashlib
 import json
+import re
 from typing import Optional, Union, List, Dict
+
+from .log import Log
 
 
 def hex_md5(data: Union[bytes, str]) -> str:
@@ -72,10 +75,11 @@ def json_decode(text: str) -> Union[Dict, List, None]:
     try:
         return json.loads(text)
     except json.decoder.JSONDecodeError as jse:
-        print('JSON failed to decode: %s, error: %s' % (text, jse))
+        Log.error(msg='JSON decode error: %s, %s' % (jse, text))
 
 
 def purify_json(text: str) -> str:
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
     lines = text.splitlines()
     index = len(lines)
     while index > 0:
@@ -83,4 +87,4 @@ def purify_json(text: str) -> str:
         text = lines[index].lstrip()
         if text.startswith('#') or text.startswith('//'):
             lines.pop(index)
-    return '\n'.join(lines)
+    return ''.join(lines)

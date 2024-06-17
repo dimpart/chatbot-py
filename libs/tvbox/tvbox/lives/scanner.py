@@ -31,12 +31,13 @@
 import threading
 from typing import Optional, List
 
+from ..utils import Logging
 from ..utils import DateTime
 from ..utils import AsyncRunner as Runner
 from .stream import LiveStream
 
 
-class LiveStreamScanner(Runner):
+class LiveStreamScanner(Runner, Logging):
 
     def __init__(self):
         super().__init__(interval=2)
@@ -91,4 +92,4 @@ class LiveStreamScanner(Runner):
         try:
             await stream.check(timeout=64)
         except Exception as error:
-            print('[TVBox] failed to scan stream: %s, error: %s' % (stream, error))
+            self.error(msg='failed to scan stream: %s, error: %s' % (stream, error))

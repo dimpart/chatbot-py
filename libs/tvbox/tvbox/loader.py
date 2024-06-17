@@ -81,7 +81,11 @@ class LiveLoader(Logging):
         live_urls = set()
         # 1. get from "sources"
         sources = self.config.sources
-        for src in sources:
+        for idx in sources:
+            src = _get_source_url(item=idx)
+            if len(src) == 0:
+                self.error(msg='source error: %s' % idx)
+                continue
             # 1.1. load
             text = await self._load_resource(src=src)
             if text is None:
@@ -159,6 +163,15 @@ class LiveLoader(Logging):
             })
         # mission accomplished
         return await handler.update_index(lives=available_lives)
+
+
+def _get_source_url(item: Any) -> str:
+    if isinstance(item, Dict):
+        item = item.get('url')
+    if isinstance(item, str):
+        return item
+    else:
+        return ''
 
 
 def _get_live_url(item: Any) -> str:

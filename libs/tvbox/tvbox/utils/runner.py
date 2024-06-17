@@ -33,8 +33,10 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Coroutine
 
+from .log import Logging
 
-class AsyncRunner(ABC):
+
+class AsyncRunner(Logging, ABC):
     """ Daemon Runner """
 
     def __init__(self, interval: float):
@@ -64,7 +66,7 @@ class AsyncRunner(ABC):
             try:
                 ok = await self.process()
             except Exception as error:
-                print('[TVBox] process failed: %s' % error)
+                self.error(msg='process failed: %s' % error)
                 ok = False
             if ok:
                 # runner is busy, return True to go on.
