@@ -24,7 +24,7 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict
 
 from dimples import DateTime
 from dimples import ID
@@ -232,19 +232,25 @@ class ChatBox(Logging, ABC):
     #   Respond
     #
 
-    async def respond_text(self, text: str, request: Request) -> TextContent:
-        content = TextContent.create(text=text)
-        calibrate_time(content=content, request=request)
-        await self.respond(responses=[content], request=request)
-        return content
-
-    async def respond_markdown(self, text: str, request: Request, sn: int = 0, muted: str = None) -> TextContent:
-        content = TextContent.create(text=text)
-        content['format'] = 'markdown'
+    async def respond_markdown(self, text: str, request: Request, sn: int = 0, muted: str = None,
+                               extra: Dict = None) -> TextContent:
+        if extra is None:
+            extra = {}
+        else:
+            extra = extra.copy()
+        # extra info
+        extra['format'] = 'markdown'
         if sn > 0:
-            content['sn'] = sn
+            extra['sn'] = sn
         if muted is not None:
-            content['muted'] = muted
+            extra['muted'] = muted
+        return await self.respond_text(text=text, request=request, extra=extra)
+
+    async def respond_text(self, text: str, request: Request, extra: Dict = None) -> TextContent:
+        content = TextContent.create(text=text)
+        if extra is not None:
+            for key in extra:
+                content[key] = extra[key]
         calibrate_time(content=content, request=request)
         await self.respond(responses=[content], request=request)
         return content

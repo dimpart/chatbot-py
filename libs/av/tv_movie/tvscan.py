@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, List, Dict
+from typing import Optional, Set, List, Dict
 
 from dimples import URI, DateTime
 
@@ -81,13 +81,19 @@ class SearchContext(ScanContext):
         self.set(key='cancelled', value=flag)
 
 
+class _MyLoader(LiveLoader):
+
+    async def get_live_urls(self) -> Set[URI]:
+        return await self._get_live_urls()
+
+
 class TVScan(LiveHandler):
 
     INDEX_URI = 'http://tfs.dim.chat/tvbox/index.json'
 
     def __init__(self, config: LiveConfig):
         super().__init__(config=config)
-        self.__loader = LiveLoader(config=config)
+        self.__loader = _MyLoader(config=config)
         self.__respond_time = 0
 
     @property
@@ -96,6 +102,9 @@ class TVScan(LiveHandler):
 
     def clear_caches(self):
         self.loader.clear_caches()
+
+    async def get_live_urls(self) -> Set[URI]:
+        return await self.__loader.get_live_urls()
 
     async def search(self, task: Task):
         request = task.request

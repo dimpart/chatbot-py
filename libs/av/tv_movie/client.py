@@ -25,14 +25,15 @@
 
 # import random
 import threading
-from typing import Optional, List, Dict
+from typing import Optional, Set, List, Dict
 
-from dimples import DateTime
+from dimples import DateTime, URI
 from dimples import ID
 from dimples import Content
 from dimples import TextContent
 from dimples import CommonFacebook
 
+from ...utils import Log
 from ...utils import Singleton, Runner
 from ...chat import ChatRequest
 from ...chat import ChatBox, VideoBox, ChatClient
@@ -128,6 +129,11 @@ class SearchBox(VideoBox):
             tv = self.__tv
             tv.clear_caches()
             coro = tv.search(task=task)
+        elif kw_len == 19 and keywords.lower() == 'live stream sources':
+            tv = self.__tv
+            live_urls = await tv.get_live_urls()
+            await _respond_live_urls(live_urls=live_urls, request=request, box=self)
+            return
         else:
             coro = self._search(task=task)
         # searching in background
@@ -214,6 +220,27 @@ async def _respond_history(history: List[Dict], request: ChatRequest, box: Video
             user += ' (%s)' % await box.get_name(identifier=group)
         text += '| %s | %s | %s |\n' % (user, cmd, when)
     return await box.respond_markdown(text=text, request=request)
+
+
+async def _respond_live_urls(live_urls: Set[URI], request: ChatRequest, box: VideoBox):
+    count = len(live_urls)
+    text = 'Live Stream Sources:\n'
+    text += '\n----\n'
+    for url in live_urls:
+        text += '- [%s](%s#lives.txt "LIVE")\n' % (url, url)
+    text += '\n----\n'
+    text += 'Total %d source(s).' % count
+    # search tag
+    tag = request.content.get('tag')
+    cid = request.identifier
+    Log.info(msg='respond %d sources with tag %s to %s' % (count, tag, cid))
+    return await box.respond_markdown(text=text, request=request, muted='yes', extra={
+        'app': 'chat.dim.tvbox',
+        'mod': 'lives',
+        'act': 'respond',
+        'tag': tag,
+        'lives': list(live_urls),
+    })
 
 
 @Singleton
