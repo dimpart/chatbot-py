@@ -31,7 +31,7 @@
 from typing import Optional, Union, Any, Set, List, Dict
 
 from .types import URI
-from .utils import Logging
+from .utils import Logging, DateTime
 from .utils import json_decode
 from .utils import path_parent, path_join
 
@@ -77,7 +77,7 @@ class LiveLoader(Logging):
     #   Load
     #
 
-    async def _get_live_urls(self) -> Set[URI]:
+    async def get_live_urls(self) -> Set[URI]:
         live_urls = set()
         # 1. get from "sources"
         sources = self.config.sources
@@ -86,13 +86,16 @@ class LiveLoader(Logging):
             if len(src) == 0:
                 self.error(msg='source error: %s' % idx)
                 continue
+            elif src.find(r'://') < 0:
+                self.error(msg='source error: %s -> %s' % (idx, src))
+                continue
             # 1.1. load
             text = await self._load_resource(src=src)
             if text is None:
                 self.error(msg='ignore index: %s' % src)
                 continue
             # 1.2. parse
-            info = json_decode(text=text)
+            info = json_decode(string=text)
             if not isinstance(info, Dict):
                 self.error(msg='json error: %s -> %s' % (src, text))
                 continue
@@ -137,7 +140,8 @@ class LiveLoader(Logging):
         scanner = self.scanner
         available_lives: List[Dict] = []
         # scan lives
-        live_urls = await self._get_live_urls()
+        start_time = DateTime.current_timestamp()
+        live_urls = await self.get_live_urls()
         self.info(msg='got live urls: %d, %s' % (len(live_urls), live_urls))
         for url in live_urls:
             text = await self._load_resource(src=url)
@@ -162,7 +166,12 @@ class LiveLoader(Logging):
                 'src': url,
             })
         # mission accomplished
-        return await handler.update_index(lives=available_lives)
+        end_time = DateTime.current_timestamp()
+        return await handler.update_index(container={
+            'lives': available_lives,
+            'scan_time': DateTime.full_string(timestamp=start_time),
+            'update_time': DateTime.full_string(timestamp=end_time),
+        })
 
 
 def _get_source_url(item: Any) -> str:

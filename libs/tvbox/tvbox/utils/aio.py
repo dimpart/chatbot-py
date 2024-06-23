@@ -135,9 +135,9 @@ async def json_file_read(path: str) -> Union[Dict, List, None]:
     text = await text_file_read(path=path)
     if text is None or len(text) < 2:
         return None
-    return json_decode(text=text)
+    return json_decode(string=text)
 
 
 async def json_file_write(container: Union[Dict, List], path: str) -> bool:
-    text = json_encode(container=container)
+    text = json_encode(obj=container)
     return await text_file_write(text=text, path=path)

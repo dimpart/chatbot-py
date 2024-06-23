@@ -41,7 +41,7 @@ class LiveStream(MapInfo):
 
     SCAN_INTERVAL = 3600 * 2
 
-    def __init__(self, info: Dict = None, url: URI = None):
+    def __init__(self, info: Dict = None, url: URI = None, label: str = None):
         """
         Create Live Stream
 
@@ -51,6 +51,8 @@ class LiveStream(MapInfo):
         super().__init__(info=info)
         if url is not None:
             self.set(key='url', value=url)
+        if label is not None:
+            self.set(key='label', value=label)
         # checker lock
         self.__lock = threading.Lock()
 
@@ -60,7 +62,7 @@ class LiveStream(MapInfo):
         when = self.time
         if when is not None:
             when = DateTime.full_string(timestamp=when)
-        return '<%s time="%s" ttl=%s url="%s" />' % (cname, when, self.ttl, self.url)
+        return '<%s time="%s" ttl=%s label="%s" url="%s" />' % (cname, when, self.ttl, self.label, self.url)
 
     # Override
     def __repr__(self) -> str:
@@ -68,7 +70,7 @@ class LiveStream(MapInfo):
         when = self.time
         if when is not None:
             when = DateTime.full_string(timestamp=when)
-        return '<%s time="%s" ttl=%s url="%s" />' % (cname, when, self.ttl, self.url)
+        return '<%s time="%s" ttl=%s label="%s" url="%s" />' % (cname, when, self.ttl, self.label, self.url)
 
     # Override
     def __hash__(self) -> int:
@@ -101,6 +103,11 @@ class LiveStream(MapInfo):
     def url(self) -> URI:
         """ m3u8 """
         return self.get(key='url', default='')
+
+    @property
+    def label(self) -> Optional[str]:
+        """ name """
+        return self.get(key='label', default=None)
 
     @property
     def available(self) -> bool:

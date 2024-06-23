@@ -81,19 +81,13 @@ class SearchContext(ScanContext):
         self.set(key='cancelled', value=flag)
 
 
-class _MyLoader(LiveLoader):
-
-    async def get_live_urls(self) -> Set[URI]:
-        return await self._get_live_urls()
-
-
 class TVScan(LiveHandler):
 
     INDEX_URI = 'http://tfs.dim.chat/tvbox/index.json'
 
     def __init__(self, config: LiveConfig):
         super().__init__(config=config)
-        self.__loader = _MyLoader(config=config)
+        self.__loader = LiveLoader(config=config)
         self.__respond_time = 0
 
     @property
@@ -104,7 +98,7 @@ class TVScan(LiveHandler):
         self.loader.clear_caches()
 
     async def get_live_urls(self) -> Set[URI]:
-        return await self.__loader.get_live_urls()
+        return await self.loader.get_live_urls()
 
     async def search(self, task: Task):
         request = task.request
@@ -119,7 +113,8 @@ class TVScan(LiveHandler):
         await self.loader.load(handler=self, context=context)
 
     # Override
-    async def update_index(self, lives: List[Dict]) -> bool:
+    async def update_index(self, container: Dict) -> bool:
+        lives = container.get('lives', [])
         count = len(lives)
         self.info(msg='finished scanning %d lives: %s' % (count, lives))
         return True

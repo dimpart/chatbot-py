@@ -28,12 +28,18 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Any, List, Dict
+from typing import Optional, Union, Any, List, Dict
 
 from .types import URI, MapInfo
-from .utils import hex_md5
+from .utils import md5, utf8_encode, hex_encode
 from .utils import path_join
 from .utils import json_file_read
+
+
+def hex_md5(data: Union[bytes, str]) -> str:
+    if isinstance(data, str):
+        data = utf8_encode(string=data)
+    return hex_encode(data=md5(data=data))
 
 
 class LiveConfig(MapInfo):

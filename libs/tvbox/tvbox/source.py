@@ -134,49 +134,81 @@ class LiveHandler(ScanEventHandler, Logging):
     #   Storage
     #
 
-    async def update_index(self, lives: List[Dict]) -> bool:
+    async def update_index(self, container: Dict) -> bool:
         """ update 'tvbox.json' """
         path = self.config.get_output_index_path()
+        lives = container.get('lives')
         if path is None or len(lives) == 0:
             self.warning(msg='ignore live index: %s => %s' % (path, lives))
             return False
         self.info(msg='saving index file: %d live urls -> %s' % (len(lives), path))
-        return await json_file_write(path=path, container={
-            'lives': lives,
-        })
+        return await json_file_write(path=path, container=container)
 
     async def update_lives(self, genres: List[LiveGenre], url: URI) -> bool:
+        """ update 'lives.txt' """
         path = self.config.get_output_lives_path(url=url)
         if path is None or len(genres) == 0:
             self.warning(msg='ignore live urls: %s => %s' % (url, genres))
             return False
-        count = 0
+        # build lives text
         text = ''
-        for group in genres:
-            array: List[str] = []
-            channels = group.channels
-            for item in channels:
-                # get valid stream sources
-                streams = item.streams
-                sources: List[URI] = [src.url for src in streams if src.available]
-                if len(sources) == 0:
-                    self.warning(msg='empty channel: "%s" -> %s' % (item.name, streams))
-                    continue
-                line = '#'.join(sources)
-                line = '%s,%s' % (item.name, line)
-                array.append(line)
-                count += 1
-            if len(array) == 0:
-                self.warning(msg='empty genre: "%s" -> %s' % (group.title, channels))
+        for grp in genres:
+            block = self._build_genre_block(genre=grp)
+            if block is None:
+                self.warning(msg='empty genre: %s' % grp)
                 continue
-            text += '\n%s,#genre#\n' % group.title
-            text += '\n%s\n' % '\n'.join(array)
+            text += '\n%s' % block
         # OK
-        self.info(msg='saving lives file: %d genres, %d channels, %s -> %s' % (len(genres), count, url, path))
+        self.info(msg='saving lives (%d genres) into file: %s -> %s' % (len(genres), url, path))
         if len(text) > 0:
             return await text_file_write(path=path, text=text)
 
+    # format: '{title},#genre#\n{lines}'
+    def _build_genre_block(self, genre: LiveGenre) -> Optional[str]:
+        block = ''
+        title = genre.title
+        channels = genre.channels
+        for item in channels:
+            line = self._build_channel_line(channel=item)
+            if line is None:
+                self.warning(msg='empty channel: "%s", %s' % (title, item))
+                continue
+            block += '%s\n' % line
+        # OK
+        if len(block) > 0:
+            block = '%s,#genre#\n%s' % (title, block)
+            return block
+
+    # format: '{name},{url}${tag}#{url}${tag}#...'
+    def _build_channel_line(self, channel: LiveChannel) -> Optional[str]:
+        line = ''
+        name = channel.name
+        streams = channel.streams
+        for src in streams:
+            fra = self._build_stream_fragment(stream=src)
+            if fra is None:
+                self.warning(msg='invalid stream: "%s", %s' % (name, src))
+                continue
+            line += '#%s' % fra
+        # OK
+        if len(line) > 1:
+            line = line[1:]  # erase first '#'
+            return '%s,%s' % (name, line)
+
+    # format: '{url}${tag}'
+    def _build_stream_fragment(self, stream: LiveStream) -> Optional[str]:
+        if stream.available:
+            url = stream.url
+            label = stream.label
+            if url is None or url.find(r'://') < 0:
+                self.error(msg='stream error: %s' % stream)
+            elif label is None or len(label) == 0:
+                return url
+            else:
+                return '%s$%s' % (url, label)
+
     async def update_source(self, text: str, url: URI) -> bool:
+        """ save source file for lives """
         path = self.config.get_output_source_path(url=url)
         if path is None:
             self.warning(msg='ignore index file: %s => %s' % (url, text))

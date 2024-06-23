@@ -52,10 +52,10 @@ class LiveStreamChecker:
 class LiveStreamCreator:
 
     # noinspection PyMethodMayBeStatic
-    def create_stream(self, info: Dict = None, url: URI = None) -> Optional[LiveStream]:
+    def create_stream(self, info: Dict = None, url: URI = None, label: str = None) -> Optional[LiveStream]:
         if info is None:
             assert isinstance(url, str), 'stream url error: %s' % url
-            return LiveStream(url=url)
+            return LiveStream(url=url, label=label)
         else:
             assert isinstance(info, Dict), 'stream info error: %s' % info
             assert url is None, 'stream params error: %s, %s' % (info, url)
@@ -115,11 +115,11 @@ class LiveStreamFactory:
                     self.__streams[url] = src
             return src
 
-    def get_stream(self, url: URI) -> Optional[LiveStream]:
+    def get_stream(self, url: URI, label: Optional[str]) -> Optional[LiveStream]:
         with self.__lock:
             src = self.__streams.get(url)
             if src is None:
-                src = self.stream_creator.create_stream(url=url)
+                src = self.stream_creator.create_stream(url=url, label=label)
                 if str is not None:
                     self.__streams[url] = src
             return src
