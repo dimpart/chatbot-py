@@ -32,10 +32,11 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
 from .types import MapInfo
+from .utils import Logging
 
 from .lives import LiveStream, LiveChannel, LiveGenre
 from .lives import LiveStreamScanner
-from .lives import LiveParser
+from .lives import LiveParser, LiveTranslator
 
 
 class ScanContext(MapInfo):
@@ -107,17 +108,43 @@ class ScanEventHandler(ABC):
         raise NotImplemented
 
 
+class ScanParser(LiveParser, Logging):
+
+    def __init__(self, translators: List[LiveTranslator]):
+        super().__init__()
+        self.__translators = translators
+
+    @property
+    def translators(self) -> List[LiveTranslator]:
+        return self.__translators
+
+    def _translate(self, text: str) -> Optional[str]:
+        translators = self.__translators
+        for trans in translators:
+            target = trans.translate(text=text)
+            if target is None:
+                continue
+            # elif len(target) < 8:
+            #     continue
+            return target
+
+    # Override
+    def parse(self, text: str) -> List[LiveGenre]:
+        target = self._translate(text=text)
+        if target is None:
+            return super().parse(text=text)
+        cnt1 = len(text.splitlines())
+        cnt2 = len(target.splitlines())
+        self.warning(msg='converted text from %d lines to %d lines' % (cnt1, cnt2))
+        return super().parse(text=target)
+
+
 class LiveScanner:
 
-    def __init__(self):
+    def __init__(self, parser: LiveParser):
         super().__init__()
-        self.__parser = self._create_live_parser()
+        self.__parser = parser
         self.__scanner = self._create_stream_scanner()
-
-    # noinspection PyMethodMayBeStatic
-    def _create_live_parser(self) -> LiveParser:
-        # TODO: override for customized parser
-        return LiveParser()
 
     # noinspection PyMethodMayBeStatic
     def _create_stream_scanner(self) -> LiveStreamScanner:
@@ -125,7 +152,7 @@ class LiveScanner:
         return LiveStreamScanner()
 
     @property  # protected
-    def live_parser(self) -> LiveParser:
+    def parser(self) -> LiveParser:
         return self.__parser
 
     @property  # protected
@@ -134,7 +161,7 @@ class LiveScanner:
 
     async def scan(self, text: str, context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
         """ Get non-empty channel groups """
-        all_genres = self.live_parser.parse(text=text)
+        all_genres = self.parser.parse(text=text)
         # reset pointers
         context.set(key='genre_offset', value=0)
         context.set(key='channel_offset', value=0)

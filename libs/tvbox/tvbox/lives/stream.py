@@ -151,7 +151,7 @@ class LiveStream(MapInfo):
         with self.__lock:
             if self.is_expired(now=now):
                 # check it again
-                ttl = await stream_checker().check_stream(stream=self, timeout=timeout)
+                ttl = await _stream_checker().check_stream(stream=self, timeout=timeout)
             else:
                 # no need to check again now
                 ttl = self.ttl
@@ -171,7 +171,7 @@ class LiveStream(MapInfo):
             info = info.dictionary
         # if 'url' in info:
         #     return cls(info=info)
-        return stream_factory().create_stream(info=info)
+        return _stream_factory().create_stream(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveStream]:
@@ -200,11 +200,11 @@ class LiveStream(MapInfo):
             return url
 
 
-def stream_factory():
+def _stream_factory():
     from .factory import LiveFactory
     return LiveFactory()
 
 
-def stream_checker():
-    factory = stream_factory()
+def _stream_checker():
+    factory = _stream_factory()
     return factory.checker

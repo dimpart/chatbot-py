@@ -45,10 +45,11 @@ sys.path.insert(0, path)
 
 from tvbox.utils import Log
 from tvbox.utils import AsyncRunner as Runner
+from tvbox.lives import M3UTranslator
 from tvbox.config import LiveConfig
 from tvbox.source import LiveHandler
 from tvbox.loader import LiveLoader
-from tvbox.scanner import ScanContext
+from tvbox.scanner import LiveScanner, ScanContext, ScanParser
 
 
 #
@@ -107,7 +108,12 @@ async def async_main():
     Log.info(msg='!!!')
     Log.info(msg='!!! Init with config: %s => %s' % (config_file, config))
     Log.info(msg='!!!')
-    loader = LiveLoader(config=config)
+    # create scanner
+    translator = M3UTranslator()
+    parser = ScanParser(translators=[translator])
+    scanner = LiveScanner(parser=parser)
+    # create loader
+    loader = LiveLoader(config=config, scanner=scanner)
     await loader.load(handler=LiveHandler(config=config),
                       context=ScanContext(timeout=64))
     Log.info(msg='!!!')

@@ -47,6 +47,10 @@ from .scanner import LiveStreamScanner
 
 from .parser import LiveParser
 
+from .translate import LiveTranslator
+# from .translate import M3UInfo
+from .translate import M3UTranslator
+
 
 __all__ = [
 
@@ -58,5 +62,9 @@ __all__ = [
     'LiveStreamScanner',
 
     'LiveParser',
+
+    'LiveTranslator',
+    # 'M3UInfo',
+    'M3UTranslator',
 
 ]

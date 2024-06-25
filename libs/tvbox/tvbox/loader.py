@@ -42,10 +42,10 @@ from .source import SourceLoader, LiveHandler
 
 class LiveLoader(Logging):
 
-    def __init__(self, config: LiveConfig):
+    def __init__(self, config: LiveConfig, scanner: LiveScanner):
         super().__init__()
         self.__config = config
-        self.__scanner = self._create_live_scanner()
+        self.__scanner = scanner
         self.__loader = self._create_source_loader()
 
     @property
@@ -59,11 +59,6 @@ class LiveLoader(Logging):
     @property
     def loader(self) -> SourceLoader:
         return self.__loader
-
-    # noinspection PyMethodMayBeStatic
-    def _create_live_scanner(self) -> LiveScanner:
-        # TODO: override for customized scanner
-        return LiveScanner()
 
     # noinspection PyMethodMayBeStatic
     def _create_source_loader(self) -> SourceLoader:

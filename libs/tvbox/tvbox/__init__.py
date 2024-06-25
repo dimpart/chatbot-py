@@ -34,14 +34,9 @@
 
 """
 
-from .lives import LiveStream, LiveChannel, LiveGenre
-from .lives import LiveChecker, LiveCreator
-from .lives import LiveFactory
-from .lives import LiveStreamScanner
-from .lives import LiveParser
-
 
 from .scanner import ScanContext, ScanEventHandler
+from .scanner import ScanParser
 from .scanner import LiveScanner
 
 from .config import LiveConfig
@@ -56,14 +51,8 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'LiveStream', 'LiveChannel', 'LiveGenre',
-    'LiveChecker', 'LiveCreator',
-    'LiveFactory',
-    'LiveStreamScanner',
-    'LiveParser',
-
-
     'ScanContext', 'ScanEventHandler',
+    'ScanParser',
     'LiveScanner',
 
     'LiveConfig',

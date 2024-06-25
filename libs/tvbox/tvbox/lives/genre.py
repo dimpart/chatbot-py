@@ -129,7 +129,7 @@ class LiveGenre(MapInfo):
             info = info.dictionary
         # if 'title' in info:
         #     return cls(info=info)
-        return genre_factory().create_genre(info=info)
+        return _genre_factory().create_genre(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveGenre]:
@@ -151,6 +151,6 @@ class LiveGenre(MapInfo):
         return array
 
 
-def genre_factory():
+def _genre_factory():
     from .factory import LiveFactory
     return LiveFactory()

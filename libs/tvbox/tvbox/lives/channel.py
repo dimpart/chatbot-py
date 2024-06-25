@@ -139,7 +139,7 @@ class LiveChannel(MapInfo):
             info = info.dictionary
         # if 'name' in info:
         #     return cls(info=info)
-        return channel_factory().create_channel(info=info)
+        return _channel_factory().create_channel(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveChannel]:
@@ -161,6 +161,6 @@ class LiveChannel(MapInfo):
         return array
 
 
-def channel_factory():
+def _channel_factory():
     from .factory import LiveFactory
     return LiveFactory()
