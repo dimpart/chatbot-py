@@ -131,6 +131,7 @@ class SearchBox(VideoBox):
             coro = tv.search(task=task)
         elif kw_len == 19 and keywords.lower() == 'live stream sources':
             tv = self.__tv
+            tv.clear_caches()
             live_urls = await tv.get_live_urls()
             await _respond_live_urls(live_urls=live_urls, request=request, box=self)
             return

@@ -27,10 +27,11 @@ from typing import Optional, Set, List, Dict
 
 from dimples import URI, DateTime
 
-from tvbox import LiveStream, LiveChannel, LiveGenre
-from tvbox import LiveLoader, LiveHandler
+from tvbox.lives import LiveStream, LiveChannel, LiveGenre
+from tvbox.lives import LiveParser
 from tvbox import LiveConfig
-from tvbox import ScanContext
+from tvbox import LiveLoader, LiveHandler
+from tvbox import LiveScanner, ScanContext
 
 from ...utils import Log
 from ...utils import md_esc
@@ -87,7 +88,9 @@ class TVScan(LiveHandler):
 
     def __init__(self, config: LiveConfig):
         super().__init__(config=config)
-        self.__loader = LiveLoader(config=config)
+        parser = LiveParser()
+        scanner = LiveScanner(parser=parser)
+        self.__loader = LiveLoader(config=config, scanner=scanner)
         self.__respond_time = 0
 
     @property
