@@ -32,7 +32,7 @@ from typing import Optional, Set, Tuple, List
 
 from ..types import URI
 from .stream import LiveStream
-from .factory import LiveStreamFactory
+from .factory import LiveFactory
 from .channel import LiveChannel
 from .genre import LiveGenre
 
@@ -41,23 +41,21 @@ class LiveParser:
 
     def __init__(self):
         super().__init__()
-        self.__factory = LiveStreamFactory()
+        self.__factory = LiveFactory()
 
     @property
-    def stream_factory(self) -> LiveStreamFactory:
+    def factory(self) -> LiveFactory:
         return self.__factory
 
-    def get_stream(self, url: URI, label: Optional[str]) -> Optional[LiveStream]:
-        return self.stream_factory.get_stream(url=url, label=label)
-
     def parse(self, text: str) -> List[LiveGenre]:
+        """ parse 'lives.txt' file content """
         lines = text.splitlines()
         return self.parse_lines(lines=lines)
 
     # protected
     def parse_lines(self, lines: List[str]) -> List[LiveGenre]:
         all_groups: List[LiveGenre] = []
-        current = LiveGenre(title='')
+        current = self.factory.new_genre(title='')
         for item in lines:
             text = item.strip()
             if len(text) == 0:
@@ -70,7 +68,7 @@ class LiveParser:
             genre = self._fetch_genre(text=text)
             if genre is not None:
                 # alternate current group
-                if len(current.channels) > 0:
+                if not current.empty:
                     all_groups.append(current)
                 current = genre
                 continue
@@ -85,37 +83,34 @@ class LiveParser:
             # 3. create streams
             streams: Set[LiveStream] = set()
             for src in sources:
-                url, label = self._split_stream(text=src)
-                if url is None:
-                    continue
-                m3u8 = self.get_stream(url=url, label=label)
+                m3u8 = self._fetch_stream(text=src)
                 if m3u8 is not None:
                     streams.add(m3u8)
             channel.add_streams(streams=streams)
             current.add_channel(channel=channel)
         # add last group
-        if len(current.channels) > 0:
+        if not current.empty:
             all_groups.append(current)
         return all_groups
 
-    # noinspection PyMethodMayBeStatic
     def _fetch_genre(self, text: str) -> Optional[LiveGenre]:
         title = split_genre(text=text)
         if title is None:
             return None
-        return LiveGenre(title=title)
+        return self.factory.new_genre(title=title)
 
-    # noinspection PyMethodMayBeStatic
     def _fetch_channel(self, text: str) -> Tuple[Optional[LiveChannel], str]:
         name, body = split_channel(text=text)
         if name is None:
             return None, text
-        return LiveChannel(name=name), body
+        channel = self.factory.new_channel(name=name)
+        return channel, body
 
-    # noinspection PyMethodMayBeStatic
-    def _split_stream(self, text: str) -> Tuple[Optional[URI], Optional[str]]:
+    def _fetch_stream(self, text: str) -> Optional[LiveStream]:
         url, label = split_stream(text=text)
-        return url, label
+        if url is None:
+            return None
+        return self.factory.new_stream(url=url, label=label)
 
 
 def split_genre(text: str) -> Optional[str]:
@@ -136,29 +131,22 @@ def split_channel(text: str) -> Tuple[Optional[str], str]:
 
 
 def split_stream(text: str) -> Tuple[Optional[URI], Optional[str]]:
+    url = None
+    label = None
     pair = text.split(r'$')
     if len(pair) == 1:
         url = text.strip()
-        if url.find(r'://') > 0:
-            return url, None
-        # error
-        return None, None
+        url = LiveStream.parse_url(url=url)
     else:
         # assert len(pair) == 2
         first = pair[0].strip()
         second = pair[1].strip()
-    # check for url
-    if first.find(r'://') > 0:
-        url = first
-        label = second
-    elif second.find(r'://') > 0:
-        url = second
-        label = first
-    else:
-        # error
-        return None, None
-    # OK
-    if len(label) == 0:
-        return url, None
-    else:
-        return url, label
+        # check for url
+        if first.find(r'://') > 0:
+            url = first
+            label = second
+        elif second.find(r'://') > 0:
+            url = second
+            label = first
+    # done
+    return url, label

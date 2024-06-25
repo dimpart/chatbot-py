@@ -81,14 +81,15 @@ class LiveLoader(Logging):
         live_urls = set()
         # 1. get from "sources"
         sources = self.config.sources
+        self.info(msg='getting live urls from: %s' % sources)
         for idx in sources:
             src = _get_source_url(item=idx)
             if len(src) == 0:
                 self.error(msg='source error: %s' % idx)
                 continue
-            elif src.find(r'://') < 0:
-                self.error(msg='source error: %s -> %s' % (idx, src))
-                continue
+            # elif src.find(r'://') < 0:
+            #     self.error(msg='source error: %s -> %s' % (idx, src))
+            #     continue
             # 1.1. load
             text = await self._load_resource(src=src)
             if text is None:

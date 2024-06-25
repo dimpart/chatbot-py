@@ -37,9 +37,11 @@ from ..utils import Singleton
 from ..utils import http_check_m3u8
 
 from .stream import LiveStream
+from .channel import LiveChannel
+from .genre import LiveGenre
 
 
-class LiveStreamChecker:
+class LiveChecker:
 
     def clear_caches(self):
         pass
@@ -49,37 +51,29 @@ class LiveStreamChecker:
         return await _check_stream(stream=stream, timeout=timeout)
 
 
-class LiveStreamCreator:
+class LiveCreator:
+    """ Customizable Creator """
 
     # noinspection PyMethodMayBeStatic
-    def create_stream(self, info: Dict = None, url: URI = None, label: str = None) -> Optional[LiveStream]:
-        if info is None:
-            assert isinstance(url, str), 'stream url error: %s' % url
-            return LiveStream(url=url, label=label)
-        else:
-            assert isinstance(info, Dict), 'stream info error: %s' % info
-            assert url is None, 'stream params error: %s, %s' % (info, url)
-        # check url
-        url: URI = info.get('url')
-        if url is None or not isinstance(url, str):
-            return None
-        elif url.find(r'://') < 0:
-            return None
-        # OK
-        return LiveStream(info=info)
+    def create_stream(self, info: Dict = None, url: URI = None, label: str = None) -> LiveStream:
+        return LiveStream(info=info, url=url, label=label)
 
     # noinspection PyMethodMayBeStatic
-    def merge_stream(self, new: LiveStream, old: LiveStream) -> LiveStream:
-        return _merge_stream(new=new, old=old)
+    def create_channel(self, info: Dict = None, name: str = None) -> LiveChannel:
+        return LiveChannel(info=info, name=name)
+
+    # noinspection PyMethodMayBeStatic
+    def create_genre(self, info: Dict = None, title: str = None) -> LiveGenre:
+        return LiveGenre(info=info, title=title)
 
 
 @Singleton
-class LiveStreamFactory:
+class LiveFactory:
 
     def __init__(self):
         super().__init__()
-        self.__checker = LiveStreamChecker()
-        self.__creator = LiveStreamCreator()
+        self.__checker = LiveChecker()
+        self.__creator = LiveCreator()
         # caches
         self.__streams: Dict[URI, LiveStream] = {}
         self.__lock = threading.Lock()
@@ -90,38 +84,71 @@ class LiveStreamFactory:
             self.__streams.clear()
 
     @property
-    def stream_checker(self) -> LiveStreamChecker:
+    def checker(self) -> LiveChecker:
         return self.__checker
 
-    @stream_checker.setter
-    def stream_checker(self, checker: LiveStreamChecker):
-        self.__checker = checker
+    @checker.setter
+    def checker(self, delegate: LiveChecker):
+        self.__checker = delegate
 
     @property
-    def stream_creator(self) -> LiveStreamCreator:
+    def creator(self) -> LiveCreator:
         return self.__creator
 
-    @stream_creator.setter
-    def stream_creator(self, creator: LiveStreamCreator):
+    @creator.setter
+    def creator(self, creator: LiveCreator):
         self.__creator = creator
 
-    def new_stream(self, info: Dict) -> Optional[LiveStream]:
-        url: str = info.get('url')
+    #
+    #   Genre
+    #
+
+    def create_genre(self, info: Dict) -> Optional[LiveGenre]:
+        title = info.get('title')
+        if title is None:  # or len(title) == 0:
+            return None
+        return self.creator.create_genre(info=info)
+
+    def new_genre(self, title: str) -> LiveGenre:
+        # assert len(title) > 0, 'genre title should not be empty'
+        return self.creator.create_genre(title=title)
+
+    #
+    #   Live Channel
+    #
+
+    def create_channel(self, info: Dict) -> Optional[LiveChannel]:
+        name = info.get('name')
+        if name is None or len(name) == 0:
+            return None
+        return self.creator.create_channel(info=info)
+
+    def new_channel(self, name: str) -> LiveChannel:
+        assert len(name) > 0, 'channel name should not be empty'
+        return self.creator.create_channel(name=name)
+
+    #
+    #   Live Stream Source
+    #
+
+    def create_stream(self, info: Dict) -> Optional[LiveStream]:
+        url = info.get('url')
+        url = LiveStream.parse_url(url=url)
+        if url is None:
+            return None
         with self.__lock:
             src = self.__streams.get(url)
             if src is None:
-                src = self.stream_creator.create_stream(info=info)
-                if src is not None:
-                    self.__streams[url] = src
+                src = self.creator.create_stream(info=info)
+                self.__streams[url] = src
             return src
 
-    def get_stream(self, url: URI, label: Optional[str]) -> Optional[LiveStream]:
+    def new_stream(self, url: URI, label: Optional[str]) -> LiveStream:
         with self.__lock:
             src = self.__streams.get(url)
             if src is None:
-                src = self.stream_creator.create_stream(url=url, label=label)
-                if str is not None:
-                    self.__streams[url] = src
+                src = self.creator.create_stream(url=url, label=label)
+                self.__streams[url] = src
             return src
 
     def set_stream(self, stream: LiveStream):
@@ -129,7 +156,7 @@ class LiveStreamFactory:
         with self.__lock:
             old = self.__streams.get(url)
             if old is not None:
-                self.stream_creator.merge_stream(new=stream, old=old)
+                _merge_stream(new=stream, old=old)
             self.__streams[url] = stream
 
 

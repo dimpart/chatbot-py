@@ -69,6 +69,11 @@ class LiveChannel(MapInfo):
         return self.get(key='name', default='')
 
     @property
+    def empty(self) -> bool:
+        array = self.get(key='streams', default=None)
+        return array is None or len(array) == 0
+
+    @property
     def available(self) -> bool:
         """ source stream(s) available """
         sources = self.streams
@@ -132,8 +137,9 @@ class LiveChannel(MapInfo):
             return info
         elif isinstance(info, MapInfo):
             info = info.dictionary
-        if 'name' in info:
-            return cls(info=info)
+        # if 'name' in info:
+        #     return cls(info=info)
+        return channel_factory().create_channel(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveChannel]:
@@ -153,3 +159,8 @@ class LiveChannel(MapInfo):
             elif isinstance(item, Dict):
                 array.append(item)
         return array
+
+
+def channel_factory():
+    from .factory import LiveFactory
+    return LiveFactory()

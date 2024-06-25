@@ -69,6 +69,11 @@ class LiveGenre(MapInfo):
         return self.get(key='title', default='')
 
     @property
+    def empty(self) -> bool:
+        array = self.get(key='channels', default=None)
+        return array is None or len(array) == 0
+
+    @property
     def channels(self) -> List[LiveChannel]:
         """ live channels """
         array = self.get(key='channels', default=[])
@@ -122,8 +127,9 @@ class LiveGenre(MapInfo):
             return info
         elif isinstance(info, MapInfo):
             info = info.dictionary
-        if 'title' in info:
-            return cls(info=info)
+        # if 'title' in info:
+        #     return cls(info=info)
+        return genre_factory().create_genre(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveGenre]:
@@ -143,3 +149,8 @@ class LiveGenre(MapInfo):
             elif isinstance(item, Dict):
                 array.append(item)
         return array
+
+
+def genre_factory():
+    from .factory import LiveFactory
+    return LiveFactory()

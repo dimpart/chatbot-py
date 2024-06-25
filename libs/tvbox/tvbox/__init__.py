@@ -35,8 +35,8 @@
 """
 
 from .lives import LiveStream, LiveChannel, LiveGenre
-from .lives import LiveStreamChecker, LiveStreamCreator
-from .lives import LiveStreamFactory
+from .lives import LiveChecker, LiveCreator
+from .lives import LiveFactory
 from .lives import LiveStreamScanner
 from .lives import LiveParser
 
@@ -57,8 +57,8 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     'LiveStream', 'LiveChannel', 'LiveGenre',
-    'LiveStreamChecker', 'LiveStreamCreator',
-    'LiveStreamFactory',
+    'LiveChecker', 'LiveCreator',
+    'LiveFactory',
     'LiveStreamScanner',
     'LiveParser',
 

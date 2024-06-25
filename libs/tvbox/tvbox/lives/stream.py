@@ -110,6 +110,11 @@ class LiveStream(MapInfo):
         return self.get(key='label', default=None)
 
     @property
+    def empty(self) -> bool:
+        url = self.get(key='url', default=None)
+        return url is None or len(url) == 0
+
+    @property
     def available(self) -> bool:
         ttl = self.get(key='ttl', default=0)
         return ttl > 0
@@ -166,7 +171,7 @@ class LiveStream(MapInfo):
             info = info.dictionary
         # if 'url' in info:
         #     return cls(info=info)
-        return stream_factory().new_stream(info=info)
+        return stream_factory().create_stream(info=info)
 
     @classmethod
     def convert(cls, array: Iterable[Dict]):  # -> List[LiveStream]:
@@ -187,12 +192,19 @@ class LiveStream(MapInfo):
                 array.append(item)
         return array
 
+    @classmethod
+    def parse_url(cls, url: str) -> Optional[URI]:
+        if not isinstance(url, str):
+            return None
+        if url.find(r'://') > 0:
+            return url
+
 
 def stream_factory():
-    from .factory import LiveStreamFactory
-    return LiveStreamFactory()
+    from .factory import LiveFactory
+    return LiveFactory()
 
 
 def stream_checker():
     factory = stream_factory()
-    return factory.stream_checker
+    return factory.checker
