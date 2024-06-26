@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import base64
 import hashlib
 import json
 import re
@@ -172,6 +173,19 @@ class H(DataCoder):
         return bytes.fromhex(string)
 
 
+class B64(DataCoder):
+
+    # Override
+    def encode(self, data: bytes) -> str:
+        """ BASE-64 Encode """
+        return base64.b64encode(data).decode('utf-8')
+
+    # Override
+    def decode(self, string: str) -> Optional[bytes]:
+        """ BASE-64 Decode """
+        return base64.b64decode(string)
+
+
 class Hex:
     coder: DataCoder = H()
 
@@ -184,6 +198,20 @@ class Hex:
     def decode(string: str) -> Optional[bytes]:
         # assert Hex.coder is not None, 'Hex coder not set yet'
         return Hex.coder.decode(string=string)
+
+
+class Base64:
+    coder: DataCoder = B64()
+
+    @staticmethod
+    def encode(data: bytes) -> str:
+        # assert Base64.coder is not None, 'Base64 coder not set yet'
+        return Base64.coder.encode(data=data)
+
+    @staticmethod
+    def decode(string: str) -> Optional[bytes]:
+        # assert Base64.coder is not None, 'Base64 coder not set yet'
+        return Base64.coder.decode(string=string)
 
 
 class ObjectCoder(ABC):
@@ -283,6 +311,14 @@ def hex_encode(data: bytes) -> str:
 
 def hex_decode(string: str) -> Optional[bytes]:
     return Hex.decode(string)
+
+
+def base64_encode(data: bytes) -> str:
+    return Base64.encode(data)
+
+
+def base64_decode(string: str) -> Optional[bytes]:
+    return Base64.decode(string)
 
 
 def json_encode(obj: Union[Dict, List]) -> str:

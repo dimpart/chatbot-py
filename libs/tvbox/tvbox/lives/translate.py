@@ -174,18 +174,20 @@ def parse_inf(lines: str) -> Optional[M3UInfo]:
     if url.find(r'://') < 0:
         return None
     # get channel name
-    pos = head.rfind(r'",')
-    if pos > 0:
+    pos = head.rfind(r',')
+    if pos > 0 and head.find(r'"', pos) < 0:
         pos += 2
         name = head[pos:]
     else:
         name = fetch_field(text=head, tag_start=' tvg-name="', tag_end='"')
         if name is None:
-            return None
+            name = fetch_field(text=head, tag_start=' tvg-id="', tag_end='"')
+            if name is None:
+                return None
     # get group title
     group = fetch_field(text=head, tag_start=' group-title="', tag_end='"')
-    if group is None or len(name) == 0:
-        return None
+    if group is None:
+        group = 'Default'
     return M3UInfo(group=group, name=name, url=url)
 
 

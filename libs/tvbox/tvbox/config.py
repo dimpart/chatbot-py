@@ -60,12 +60,12 @@ class LiveConfig(MapInfo):
     #
 
     @property
-    def sources(self) -> List[URI]:
+    def sources(self) -> List[Union[URI, Dict]]:
         array = self.get_option(option='sources')
         return [] if array is None else array
 
     @property
-    def lives(self) -> List[URI]:
+    def lives(self) -> List[Union[URI, Dict]]:
         array = self.get_option(option='lives')
         return [] if array is None else array
 

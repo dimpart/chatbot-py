@@ -41,6 +41,7 @@ from .scanner import LiveScanner
 
 from .config import LiveConfig
 from .source import SourceLoader, LiveHandler
+# from .loader import LiveSet
 from .loader import LiveLoader
 
 
@@ -57,6 +58,7 @@ __all__ = [
 
     'LiveConfig',
     'SourceLoader', 'LiveHandler',
+    # 'LiveSet',
     'LiveLoader',
 
 ]

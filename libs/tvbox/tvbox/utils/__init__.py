@@ -31,6 +31,7 @@
 from .crypto import md5
 from .crypto import utf8_encode, utf8_decode
 from .crypto import hex_encode, hex_decode
+from .crypto import base64_encode, base64_decode
 from .crypto import json_encode, json_decode
 
 from .aio import http_head, http_get
@@ -70,6 +71,7 @@ __all__ = [
     'md5',
     'utf8_encode', 'utf8_decode',
     'hex_encode', 'hex_decode',
+    'base64_encode', 'base64_decode',
     'json_encode', 'json_decode',
 
     'http_head', 'http_get',

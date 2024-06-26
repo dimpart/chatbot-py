@@ -55,7 +55,7 @@ class LiveParser:
     # protected
     def parse_lines(self, lines: List[str]) -> List[LiveGenre]:
         all_groups: List[LiveGenre] = []
-        current = self.factory.new_genre(title='')
+        current = self.factory.new_genre(title='Default')
         for item in lines:
             text = item.strip()
             if len(text) == 0:
