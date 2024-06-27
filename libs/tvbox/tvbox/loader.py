@@ -103,14 +103,29 @@ def _decode_proxy_url(item: Dict) -> Optional[URI]:
     channels = item.get('channels')
     if not isinstance(channels, List):
         return None
+    # check channels
     for item in channels:
-        try:
-            urls = item.get('urls')
-            for proxy in urls:
-                ext = _get_query_value(url=proxy, key='ext')
+        if not isinstance(item, Dict):
+            Log.warning(msg='cannot decode url from channel: %s' % item)
+            continue
+        urls = item.get('urls')
+        if not isinstance(urls, List):
+            Log.warning(msg='cannot decode url from channel: %s' % item)
+            continue
+        # check urls
+        for proxy in urls:
+            if not isinstance(proxy, str):
+                Log.warning(msg='cannot decode url: %s, %s' % (proxy, item))
+                continue
+            if not proxy.startswith(r'proxy://'):
+                Log.warning(msg='cannot decode url: %s, %s' % (proxy, item))
+                continue
+            # try to decode url from ext
+            ext = _get_query_value(url=proxy, key='ext')
+            try:
                 return base64_decode(string=ext)
-        except Exception as error:
-            Log.error(msg='failed to decode channel: %s, %s' % (item, error))
+            except Exception as error:
+                Log.error(msg='failed to decode url: %s, %s, %s' % (proxy, item, error))
 
 
 def _get_query_value(url: URI, key: str) -> Optional[str]:

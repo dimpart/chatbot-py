@@ -35,4 +35,4 @@ dimsdk==2.0.0
 dimplugins==2.0.0
 dimples==1.2.4
 
-tvbox==0.3.0
+tvbox==0.3.1

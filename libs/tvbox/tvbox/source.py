@@ -233,6 +233,8 @@ class LiveHandler(ScanEventHandler, Logging):
                 total_streams += len(item.streams)
         context.set(key='channel_total_count', value=total_channels)
         context.set(key='stream_total_count', value=total_streams)
+        context.set(key='available_channel_count', value=0)
+        context.set(key='available_stream_count', value=0)
         # pre scanning
         await self._pre_scan(context=context, genres=genres)
 
