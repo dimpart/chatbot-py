@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Set, List, Dict
+from typing import Optional, List, Dict
 
 from dimples import URI, DateTime
 
@@ -100,8 +100,9 @@ class TVScan(LiveHandler):
     def clear_caches(self):
         self.loader.clear_caches()
 
-    async def get_live_urls(self) -> Set[URI]:
-        return await self.loader.get_live_urls()
+    async def get_lives(self) -> List[Dict]:
+        live_set = await self.loader.get_live_set()
+        return live_set.lives
 
     async def search(self, task: Task):
         request = task.request

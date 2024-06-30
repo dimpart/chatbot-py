@@ -25,9 +25,9 @@
 
 # import random
 import threading
-from typing import Optional, Set, List, Dict
+from typing import Optional, List, Dict
 
-from dimples import DateTime, URI
+from dimples import DateTime
 from dimples import ID
 from dimples import Content
 from dimples import TextContent
@@ -132,8 +132,8 @@ class SearchBox(VideoBox):
         elif kw_len == 19 and keywords.lower() == 'live stream sources':
             tv = self.__tv
             tv.clear_caches()
-            live_urls = await tv.get_live_urls()
-            await _respond_live_urls(live_urls=live_urls, request=request, box=self)
+            array = await tv.get_lives()
+            await _respond_live_urls(lives=array, request=request, box=self)
             return
         else:
             coro = self._search(task=task)
@@ -223,24 +223,27 @@ async def _respond_history(history: List[Dict], request: ChatRequest, box: Video
     return await box.respond_markdown(text=text, request=request)
 
 
-async def _respond_live_urls(live_urls: Set[URI], request: ChatRequest, box: VideoBox):
-    count = len(live_urls)
+async def _respond_live_urls(lives: List[Dict], request: ChatRequest, box: VideoBox):
+    count = len(lives)
     text = 'Live Stream Sources:\n'
     text += '\n----\n'
-    for url in live_urls:
+    for item in lives:
+        url = item.get('url')
         text += '- [%s](%s#lives.txt "LIVE")\n' % (url, url)
     text += '\n----\n'
     text += 'Total %d source(s).' % count
     # search tag
     tag = request.content.get('tag')
+    hidden = request.content.get('hidden')
     cid = request.identifier
     Log.info(msg='respond %d sources with tag %s to %s' % (count, tag, cid))
     return await box.respond_markdown(text=text, request=request, muted='yes', extra={
         'app': 'chat.dim.tvbox',
         'mod': 'lives',
         'act': 'respond',
+        'lives': lives,
         'tag': tag,
-        'lives': list(live_urls),
+        'hidden': hidden,
     })
 
 
