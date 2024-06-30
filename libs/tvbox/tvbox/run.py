@@ -37,6 +37,7 @@
 import getopt
 import os
 import sys
+from typing import Optional, List, Dict
 
 path = os.path.abspath(__file__)
 path = os.path.dirname(path)
@@ -45,11 +46,12 @@ sys.path.insert(0, path)
 
 from tvbox.utils import Log
 from tvbox.utils import AsyncRunner as Runner
-from tvbox.lives import M3UTranslator
+from tvbox.lives import LiveParser
 from tvbox.config import LiveConfig
 from tvbox.source import LiveHandler
+from tvbox.sync import LiveSync
 from tvbox.loader import LiveLoader
-from tvbox.scanner import LiveScanner, ScanContext, ScanParser
+from tvbox.scanner import LiveScanner, ScanContext
 
 
 #
@@ -58,25 +60,49 @@ from tvbox.scanner import LiveScanner, ScanContext, ScanParser
 Log.LEVEL = Log.DEVELOP
 
 
-DEFAULT_CONFIG = '/etc/tvbox/config.json'
+DEFAULT_SYNC_CONFIG = '/etc/tvbox/source.json'
+DEFAULT_SCAN_CONFIG = '/etc/tvbox/config.json'
 
 
 def show_help():
     cmd = sys.argv[0]
     print('')
-    print('    TV Box Scanner')
+    print('    TV Box Spider')
     print('')
     print('usages:')
+    print('    %s [--config=<FILE>] sync lives' % cmd)
     print('    %s [--config=<FILE>] scan lives' % cmd)
     print('    %s [-h|--help]' % cmd)
     print('')
     print('actions:')
+    print('    sync lives      sync for live stream sources')
     print('    scan lives      scan for live stream sources')
     print('')
     print('optional arguments:')
-    print('    --config        config file path (default: "%s")' % DEFAULT_CONFIG)
+    print('    --config        config file path (default: "%s")' % DEFAULT_SCAN_CONFIG)
     print('    --help, -h      show this help message and exit')
     print('')
+
+
+def _get_config(opts: Dict[str, str], args: List[str]) -> Optional[str]:
+    # get from opts
+    for opt, arg in opts:
+        if opt == '--config':
+            return arg
+    # check actions
+    if len(args) != 2 or args[1] != 'lives':
+        return None
+    elif args[0] == 'sync':
+        return DEFAULT_SYNC_CONFIG
+    elif args[0] == 'scan':
+        return DEFAULT_SCAN_CONFIG
+
+
+def _get_cmd(args: List[str]) -> Optional[str]:
+    if len(args) != 2 or args[1] != 'lives':
+        return None
+    else:
+        return args[0]
 
 
 async def async_main():
@@ -88,34 +114,33 @@ async def async_main():
         show_help()
         sys.exit(1)
     # check options
-    config_file = None
-    for opt, arg in opts:
-        if opt == '--config':
-            config_file = arg
-        else:
-            show_help()
-            sys.exit(0)
-    # check config file path
+    config_file = _get_config(opts=opts, args=args)
     if config_file is None:
-        config_file = DEFAULT_CONFIG
+        show_help()
+        sys.exit(1)
     if not os.path.exists(config_file):
         show_help()
         Log.error(msg='config file not exists: %s' % config_file)
         sys.exit(0)
+    # check cmd
+    cmd = _get_cmd(args=args)
+    if cmd not in ['sync', 'scan']:
+        show_help()
+        sys.exit(1)
     # load config
     config = await LiveConfig.load(path=config_file)
     # initializing
     Log.info(msg='!!!')
     Log.info(msg='!!! Init with config: %s => %s' % (config_file, config))
     Log.info(msg='!!!')
-    # create scanner
-    translator = M3UTranslator()
-    parser = ScanParser(translators=[translator])
-    scanner = LiveScanner(parser=parser)
-    # create loader
-    loader = LiveLoader(config=config, scanner=scanner)
-    await loader.load(handler=LiveHandler(config=config),
-                      context=ScanContext(timeout=64))
+    handler = LiveHandler(config=config)
+    parser = LiveParser()
+    if cmd == 'sync':
+        loader = LiveSync(config=config, parser=parser)
+        await loader.load(handler=handler)
+    elif cmd == 'scan':
+        loader = LiveLoader(config=config, parser=parser, scanner=LiveScanner())
+        await loader.load(handler=handler, context=ScanContext(timeout=64))
     Log.info(msg='!!!')
     Log.info(msg='!!! Mission Accomplished.')
     Log.info(msg='!!!')

@@ -32,11 +32,9 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
 from .types import MapInfo
-from .utils import Logging
 
 from .lives import LiveStream, LiveChannel, LiveGenre
 from .lives import LiveStreamScanner
-from .lives import LiveParser, LiveTranslator
 
 
 class ScanContext(MapInfo):
@@ -108,42 +106,10 @@ class ScanEventHandler(ABC):
         raise NotImplemented
 
 
-class ScanParser(LiveParser, Logging):
-
-    def __init__(self, translators: List[LiveTranslator]):
-        super().__init__()
-        self.__translators = translators
-
-    @property
-    def translators(self) -> List[LiveTranslator]:
-        return self.__translators
-
-    def _translate(self, text: str) -> Optional[str]:
-        translators = self.__translators
-        for trans in translators:
-            target = trans.translate(text=text)
-            if target is None:
-                continue
-            # elif len(target) < 8:
-            #     continue
-            return target
-
-    # Override
-    def parse(self, text: str) -> List[LiveGenre]:
-        target = self._translate(text=text)
-        if target is None:
-            return super().parse(text=text)
-        cnt1 = len(text.splitlines())
-        cnt2 = len(target.splitlines())
-        self.warning(msg='converted text from %d lines to %d lines' % (cnt1, cnt2))
-        return super().parse(text=target)
-
-
 class LiveScanner:
 
-    def __init__(self, parser: LiveParser):
+    def __init__(self):
         super().__init__()
-        self.__parser = parser
         self.__scanner = self._create_stream_scanner()
 
     # noinspection PyMethodMayBeStatic
@@ -152,25 +118,21 @@ class LiveScanner:
         return LiveStreamScanner()
 
     @property  # protected
-    def parser(self) -> LiveParser:
-        return self.__parser
-
-    @property  # protected
     def stream_scanner(self) -> LiveStreamScanner:
         return self.__scanner
 
-    async def scan(self, text: str, context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
+    async def scan(self, genres: List[LiveGenre],
+                   context: ScanContext, handler: ScanEventHandler) -> List[LiveGenre]:
         """ Get non-empty channel groups """
-        all_genres = self.parser.parse(text=text)
         # reset pointers
         context.set(key='genre_offset', value=0)
         context.set(key='channel_offset', value=0)
         context.set(key='stream_offset', value=0)
         # start mission
-        await handler.on_scan_start(context=context, genres=all_genres)
-        groups = await self._scan_genres(genres=all_genres, context=context, handler=handler)
+        await handler.on_scan_start(context=context, genres=genres)
+        groups = await self._scan_genres(genres=genres, context=context, handler=handler)
         # mission accomplished
-        await handler.on_scan_finished(context=context, genres=all_genres)
+        await handler.on_scan_finished(context=context, genres=genres)
         return groups
 
     async def _scan_genres(self, genres: List[LiveGenre],

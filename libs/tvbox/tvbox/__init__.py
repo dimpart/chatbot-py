@@ -36,13 +36,13 @@
 
 
 from .scanner import ScanContext, ScanEventHandler
-from .scanner import ScanParser
 from .scanner import LiveScanner
 
 from .config import LiveConfig
 from .source import SourceLoader, LiveHandler
-# from .loader import LiveSet
+# from .item import LiveSet
 from .loader import LiveLoader
+from .sync import LiveSync
 
 
 name = 'TV-Box'
@@ -53,12 +53,12 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     'ScanContext', 'ScanEventHandler',
-    'ScanParser',
     'LiveScanner',
 
     'LiveConfig',
     'SourceLoader', 'LiveHandler',
     # 'LiveSet',
     'LiveLoader',
+    'LiveSync',
 
 ]

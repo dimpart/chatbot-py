@@ -34,19 +34,22 @@ from .types import URI
 from .utils import Logging, DateTime
 
 from .config import LiveConfig
+from .lives import LiveGenre
 from .lives import LiveParser
-from .scanner import LiveScanner, ScanContext
+from .lives import LiveTranslator, M3UTranslator
 from .source import SourceLoader, LiveHandler
 from .item import LiveSet
 
 
-class LiveLoader(Logging):
+class LiveSync(Logging):
 
-    def __init__(self, config: LiveConfig, parser: LiveParser, scanner: LiveScanner):
+    def __init__(self, config: LiveConfig, parser: LiveParser, translator: LiveTranslator = None):
         super().__init__()
+        if translator is None:
+            translator = M3UTranslator()
         self.__config = config
         self.__parser = parser
-        self.__scanner = scanner
+        self.__translator = translator
         self.__loader = self._create_source_loader()
 
     @property
@@ -58,8 +61,8 @@ class LiveLoader(Logging):
         return self.__parser
 
     @property
-    def scanner(self) -> LiveScanner:
-        return self.__scanner
+    def translator(self) -> LiveTranslator:
+        return self.__translator
 
     @property
     def loader(self) -> SourceLoader:
@@ -91,9 +94,9 @@ class LiveLoader(Logging):
     #   Running
     #
 
-    async def load(self, handler: LiveHandler, context: ScanContext):
+    async def load(self, handler: LiveHandler):
+        translator = self.translator
         parser = self.parser
-        scanner = self.scanner
         available_lives: List[Dict] = []
         # scan lives
         start_time = DateTime.current_timestamp()
@@ -112,32 +115,32 @@ class LiveLoader(Logging):
             else:
                 await handler.update_source(text=text, url=url)
             count = len(text.splitlines())
-            self.info(msg='scanning lives: %s => %d lines' % (url, count))
+            self.info(msg='sync lives: %s => %d lines' % (url, count))
             #
-            #  2. parse channel groups
+            #  2. translate M3U to lives.txt
+            #
+            temp = translator.translate(text=text)
+            if temp is not None:
+                cnt = len(temp.splitlines())
+                self.info(msg='translated: %s => %d lines to %d lines' % (url, count, cnt))
+                text = temp
+            #
+            #  3. parse channel groups
             #
             genres = parser.parse(text=text)
             if len(genres) == 0:
                 self.warning(msg='ignore empty lives: %s => %d lines' % (url, count))
                 continue
-            #
-            #  3. parse channel groups
-            #
-            available_genres = await scanner.scan(genres=genres, context=context, handler=handler)
-            if len(available_genres) == 0:
-                cnt = len(genres)
-                self.warning(msg='ignore empty lives: %s => %d lines, %d genres' % (url, count, cnt))
-                continue
             else:
                 # update 'lives.txt'
-                await handler.update_lives(genres=available_genres, url=url)
+                await handler.update_lives(genres=genres, url=url)
             # append to 'lives'
             info = item.copy()
             if 'origin' not in item:
                 info['origin'] = {
                     'url': url,
                 }
-            _update_counts(info, context=context)
+            _update_counts(info, genres=genres)
             info['url'] = self.config.get_output_lives_url(url=url)
             info['path'] = self.config.get_output_lives_path(url=url)
             info['src'] = url
@@ -152,12 +155,13 @@ class LiveLoader(Logging):
         })
 
 
-def _update_counts(info: Dict, context: ScanContext):
-    origin = info.get('origin')
-    if isinstance(origin, Dict):
-        if 'channel_total_count' not in origin:
-            origin['channel_total_count'] = context.get(key='channel_total_count')
-        if 'stream_total_count' not in origin:
-            origin['stream_total_count'] = context.get(key='stream_total_count')
-    info['available_channel_count'] = context.get(key='available_channel_count')
-    info['available_stream_count'] = context.get(key='available_stream_count')
+def _update_counts(info: Dict, genres: List[LiveGenre]):
+    total_channels = 0
+    total_streams = 0
+    for group in genres:
+        channels = group.channels
+        for item in channels:
+            total_channels += 1
+            total_streams += len(item.streams)
+    info['origin']['channel_total_count'] = total_channels
+    info['origin']['stream_total_count'] = total_streams
