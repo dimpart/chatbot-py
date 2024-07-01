@@ -36,7 +36,7 @@ from .utils import Logging, DateTime
 from .config import LiveConfig
 from .lives import LiveParser
 from .scanner import LiveScanner, ScanContext
-from .source import SourceLoader, LiveHandler
+from .source import SourceLoader, LiveScanHandler
 from .item import LiveSet
 
 
@@ -91,7 +91,7 @@ class LiveLoader(Logging):
     #   Running
     #
 
-    async def load(self, handler: LiveHandler, context: ScanContext):
+    async def load(self, handler: LiveScanHandler, context: ScanContext):
         parser = self.parser
         scanner = self.scanner
         available_lives: List[Dict] = []

@@ -30,7 +30,7 @@ from dimples import URI, DateTime
 from tvbox.lives import LiveStream, LiveChannel, LiveGenre
 from tvbox.lives import LiveParser
 from tvbox import LiveConfig
-from tvbox import LiveLoader, LiveHandler
+from tvbox import LiveLoader, LiveScanHandler
 from tvbox import LiveScanner, ScanContext
 
 from ...utils import Log
@@ -82,15 +82,15 @@ class SearchContext(ScanContext):
         self.set(key='cancelled', value=flag)
 
 
-class TVScan(LiveHandler):
+class TVScan(LiveScanHandler):
 
     INDEX_URI = 'http://tfs.dim.chat/tvbox/index.json'
 
     def __init__(self, config: LiveConfig):
         super().__init__(config=config)
-        parser = LiveParser()
-        scanner = LiveScanner(parser=parser)
-        self.__loader = LiveLoader(config=config, scanner=scanner)
+        self.__loader = LiveLoader(config=config,
+                                   parser=LiveParser(),
+                                   scanner=LiveScanner())
         self.__respond_time = 0
 
     @property

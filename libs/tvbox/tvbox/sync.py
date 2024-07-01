@@ -37,7 +37,7 @@ from .config import LiveConfig
 from .lives import LiveGenre
 from .lives import LiveParser
 from .lives import LiveTranslator, M3UTranslator
-from .source import SourceLoader, LiveHandler
+from .source import SourceLoader, LiveBuilder
 from .item import LiveSet
 
 
@@ -94,7 +94,7 @@ class LiveSync(Logging):
     #   Running
     #
 
-    async def load(self, handler: LiveHandler):
+    async def load(self, handler: LiveBuilder):
         translator = self.translator
         parser = self.parser
         available_lives: List[Dict] = []

@@ -110,25 +110,16 @@ class PreScanner(Logging):
         self.info(msg='pre-scanned %d stream(s) => %d result(s)' % (len(tasks), len(results)))
 
 
-class LiveHandler(ScanEventHandler, Logging):
+class LiveBuilder(Logging):
     """ Live Storage """
 
     def __init__(self, config: LiveConfig):
         super().__init__()
         self.__config = config
-        self.__scanner = PreScanner()
 
     @property
     def config(self) -> LiveConfig:
         return self.__config
-
-    @property
-    def batch_scanner(self) -> PreScanner:
-        return self.__scanner
-
-    @batch_scanner.setter
-    def batch_scanner(self, scanner: PreScanner):
-        self.__scanner = scanner
 
     #
     #   Storage
@@ -197,15 +188,14 @@ class LiveHandler(ScanEventHandler, Logging):
 
     # format: '{url}${tag}'
     def _build_stream_fragment(self, stream: LiveStream) -> Optional[str]:
-        if stream.available:
-            url = stream.url
-            label = stream.label
-            if url is None or url.find(r'://') < 0:
-                self.error(msg='stream error: %s' % stream)
-            elif label is None or len(label) == 0:
-                return url
-            else:
-                return '%s$%s' % (url, label)
+        url = stream.url
+        label = stream.label
+        if url is None or url.find(r'://') < 0:
+            self.error(msg='stream error: %s' % stream)
+        elif label is None or len(label) == 0:
+            return url
+        else:
+            return '%s$%s' % (url, label)
 
     async def update_source(self, text: str, url: URI) -> bool:
         """ save source file for lives """
@@ -217,9 +207,25 @@ class LiveHandler(ScanEventHandler, Logging):
         if len(text) > 0:
             return await text_file_write(path=path, text=text)
 
-    #
-    #   ScanEventHandler
-    #
+
+class LiveScanHandler(LiveBuilder, ScanEventHandler):
+
+    def __init__(self, config: LiveConfig):
+        super().__init__(config=config)
+        self.__scanner = PreScanner()
+
+    @property
+    def batch_scanner(self) -> PreScanner:
+        return self.__scanner
+
+    @batch_scanner.setter
+    def batch_scanner(self, scanner: PreScanner):
+        self.__scanner = scanner
+
+    # Override
+    def _build_stream_fragment(self, stream: LiveStream) -> Optional[str]:
+        if stream.available:
+            return super()._build_stream_fragment(stream=stream)
 
     # Override
     async def on_scan_start(self, context: ScanContext, genres: List[LiveGenre]):

@@ -48,10 +48,10 @@ from tvbox.utils import Log
 from tvbox.utils import AsyncRunner as Runner
 from tvbox.lives import LiveParser
 from tvbox.config import LiveConfig
-from tvbox.source import LiveHandler
-from tvbox.sync import LiveSync
-from tvbox.loader import LiveLoader
+from tvbox.source import LiveBuilder, LiveScanHandler
 from tvbox.scanner import LiveScanner, ScanContext
+from tvbox.loader import LiveLoader
+from tvbox.sync import LiveSync
 
 
 #
@@ -133,12 +133,13 @@ async def async_main():
     Log.info(msg='!!!')
     Log.info(msg='!!! Init with config: %s => %s' % (config_file, config))
     Log.info(msg='!!!')
-    handler = LiveHandler(config=config)
     parser = LiveParser()
     if cmd == 'sync':
+        handler = LiveBuilder(config=config)
         loader = LiveSync(config=config, parser=parser)
         await loader.load(handler=handler)
     elif cmd == 'scan':
+        handler = LiveScanHandler(config=config)
         loader = LiveLoader(config=config, parser=parser, scanner=LiveScanner())
         await loader.load(handler=handler, context=ScanContext(timeout=64))
     Log.info(msg='!!!')
