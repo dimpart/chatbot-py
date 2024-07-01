@@ -147,7 +147,8 @@ class LiveLoader(Logging):
         end_time = DateTime.current_timestamp()
         return await handler.update_index(container={
             'lives': available_lives,
-            'scan_time': DateTime.full_string(timestamp=start_time),
+            'lives_count': len(available_lives),
+            'start_time': DateTime.full_string(timestamp=start_time),
             'update_time': DateTime.full_string(timestamp=end_time),
         })
 
