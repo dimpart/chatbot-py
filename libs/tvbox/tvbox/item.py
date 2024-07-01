@@ -195,11 +195,15 @@ async def _get_live_set(config: LiveConfig, loader: SourceLoader) -> LiveSet:
                         'source': src,
                     },
                 }
-            elif 'origin' not in item:
-                item['origin'] = {
-                    'url': url,
-                    'source': src,
-                }
+            elif isinstance(item, Dict):
+                item['url'] = url
+                if 'origin' not in item:
+                    item['origin'] = {
+                        'url': url,
+                        'source': src,
+                    }
+            else:
+                Log.error(msg='lives item error: %s' % item)
             # OK
             live_set.add_item(item=item)
     # 2. get from "lives"

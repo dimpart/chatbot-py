@@ -37,7 +37,7 @@ function finish() {
 #   main
 #
 
-title "TVBox Scanner"
-start tvbox "tvbox" "scan lives"
+title "TVBox Syncing"
+start tvbox-sync "tvbox" "sync lives"
 
 finish

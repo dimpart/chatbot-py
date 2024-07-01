@@ -85,6 +85,10 @@ class SearchContext(ScanContext):
 class TVScan(LiveScanHandler):
 
     INDEX_URI = 'http://tfs.dim.chat/tvbox/index.json'
+    # list foot
+    LIST_DESC = '* Here are the live stream sources collected from the internet;\n' \
+                '* All live stream sources are contributed by users;\n' \
+                '* Before presenting them to you, the service bot scans all sources to verify their availability.'
 
     def __init__(self, config: LiveConfig):
         super().__init__(config=config)

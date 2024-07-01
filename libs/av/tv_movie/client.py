@@ -244,6 +244,7 @@ async def _respond_live_urls(lives: List[Dict], request: ChatRequest, box: Video
         'lives': lives,
         'tag': tag,
         'hidden': hidden,
+        'description': TVScan.LIST_DESC,
     })
 
 

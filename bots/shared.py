@@ -128,6 +128,9 @@ async def create_config(app_name: str, default_config: str) -> Config:
     index_uri = config.get_string(section='tvbox', option='index')
     if index_uri is not None:
         TVScan.INDEX_URI = index_uri
+    list_desc = config.get_string(section='tvbox', option='description')
+    if list_desc is not None:
+        TVScan.LIST_DESC = list_desc
     # OK
     return config
 
