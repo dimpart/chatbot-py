@@ -39,7 +39,7 @@ from ..utils import DateTime
 class LiveStream(MapInfo):
     """ M3U8 """
 
-    SCAN_INTERVAL = 3600 * 2
+    SCAN_INTERVAL = 3600 * 24
 
     def __init__(self, info: Dict = None, url: URI = None, label: str = None):
         """

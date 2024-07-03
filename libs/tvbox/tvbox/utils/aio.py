@@ -80,29 +80,48 @@ async def http_check_m3u8(url: URI, timeout: float = None) -> bool:
 
 
 async def _http_check(url: URI, is_m3u8: bool = None, timeout: float = None) -> bool:
-    if is_m3u8 is None and url.lower().find('m3u8') > 0:
+    if is_m3u8 is None and url.lower().find(r'm3u8') > 0:
         is_m3u8 = True
     status_code, headers = await http_head(url=url, timeout=timeout)
     # check status code
     if status_code == 302 or status_code == 301:
         # redirect
-        redirected_url = headers.get('Location')
+        redirected_url = http_get_header(key='Location', headers=headers)
+        if redirected_url is None:
+            Log.error(msg='failed to get location from %s => %s' % (url, headers))
+            return False
         return await _http_check(url=redirected_url, is_m3u8=is_m3u8, timeout=timeout)
     elif status_code != 200:
         # HTTP error
         return False
     elif is_m3u8:
         return True
-    # check content type
-    content_type = headers.get('Content-Type')
-    content_type = '' if content_type is None else str(content_type).lower()
-    if content_type.find('application/vnd.apple.mpegurl') >= 0:
+    # status_code == 200, check content type
+    content_type = http_get_header(key='Content-Type', headers=headers)
+    if content_type is None:
+        Log.error(msg='failed to get content-type from %s => %s' % (url, headers))
+        return False
+    else:
+        content_type = str(content_type).lower()
+    if content_type.find(r'application/vnd.apple.mpegurl') >= 0:
         return True
-    elif content_type.find('application/x-mpegurl') >= 0:
+    elif content_type.find(r'application/x-mpegurl') >= 0:
         return True
     Log.warning(msg='this is not a m3u8 url: %s' % url)
     return False
 
+
+def http_get_header(key: str, headers: Mapping) -> Optional[str]:
+    value = headers.get(key)
+    if value is not None:
+        return value
+    Log.info(msg='try to get header "%s" from %s' % (key, headers))
+    key = key.lower()
+    for name in headers:
+        assert isinstance(name, str), 'header error: %s, %s' % (name, headers)
+        if name.lower() == key:
+            return headers.get(name)
+    # Log.error(msg='header "%s" not found: %s' % (key, headers))
 
 #
 #   File

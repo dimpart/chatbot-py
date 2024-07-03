@@ -35,6 +35,7 @@ from .crypto import base64_encode, base64_decode
 from .crypto import json_encode, json_decode
 
 from .aio import http_head, http_get
+from .aio import http_get_header
 from .aio import http_get_text, http_check_m3u8
 
 from .aio import path_parent, path_join
@@ -75,6 +76,7 @@ __all__ = [
     'json_encode', 'json_decode',
 
     'http_head', 'http_get',
+    'http_get_header',
     'http_get_text', 'http_check_m3u8',
 
     'path_parent', 'path_join',

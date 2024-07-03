@@ -176,7 +176,7 @@ def parse_inf(lines: str) -> Optional[M3UInfo]:
     # get channel name
     pos = head.rfind(r',')
     if pos > 0 and head.find(r'"', pos) < 0:
-        pos += 2
+        pos += 1
         name = head[pos:]
     else:
         name = fetch_field(text=head, tag_start=' tvg-name="', tag_end='"')
