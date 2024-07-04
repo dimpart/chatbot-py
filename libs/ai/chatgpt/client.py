@@ -24,20 +24,18 @@
 # ==============================================================================
 
 import random
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, List
 
 from dimples import ID
-from dimples import Content, TextContent
+from dimples import Content
 from dimples import CommonFacebook
 
-from ...chat.base import get_nickname
-from ...chat import Setting, Greeting, ChatRequest
+from ...chat import Request, Setting
 from ...chat import ChatBox, ChatClient
+from ...chat import ChatProcessor, ChatProxy
 from ...client import Emitter
-from ...client import Monitor
 
-from .handler import MessageQueue
-from .handler import GPTHandler
+from .queue import MessageQueue
 
 
 class GPTChatBox(ChatBox):
@@ -52,150 +50,54 @@ class GPTChatBox(ChatBox):
         "error": "No response, please try again later."
     }'''
 
-    def __init__(self, identifier: ID, facebook: CommonFacebook, setting: Setting, handlers: List[GPTHandler]):
-        super().__init__(identifier=identifier, facebook=facebook)
-        self.__setting = setting
-        self.__handlers = handlers
-        self.__message_queue = MessageQueue()
+    def __init__(self, identifier: ID, facebook: CommonFacebook, proxy: ChatProxy, setting: Setting):
+        super().__init__(identifier=identifier, facebook=facebook, proxy=proxy)
+        self.__message_queue = MessageQueue.create(setting=setting)
 
     @property
-    def system_setting(self) -> Optional[Dict]:
-        text = self.__setting.text
-        if text is None or len(text) == 0:
-            return None
-        return {
-            'content': text,
-            'role': 'system',
-        }
-
-    def _append_message(self, msg: Dict):
-        self.__message_queue.push(msg=msg, trim=True)
-
-    def _build_messages(self, prompt: str) -> List[Dict]:
-        # 1. get all messages after appended
-        self.__message_queue.push(msg={
-            'content': prompt,
-            'role': 'user',
-        })
-        messages = self.__message_queue.messages
-        # 2. check system setting
-        settings = self.system_setting
-        if settings is not None:
-            # 3. insert system setting in the front
-            messages = messages.copy()
-            messages.insert(0, settings)
-        # OK
-        return messages
-
-    async def _query(self, prompt: str, identifier: ID) -> Tuple[Optional[str], Optional[GPTHandler]]:
-        """ query by handler """
-        all_handlers = self.__handlers
-        if len(all_handlers) == 0:
-            self.error(msg='gpt handlers not set')
-            return 'GPT handler not set', None
-        monitor = Monitor()
-        service = 'ChatGPT'
-        messages = self._build_messages(prompt=prompt)
-        index = 0
-        for handler in all_handlers:
-            # try to query by each handler
-            try:
-                msg = await handler.query(messages=messages, identifier=identifier)
-            except Exception as error:
-                self.error(msg='failed to query handler: %s, error: %s' % (handler, error))
-                msg = None
-            if msg is None:
-                self.error(msg='failed to query handler: %s' % handler)
-                index += 1
-                monitor.report_failure(service=service, agent=handler.agent)
-                continue
-            answer = msg.get('content')
-            if answer is None or len(answer) == 0:
-                self.error(msg='response error from handler: %s' % handler)
-                index += 1
-                monitor.report_failure(service=service, agent=handler.agent)
-                continue
-            else:
-                monitor.report_success(service=service, agent=handler.agent)
-            # got an answer
-            if index > 0:
-                # move this handler to the front
-                self.warning(msg='move handler position: %d, %s' % (index, handler))
-                self.__handlers.pop(index)
-                self.__handlers.insert(0, handler)
-            # OK, append responded message item
-            self._append_message(msg=msg)
-            return answer, handler
-        # failed to get answer
-        monitor.report_crash(service=service)
-        return None, None
+    def message_queue(self) -> MessageQueue:
+        return self.__message_queue
 
     # Override
-    async def _say_hi(self, prompt: str, request: Greeting) -> bool:
-        identifier = request.identifier
-        answer, handler = await self._query(prompt=prompt, identifier=identifier)
-        if answer is not None and len(answer) > 0:
-            await self.respond_text(text=answer, request=request)
-        # save response with handler
-        if handler is None:
-            text = answer
-        else:
-            text = '[%s] %s' % (handler.agent, answer)
-        await self._save_response(prompt=prompt, text=text, request=request)
-        return True
+    async def process_request(self, request: Request) -> Optional[ChatProcessor]:
+        cpu = await super().process_request(request=request)
+        if cpu is None:
+            await self.respond_text(text=self.NOT_FOUND, request=request)
+        return cpu
 
     # Override
-    async def _ask_question(self, prompt: str, content: TextContent, request: ChatRequest) -> bool:
-        identifier = request.identifier
-        name = await get_nickname(identifier=identifier, facebook=self.facebook)
-        self.info(msg='<<< received prompt from "%s": "%s"' % (name, prompt))
-        answer, handler = await self._query(prompt=prompt, identifier=identifier)
-        self.info(msg='>>> responding answer to "%s": "%s"' % (name, answer))
-        if answer is None:
-            answer = self.NOT_FOUND
-            await self.respond_text(text=answer, request=request)
-        elif len(answer) == 0:
-            answer = self.NO_CONTENT
-            await self.respond_text(text=answer, request=request)
-        else:
-            await self.respond_markdown(text=answer, request=request)
-        # save response with handler
-        if handler is None:
-            text = answer
-        else:
-            text = '[%s] %s' % (handler.agent, answer)
-        await self._save_response(prompt=prompt, text=text, request=request)
-        return True
-
-    # Override
-    async def _send_content(self, content: Content, receiver: ID) -> bool:
+    async def _send_content(self, content: Content, receiver: ID):
         emitter = Emitter()
-        await emitter.send_content(content=content, receiver=receiver)
-        return True
+        return await emitter.send_content(content=content, receiver=receiver)
 
 
 class GPTChatClient(ChatClient):
 
     SYSTEM_SETTING = 'Your name is "Gigi", a smart and beautiful girl.' \
                      ' You are set as a little assistant who is good at listening' \
-                     ' and willing to answer any questions.'
+                     ' and willing to answer any questions.\n' \
+                     'Respond in Markdown.'
 
     def __init__(self, facebook: CommonFacebook):
         super().__init__()
         self.__facebook = facebook
+        self.__processors: List[ChatProcessor] = []
         self.__system_setting = Setting(definition=self.SYSTEM_SETTING)
-        self.__handlers: List[GPTHandler] = []
 
-    def add_handler(self, handler: GPTHandler):
-        self.__handlers.append(handler)
+    def add_processor(self, processor: ChatProcessor):
+        self.__processors.append(processor)
+
+    def _chat_processors(self) -> List[ChatProcessor]:
+        return self.__processors.copy()
 
     # Override
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
         facebook = self.__facebook
         setting = self.__system_setting
         # copy handlers in random order
-        handlers = self.__handlers.copy()
-        count = len(handlers)
+        processors = self._chat_processors()
+        count = len(processors)
         if count > 1:
-            handlers = random.sample(handlers, count)
-        return GPTChatBox(identifier=identifier, facebook=facebook, setting=setting, handlers=handlers)
+            processors = random.sample(processors, count)
+        proxy = ChatProxy(service='ChatGPT', processors=processors)
+        return GPTChatBox(identifier=identifier, facebook=facebook, proxy=proxy, setting=setting)

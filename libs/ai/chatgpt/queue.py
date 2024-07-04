@@ -23,12 +23,11 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
+import threading
 from typing import Optional, List, Dict
 
-from dimples import ID
-
 from ...utils import json_encode
+from ...chat import Setting
 
 
 class MessageQueue:
@@ -36,19 +35,53 @@ class MessageQueue:
     MAX_SIZE = 65536
     MAX_COUNT = 16
 
-    def __init__(self):
+    def __init__(self, setting: Setting):
         super().__init__()
-        self.__messages = []
+        self.__messages: List[Dict] = []
         self.__size = 0
+        self.__setting = setting
+
+    @property
+    def system_setting(self) -> Optional[Dict]:
+        setting = self.__setting
+        if setting is None:
+            return None
+        else:
+            text = setting.text
+            if text is None or len(text) == 0:
+                return None
+        return {
+            'content': text,
+            'role': 'system',
+        }
+
+    def build_messages(self, prompt: str) -> List[Dict]:
+        # 1. get all messages after appended
+        self.push(msg={
+            'content': prompt,
+            'role': 'user',
+        })
+        messages = self.messages
+        # 2. check system setting
+        settings = self.system_setting
+        if settings is not None:
+            # messages = messages.copy()
+            messages.insert(0, settings)
+        # OK
+        return messages
 
     @property
     def messages(self) -> List[Dict]:
-        return self.__messages
+        return self.__messages.copy()
 
     def push(self, msg: Dict, trim: bool = False):
         # simplify message data
         if trim:
             msg = self._trim(msg=msg)
+        # check last message
+        cnt = len(self.__messages)
+        if cnt > 0 and self.__messages[cnt - 1] == msg:
+            return False
         # append to tail
         self.__messages.append(msg)
         self.__size += len(json_encode(obj=msg))
@@ -66,40 +99,23 @@ class MessageQueue:
             'role': msg.get('role'),
         }
 
+    @classmethod
+    def create(cls, setting: Setting):
+        return LockedQueue(setting=setting)
 
-class GPTHandler(ABC):
+
+class LockedQueue(MessageQueue):
+
+    def __init__(self, setting: Setting):
+        super().__init__(setting=setting)
+        self.__lock = threading.Lock()
+
+    @property  # Override
+    def messages(self) -> List[dict]:
+        with self.__lock:
+            return super().messages
 
     # Override
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s>\n    API: "%s%s"\n</%s module="%s">' % (cname, self.base_url, self.api_path, cname, mod)
-
-    # Override
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s>\n    API: "%s%s"\n</%s module="%s">' % (cname, self.base_url, self.api_path, cname, mod)
-
-    @property
-    def agent(self) -> str:
-        return self.__class__.__name__
-
-    @property
-    @abstractmethod
-    def base_url(self) -> str:
-        """ API base """
-        raise NotImplemented
-
-    @property
-    @abstractmethod
-    def api_path(self) -> str:
-        """ API path """
-        raise NotImplemented
-
-    @abstractmethod
-    async def query(self, messages: List[Dict], identifier: ID) -> Optional[Dict]:
-        """ Build query data and post to remote server
-            return message item with content text
-        """
-        raise NotImplemented
+    def push(self, msg: dict, trim: bool = False):
+        with self.__lock:
+            super().push(msg=msg, trim=trim)

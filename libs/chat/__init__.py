@@ -26,6 +26,9 @@
 from .base import Request
 from .base import Setting, Greeting, ChatRequest
 
+from .context import ChatContext
+from .delegate import ChatProcessor, ChatProxy
+
 from .box import ChatBox
 from .video import VideoBox
 
@@ -38,6 +41,9 @@ __all__ = [
 
     'Request',
     'Setting', 'Greeting', 'ChatRequest',
+
+    'ChatContext',
+    'ChatProcessor', 'ChatProxy',
 
     'ChatBox', 'VideoBox',
     'ChatClient',

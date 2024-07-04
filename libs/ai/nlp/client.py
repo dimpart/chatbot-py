@@ -97,7 +97,7 @@ class NLPChatBox(ChatBox):
             self.error('%s' % error)
             return False
         await self.respond_text(text=answer, request=request)
-        await self._save_response(prompt=prompt, text=answer, request=request)
+        await self.save_response(prompt=prompt, text=answer, request=request)
         return True
 
     # Override

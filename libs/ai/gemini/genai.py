@@ -23,69 +23,58 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 from typing import Optional, Union, List, Dict
 
 from requests import Response
 
+from dimples import TextContent
+
 from ...utils import utf8_encode, json_encode, json_decode
 from ...utils import Log, Logging
 from ...utils import HttpClient
+from ...chat import Greeting, ChatRequest
+from ...chat import ChatContext, ChatProcessor
+
+from .queue import MessageQueue
+from .client import GeminiChatBox
 
 
-class MessageQueue:
+class GeminiHandler(ChatProcessor):
 
-    MAX_SIZE = 65536
-    MAX_COUNT = 16
+    def __init__(self, agent: str, auth_token: str):
+        super().__init__(agent=agent)
+        self.__api = GenerativeAI(auth_token=auth_token)
 
-    def __init__(self):
-        super().__init__()
-        self.__messages = []
-        self.__size = 0
-        self.__lock = threading.Lock()
+    # Override
+    async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
+        assert isinstance(context, GeminiChatBox), 'chat context error: %s' % context
+        message_queue = context.message_queue
+        try:
+            answer = await self.__api.ask(question=prompt, message_queue=message_queue)
+        except Exception as error:
+            self.error(msg='google API error: %s, "%s"' % (error, prompt))
+            answer = None
+        if answer is None or len(answer) == 0:
+            self.error(msg='response error from google API: "%s"' % prompt)
+            return False
+        else:
+            await context.respond_markdown(text=answer, request=request)
+        await context.save_response(text=answer, prompt=prompt, request=request)
+        return True
 
-    @property
-    def messages(self) -> List[dict]:
-        with self.__lock:
-            return self.__messages.copy()
-
-    def push(self, msg: dict, trim: bool = False):
-        with self.__lock:
-            # simplify message data
-            if trim:
-                msg = self.__trim(msg=msg)
-            msg = self.__check_conflict(msg=msg)
-            # append to tail
-            self.__messages.append(msg)
-            self.__size += len(json_encode(obj=msg))
-            # check data size of the queue
-            while self.__size > self.MAX_SIZE:
-                if len(self.__messages) < self.MAX_COUNT:
-                    break
-                first = self.__messages.pop(0)
-                self.__size -= len(json_encode(obj=first))
-
-    # noinspection PyMethodMayBeStatic
-    def __trim(self, msg: dict) -> dict:
-        # content = msg.get('content')
-        # role = msg.get('role')
-        # return {
-        #     'content': content,
-        #     'role': role,
-        # }
-        return msg
-
-    # FIX: INVALID_ARGUMENT
-    #   ensure that multiturn requests alternate between user and model;
-    #   ensure that multiturn requests ends with a user role or a function response.
-    def __check_conflict(self, msg: dict) -> dict:
-        count = len(self.__messages)
-        if count > 0:
-            last = self.__messages[count - 1]
-            if last.get('role') == msg.get('role'):
-                self.__messages.pop(count - 1)
-                self.__size -= len(json_encode(obj=last))
-        return msg
+    # Override
+    async def _say_hi(self, prompt: str, request: Greeting, context: ChatContext) -> bool:
+        assert isinstance(context, GeminiChatBox), 'chat context error: %s' % context
+        message_queue = context.message_queue
+        try:
+            answer = await self.__api.ask(question=prompt, message_queue=message_queue)
+        except Exception as error:
+            self.error(msg='google API error: %s, "%s"' % (error, prompt))
+            answer = None
+        if answer is not None and len(answer) > 0:
+            await context.respond_markdown(text=answer, request=request)
+        await context.save_response(prompt=prompt, text=answer, request=request)
+        return True
 
 
 class GenerativeAI(Logging):
@@ -96,59 +85,24 @@ class GenerativeAI(Logging):
         https://ai.google.dev/tutorials/python_quickstart
     """
 
-    def __init__(self, referer: str, auth_token: str, http_client: HttpClient):
+    BASE_URL = 'https://generativelanguage.googleapis.com'
+    REFERER_URL = 'https://generativelanguage.googleapis.com/'
+
+    def __init__(self, auth_token: str):
         super().__init__()
-        self.__http_client = http_client
-        self.__referer = referer
         self.__auth_token = auth_token
-        # messages
-        self.__message_queue = MessageQueue()
-        self.__system_setting: Optional[dict] = None
+        self.__http_client = HttpClient(long_connection=True, base_url=self.BASE_URL)
 
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
         return self.__http_client.http_post(url=url, data=data, headers=headers)
 
-    def presume(self, system_content: str):
-        assert system_content is not None and len(system_content) > 0, 'presume error'
-        self.__system_setting = {
-            'parts': [
-                {
-                    'text': system_content,
-                }
-            ],
-            # 'role': 'system',
-            'role': 'user',
-        }
-
-    def _build_messages(self, question: str) -> List[dict]:
-        msg = {
-            'parts': [
-                {
-                    'text': question,
-                }
-            ],
-            'role': 'user',
-        }
-        self.__message_queue.push(msg=msg)
-        messages = self.__message_queue.messages
-        settings = self.__system_setting
-        if settings is not None:
-            # insert system settings in the front
-            first = messages[0]
-            # FIXME:
-            if first.get('role') != settings.get('role'):
-                # messages = messages.copy()
-                messages.insert(0, settings)
-            elif len(messages) == 1:
-                # insert system setting
-                text1 = settings['parts'][0]['text']
-                text2 = first['parts'][0]['text']
-                first['parts'][0]['text'] = '%s\n%s' % (text1, text2)
-        return messages
-
-    def ask(self, question: str) -> Optional[str]:
-        messages = self._build_messages(question=question)
-        info = {
+    def build_message_info(self, question: str, message_queue: MessageQueue) -> Optional[Dict]:
+        messages = message_queue.build_messages(prompt=question)
+        count = len(messages)
+        if count <= 0:
+            self.error(msg='failed to build message')
+            return None
+        return {
             'contents': messages,
             'safetySettings': [
                 {
@@ -169,14 +123,19 @@ class GenerativeAI(Logging):
                 },
             ],
         }
+
+    async def ask(self, question: str, message_queue: MessageQueue) -> Optional[str]:
+        info = self.build_message_info(question=question, message_queue=message_queue)
         self.info(msg='sending message: %s' % info)
+        if info is None:
+            return None
         data = utf8_encode(string=json_encode(obj=info))
         url = '/v1beta/models/gemini-pro:generateContent?key=%s' % self.__auth_token
         response = self.http_post(url=url, headers={
             'Content-Type': 'application/json',
             # 'Authorization': self.__auth_token,
-            'Origin': self.__referer,
-            'Referer': self.__referer,
+            'Origin': self.REFERER_URL,
+            'Referer': self.REFERER_URL,
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
                           ' AppleWebKit/537.36 (KHTML, like Gecko)'
                           ' Chrome/116.0.0.0 Safari/537.36',
@@ -188,11 +147,11 @@ class GenerativeAI(Logging):
             return None
         msg = get_content(info=info)
         if msg is not None:
-            self.__message_queue.push(msg=msg, trim=True)
+            message_queue.push(msg=msg, trim=True)
             parts = msg.get('parts')
             if isinstance(parts, List):
                 return get_text(parts=parts)
-        Log.error(msg='failed to parse content: %s' % info)
+        self.error(msg='failed to parse content: %s' % info)
 
 
 def get_text(parts: List) -> str:

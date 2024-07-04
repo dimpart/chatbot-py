@@ -35,11 +35,12 @@ from dimples import CommonFacebook
 
 from ...utils import Log
 from ...utils import Singleton, Runner
-from ...chat import ChatRequest
+from ...chat import Request, ChatRequest
 from ...chat import ChatBox, VideoBox, ChatClient
+from ...chat import ChatContext
+from ...chat import ChatProcessor, ChatProxy
 from ...chat.base import get_nickname
 from ...client import Emitter
-from ...client import Monitor
 
 from .engine import Task, Engine
 from .engine import KeywordManager
@@ -47,12 +48,50 @@ from .tvscan import TVScan, LiveConfig
 
 
 class SearchBox(VideoBox):
-    """ Chat Box """
 
-    def __init__(self, identifier: ID, facebook: CommonFacebook, engines: List[Engine]):
-        super().__init__(identifier=identifier, facebook=facebook)
-        self.__engines = engines
+    def __init__(self, identifier: ID, facebook: CommonFacebook, proxy: ChatProxy):
+        super().__init__(identifier=identifier, facebook=facebook, proxy=proxy)
         self.__task: Optional[Task] = None
+        self.__lock = threading.Lock()
+
+    def cancel_task(self):
+        with self.__lock:
+            self._cancel_task()
+
+    def _cancel_task(self):
+        task = self.__task
+        if task is not None:
+            self.__task = None
+            self.warning(msg='cancelling task')
+            task.cancel()
+
+    def new_task(self, keywords: str, request: ChatRequest) -> Task:
+        with self.__lock:
+            task = Task(keywords=keywords, request=request, box=self)
+            self._cancel_task()
+            self.__task = task
+            return task
+
+    # Override
+    async def process_request(self, request: Request) -> Optional[ChatProcessor]:
+        coro = super().process_request(request=request)
+        # searching in background
+        thr = Runner.async_thread(coro=coro)
+        thr.start()
+        # FIXME:
+        return None
+
+    # Override
+    async def _send_content(self, content: Content, receiver: ID):
+        emitter = Emitter()
+        return await emitter.send_content(content=content, receiver=receiver)
+
+
+class SearchHandler(ChatProcessor):
+
+    def __init__(self, engine: Engine):
+        super().__init__(agent=engine.agent)
+        self.__engine = engine
         # TODO: LiveConfig for TV channels
         config = LiveConfig(info={
             'tvbox': {
@@ -63,39 +102,18 @@ class SearchBox(VideoBox):
         })
         self.__tv = TVScan(config=config)
 
-    def _cancel_task(self):
-        task = self.__task
-        if task is not None:
-            self.__task = None
-            self.warning(msg='cancelling task')
-            task.cancel()
-
-    def _new_task(self, keywords: str, request: ChatRequest) -> Task:
-        task = Task(keywords=keywords, request=request, box=self)
-        self._cancel_task()
-        self.__task = task
-        return task
-
-    @property
-    def service(self) -> str:
-        return self.__class__.__name__
-
     # Override
-    async def _send_content(self, content: Content, receiver: ID):
-        emitter = Emitter()
-        return await emitter.send_content(content=content, receiver=receiver)
-
-    # Override
-    async def _ask_question(self, prompt: str, content: TextContent, request: ChatRequest):
+    async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
+        assert isinstance(context, SearchBox), 'chat context error: %s' % context
         #
         #  0. check group
         #
         sender = request.envelope.sender
         group = request.content.group
-        nickname = await get_nickname(identifier=sender, facebook=self.facebook)
+        nickname = await get_nickname(identifier=sender, facebook=context.facebook)
         source = '"%s" %s' % (nickname, sender)
         if group is not None:
-            name = await get_nickname(identifier=group, facebook=self.facebook)
+            name = await get_nickname(identifier=group, facebook=context.facebook)
             if name is None or len(name) == 0:
                 source += ' (%s)' % group
             else:
@@ -107,24 +125,24 @@ class SearchBox(VideoBox):
         keywords = prompt.strip()
         kw_len = len(keywords)
         if kw_len == 0:
-            return
+            return True
         else:
-            self._cancel_task()
+            context.cancel_task()
             # save command in history
             his_man = HistoryManager()
             his_man.add_command(cmd=keywords, when=request.time, sender=sender, group=group)
         # system commands
         if kw_len == 6 and keywords.lower() == 'cancel':
-            return
+            return True
         elif kw_len == 4 and keywords.lower() == 'stop':
-            return
+            return True
         elif kw_len == 12 and keywords.lower() == 'show history':
-            await _respond_history(history=his_man.commands, request=request, box=self)
-            return
+            await _respond_history(history=his_man.commands, request=request, box=context)
+            return True
         #
         #  2. search
         #
-        task = self._new_task(keywords=keywords, request=request)
+        task = context.new_task(keywords=keywords, request=request)
         if kw_len == 11 and keywords.lower() == 'tv channels':
             tv = self.__tv
             tv.clear_caches()
@@ -133,62 +151,32 @@ class SearchBox(VideoBox):
             tv = self.__tv
             tv.clear_caches()
             array = await tv.get_lives()
-            await _respond_live_urls(lives=array, request=request, box=self)
-            return
+            await _respond_live_urls(lives=array, request=request, box=context)
+            return True
         else:
-            coro = self._search(task=task)
+            coro = self._search(task=task, box=context)
         # searching in background
-        thr = Runner.async_thread(coro=coro)
-        thr.start()
+        return await coro
+        # thr = Runner.async_thread(coro=coro)
+        # thr.start()
+        # return True
 
-    async def _search(self, task: Task):
-        all_engines = self.__engines
-        count = len(all_engines)
-        if count == 0:
-            self.error(msg='search engines not set')
-            return False
-        monitor = Monitor()
-        failed = 0
-        index = 0
-        #
-        #  1. try to search by each engine
-        #
-        while index < count:
-            engine = all_engines[index]
-            try:
-                code = await engine.search(task=task)
-            except Exception as error:
-                self.error(msg='failed to search: %s, %s, error: %s' % (task, engine, error))
-                code = -500
-            # check return code
+    async def _search(self, task: Task, box: SearchBox) -> bool:
+        engine = self.__engine
+        # try to search by engine
+        try:
+            code = await engine.search(task=task)
             if code > 0:
-                # success
-                monitor.report_success(service=self.service, agent=engine.agent)
-                break
-            elif code == Engine.CANCELLED_CODE:  # code == -205:
-                # cancelled
-                return False
-            elif code < 0:  # code in [-404, -500]:
-                self.error(msg='search error from engine: %d %s' % (code, engine))
-                monitor.report_failure(service=self.service, agent=engine.agent)
-                failed += 1
-            index += 1
-        #
-        #  2. check result
-        #
-        if index == count:
+                return True
+        except Exception as error:
+            self.error(msg='failed to search: %s, %s, error: %s' % (task, engine, error))
+            return True
+        # check error code
+        if code == 0:
             key_man = KeywordManager()
-            await _respond_204(history=key_man.keywords, keywords=task.keywords, request=task.request, box=self)
-        if failed == count:
-            # failed to get answer
-            monitor.report_crash(service=self.service)
-            return False
-        elif 0 < index < count:
-            # move this handler to the front
-            engine = self.__engines.pop(index)
-            self.__engines.insert(0, engine)
-            self.warning(msg='move engine position: %d, %s' % (index, engine))
-        return True
+            await _respond_204(history=key_man.keywords, keywords=task.keywords, request=task.request, box=box)
+        elif code != Engine.CANCELLED_CODE:  # code != -205:
+            self.error(msg='search error from engine: %d %s' % (code, engine))
 
 
 async def _respond_204(history: List[str], keywords: str, request: ChatRequest, box: VideoBox):
@@ -286,9 +274,11 @@ class SearchClient(ChatClient):
     # Override
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
         facebook = self.__facebook
-        # copy engines in random order
-        engines = self.__engines.copy()
-        # count = len(engines)
+        processors = []
+        for engine in self.__engines:
+            processors.append(SearchHandler(engine=engine))
+        # count = len(processors)
         # if count > 1:
-        #     engines = random.sample(engines, count)
-        return SearchBox(identifier=identifier, facebook=facebook, engines=engines)
+        #     processors = random.sample(processors, count)
+        proxy = ChatProxy(service='TV_MOV', processors=processors)
+        return SearchBox(identifier=identifier, facebook=facebook, proxy=proxy)

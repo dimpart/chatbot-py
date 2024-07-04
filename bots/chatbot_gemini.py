@@ -43,6 +43,7 @@ from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
 from libs.ai.gemini import GeminiChatClient
+from libs.ai.gemini import GeminiHandler
 
 
 from bots.shared import GlobalVariable
@@ -53,9 +54,13 @@ class BotMessageProcessor(ClientProcessor):
 
     # Override
     def _create_chat_client(self) -> ChatClient:
+        shared = GlobalVariable()
         api_key = shared.config.get_string(section='gemini', option='google_api_key')
-        client = GeminiChatClient(facebook=self.facebook, api_key=api_key)
-        # Runner.async_run(coroutine=client.start())
+        client = GeminiChatClient(facebook=self.facebook)
+        # TODO: add GPT handler(s)
+        client.add_processor(processor=GeminiHandler(agent='API', auth_token=api_key))
+        client.add_processor(processor=GeminiHandler(agent='BAK', auth_token=api_key))
+        # Runner.async_task(coro=client.start())
         Runner.thread_run(runner=client)
         return client
 
@@ -69,10 +74,7 @@ Log.LEVEL = Log.DEVELOP
 DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
-shared = GlobalVariable()
-
-
-async def main():
+async def async_main():
     # create & start bot
     client = await start_bot(default_config=DEFAULT_CONFIG,
                              app_name='ChatBot: Gemini',
@@ -85,5 +87,9 @@ async def main():
     Log.warning(msg='bot stopped: %s' % client)
 
 
+def main():
+    Runner.sync_run(main=async_main())
+
+
 if __name__ == '__main__':
-    Runner.sync_run(main=main())
+    main()

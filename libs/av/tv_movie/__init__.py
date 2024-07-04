@@ -30,16 +30,22 @@
     Search Engine
 """
 
-# from .client import SearchBox
+# from .client import SearchBox, SearchHandler
 from .client import SearchClient
 
+# from .engine import Task, Engine
+
+# from .tvscan import SearchContext
 from .tvscan import TVScan
 
 __all__ = [
 
-    # 'SearchBox',
+    # 'SearchBox', 'SearchHandler',
     'SearchClient',
 
+    # 'Task', 'Engine',
+
+    # 'SearchContext',
     'TVScan',
 
 ]

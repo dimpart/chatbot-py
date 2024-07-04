@@ -23,19 +23,18 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, List
 
 from dimples import ID
-from dimples import Content, TextContent
+from dimples import Content
 from dimples import CommonFacebook
 
-from ...utils import HttpClient
-from ...chat import Setting, Greeting, ChatRequest
+from ...chat import Request, Setting
 from ...chat import ChatBox, ChatClient
+from ...chat import ChatProcessor, ChatProxy
 from ...client import Emitter
-from ...client import Monitor
 
-from .genai import GenerativeAI
+from .queue import MessageQueue
 
 
 #
@@ -55,82 +54,50 @@ class GeminiChatBox(ChatBox):
         "error": "No response, please try again later."
     }'''
 
-    def __init__(self, identifier: ID, facebook: CommonFacebook,
-                 referer: str, auth_token: str, http_client: HttpClient,
-                 setting: Setting):
-        super().__init__(identifier=identifier, facebook=facebook)
-        gemini = GenerativeAI(referer=referer, auth_token=auth_token, http_client=http_client)
-        gemini.presume(system_content=setting.text)
-        self.__gemini = gemini
+    def __init__(self, identifier: ID, facebook: CommonFacebook, proxy: ChatProxy, setting: Setting):
+        super().__init__(identifier=identifier, facebook=facebook, proxy=proxy)
+        self.__message_queue = MessageQueue.create(setting=setting)
 
-    async def _query(self, prompt: str) -> Optional[str]:
-        monitor = Monitor()
-        service = 'Gemini'
-        # agent = 'GoogleAPI'
-        agent = 'API'
-        try:
-            answer = self.__gemini.ask(question=prompt)
-        except Exception as error:
-            self.error(msg='failed to query google API, error: %s' % error)
-            answer = None
-        if answer is None or len(answer) == 0:
-            self.error(msg='response error from google API')
-            monitor.report_failure(service=service, agent=agent)
-        else:
-            monitor.report_success(service=service, agent=agent)
-        return answer
+    @property
+    def message_queue(self) -> MessageQueue:
+        return self.__message_queue
 
     # Override
-    async def _say_hi(self, prompt: str, request: Greeting) -> bool:
-        answer = await self._query(prompt=prompt)
-        if answer is not None and len(answer) > 0:
-            await self.respond_text(text=answer, request=request)
-        await self._save_response(prompt=prompt, text=answer, request=request)
-        return True
+    async def process_request(self, request: Request) -> Optional[ChatProcessor]:
+        cpu = await super().process_request(request=request)
+        if cpu is None:
+            await self.respond_text(text=self.NOT_FOUND, request=request)
+        return cpu
 
     # Override
-    async def _ask_question(self, prompt: str, content: TextContent, request: ChatRequest) -> bool:
-        answer = await self._query(prompt=prompt)
-        if answer is None:
-            answer = self.NOT_FOUND
-            await self.respond_text(text=answer, request=request)
-        elif len(answer) == 0:
-            answer = self.NO_CONTENT
-            await self.respond_text(text=answer, request=request)
-        else:
-            await self.respond_markdown(text=answer, request=request)
-        await self._save_response(prompt=prompt, text=answer, request=request)
-        return True
-
-    # Override
-    async def _send_content(self, content: Content, receiver: ID) -> bool:
+    async def _send_content(self, content: Content, receiver: ID):
         emitter = Emitter()
-        await emitter.send_content(content=content, receiver=receiver)
-        return True
+        return await emitter.send_content(content=content, receiver=receiver)
 
 
 class GeminiChatClient(ChatClient):
 
-    BASE_URL = 'https://generativelanguage.googleapis.com'
-    REFERER_URL = 'https://generativelanguage.googleapis.com/'
-
     SYSTEM_SETTING = 'Your name is "Gege", a smart and handsome boy.' \
                      ' You are set as a little assistant who is good at listening' \
-                     ' and willing to answer any questions.'
+                     ' and willing to answer any questions.\n' \
+                     'Respond in Markdown.'
 
-    def __init__(self, facebook: CommonFacebook, api_key: str):
+    def __init__(self, facebook: CommonFacebook):
         super().__init__()
         self.__facebook = facebook
-        self.__api_key = api_key
-        self.__http_client = HttpClient(long_connection=True, base_url=self.BASE_URL)
+        self.__processors: List[ChatProcessor] = []
         self.__system_setting = Setting(definition=self.SYSTEM_SETTING)
+
+    def add_processor(self, processor: ChatProcessor):
+        self.__processors.append(processor)
+
+    def _chat_processors(self) -> List[ChatProcessor]:
+        return self.__processors.copy()
 
     # Override
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
-        setting = self.__system_setting
         facebook = self.__facebook
-        referer = self.REFERER_URL
-        auth_token = self.__api_key
-        http_client = self.__http_client
-        return GeminiChatBox(identifier=identifier, setting=setting, facebook=facebook,
-                             referer=referer, auth_token=auth_token, http_client=http_client)
+        setting = self.__system_setting
+        processors = self._chat_processors()
+        proxy = ChatProxy(service='Gemini', processors=processors)
+        return GeminiChatBox(identifier=identifier, facebook=facebook, proxy=proxy, setting=setting)
