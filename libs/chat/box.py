@@ -105,7 +105,6 @@ class ChatBox(ChatContext, Logging, ABC):
         # chatting
         if isinstance(request, ChatRequest):
             # question from user
-            await request.build()
             self.__greeted = True
         elif self.__greeted:
             assert isinstance(request, Greeting), 'request error: %s' % request
@@ -113,7 +112,6 @@ class ChatBox(ChatContext, Logging, ABC):
             return None
         else:
             assert isinstance(request, Greeting), 'request error: %s' % request
-            await request.build()
         # process request content
         return await self.proxy.process_request(request=request, context=self)
 

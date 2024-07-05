@@ -52,14 +52,15 @@ class GeminiHandler(ChatProcessor):
         try:
             answer = await self.__api.ask(question=prompt, message_queue=message_queue)
         except Exception as error:
-            self.error(msg='google API error: %s, "%s"' % (error, prompt))
+            self.error(msg='API error: %s, "%s"' % (error, prompt))
             answer = None
+        text = '[%s] %s' % (self.agent, answer)
         if answer is None or len(answer) == 0:
-            self.error(msg='response error from google API: "%s"' % prompt)
+            self.error(msg='response error: "%s" => "%s"' % (prompt, text))
             return False
-        else:
-            await context.respond_markdown(text=answer, request=request)
-        await context.save_response(text=answer, prompt=prompt, request=request)
+        # OK
+        await context.respond_markdown(text=answer, request=request)
+        await context.save_response(text=text, prompt=prompt, request=request)
         return True
 
     # Override
@@ -69,11 +70,16 @@ class GeminiHandler(ChatProcessor):
         try:
             answer = await self.__api.ask(question=prompt, message_queue=message_queue)
         except Exception as error:
-            self.error(msg='google API error: %s, "%s"' % (error, prompt))
+            self.error(msg='API error: %s, "%s"' % (error, prompt))
             answer = None
-        if answer is not None and len(answer) > 0:
-            await context.respond_markdown(text=answer, request=request)
-        await context.save_response(prompt=prompt, text=answer, request=request)
+        text = '[%s] %s' % (self.agent, answer)
+        if answer is None or len(answer) == 0:
+            self.error(msg='response error: "%s" => "%s"' % (prompt, text))
+            await context.save_response(text=text, prompt=prompt, request=request)
+            return False
+        # OK
+        await context.respond_markdown(text=answer, request=request)
+        await context.save_response(text=text, prompt=prompt, request=request)
         return True
 
 

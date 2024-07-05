@@ -29,7 +29,7 @@ from dimples import ID
 from dimples import Content
 from dimples import CommonFacebook
 
-from ...chat import Request, Setting
+from ...chat import Request, Setting, ChatRequest
 from ...chat import ChatBox, ChatClient
 from ...chat import ChatProcessor, ChatProxy
 from ...client import Emitter
@@ -65,7 +65,7 @@ class GeminiChatBox(ChatBox):
     # Override
     async def process_request(self, request: Request) -> Optional[ChatProcessor]:
         cpu = await super().process_request(request=request)
-        if cpu is None:
+        if cpu is None and isinstance(request, ChatRequest):
             await self.respond_text(text=self.NOT_FOUND, request=request)
         return cpu
 
@@ -79,8 +79,7 @@ class GeminiChatClient(ChatClient):
 
     SYSTEM_SETTING = 'Your name is "Gege", a smart and handsome boy.' \
                      ' You are set as a little assistant who is good at listening' \
-                     ' and willing to answer any questions.\n' \
-                     'Respond in Markdown.'
+                     ' and willing to answer any questions.'
 
     def __init__(self, facebook: CommonFacebook):
         super().__init__()

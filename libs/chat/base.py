@@ -67,6 +67,10 @@ class Request(ABC):
         return '<%s identifier="%s">\n\t[%s] %s\n</%s module="%s">' \
                % (cname, self.identifier, self.time, self.text, cname, mod)
 
+    @abstractmethod
+    async def build(self) -> Optional[str]:
+        raise NotImplemented
+
 
 class Setting(Request):
     """ System Setting """
@@ -85,6 +89,10 @@ class Setting(Request):
 
     @property  # Override
     def text(self) -> Optional[str]:
+        return self.__definition
+
+    # Override
+    async def build(self) -> Optional[str]:
         return self.__definition
 
 
@@ -123,7 +131,8 @@ class Greeting(Request, Logging):
     def text(self) -> Optional[str]:
         return self.__text
 
-    async def build(self):
+    # Override
+    async def build(self) -> Optional[str]:
         sender = self.identifier
         assert sender.is_user, 'greeting sender error: %s' % sender
         name = await get_nickname(identifier=sender, facebook=self.facebook)
@@ -177,7 +186,8 @@ class ChatRequest(Request, Logging):
     def text(self) -> Optional[str]:
         return self.__text
 
-    async def build(self):
+    # Override
+    async def build(self) -> Optional[str]:
         text = self.content.get('text')
         if text is not None and len(text) > 0:
             text = await self.__filter(text=text)

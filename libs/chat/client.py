@@ -97,17 +97,13 @@ class ChatClient(Runner, Logging, ABC):
         return count
 
     # Override
-    async def setup(self):
-        pass
-
-    # Override
-    async def finish(self):
-        pass
-
-    # Override
     async def process(self) -> bool:
         request = self._next()
         if request is not None:
+            text = await request.build()
+            if text is None:
+                self.warning(msg='ignore this request: %s' % request)
+                return True
             box = self._get_box(identifier=request.identifier)
             if box is not None:
                 # try to process the request
