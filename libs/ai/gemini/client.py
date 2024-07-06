@@ -33,6 +33,7 @@ from ...chat import Request, Setting, ChatRequest
 from ...chat import ChatBox, ChatClient
 from ...chat import ChatProcessor, ChatProxy
 from ...client import Emitter
+from ...client import Monitor
 
 from .queue import MessageQueue
 
@@ -61,6 +62,21 @@ class GeminiChatBox(ChatBox):
     @property
     def message_queue(self) -> MessageQueue:
         return self.__message_queue
+
+    # Override
+    def report_success(self, service: str, agent: str):
+        monitor = Monitor()
+        monitor.report_success(service=service, agent=agent)
+
+    # Override
+    def report_failure(self, service: str, agent: str):
+        monitor = Monitor()
+        monitor.report_failure(service=service, agent=agent)
+
+    # Override
+    def report_crash(self, service: str):
+        monitor = Monitor()
+        monitor.report_crash(service=service)
 
     # Override
     async def process_request(self, request: Request) -> Optional[ChatProcessor]:

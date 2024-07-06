@@ -41,6 +41,7 @@ from ...chat import ChatContext
 from ...chat import ChatProcessor, ChatProxy
 from ...chat.base import get_nickname
 from ...client import Emitter
+from ...client import Monitor
 
 from .engine import Task, Engine
 from .engine import KeywordManager
@@ -71,6 +72,21 @@ class SearchBox(VideoBox):
             self._cancel_task()
             self.__task = task
             return task
+
+    # Override
+    def report_success(self, service: str, agent: str):
+        monitor = Monitor()
+        monitor.report_success(service=service, agent=agent)
+
+    # Override
+    def report_failure(self, service: str, agent: str):
+        monitor = Monitor()
+        monitor.report_failure(service=service, agent=agent)
+
+    # Override
+    def report_crash(self, service: str):
+        monitor = Monitor()
+        monitor.report_crash(service=service)
 
     # Override
     async def process_request(self, request: Request) -> Optional[ChatProcessor]:

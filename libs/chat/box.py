@@ -112,6 +112,7 @@ class ChatBox(ChatContext, Logging, ABC):
             return None
         else:
             assert isinstance(request, Greeting), 'request error: %s' % request
+            self.__greeted = True
         # process request content
         return await self.proxy.process_request(request=request, context=self)
 
