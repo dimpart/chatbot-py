@@ -5,7 +5,6 @@ pycryptodome  # 3.14.1
 base58        # 1.0.3
 ecdsa         # 0.16.1
 
-redis      # 3.5.3
 greenlet   # 1.1.2
 gevent     # 21.8.0
 
@@ -23,7 +22,7 @@ async-timeout # 4.0.3
 # aiohttp     # 3.8.6
 # charset-normalizer # 3.3.2
 
-# aiou==0.1.0
+aiou==0.3.0
 
 startrek==2.1.1
 tcp==2.1.1

@@ -32,8 +32,9 @@ from dimples import GroupCommand, ResetCommand, ResignCommand
 from dimples.utils import CacheManager
 from dimples.common import GroupHistoryDBI
 
-from .dos import GroupHistoryStorage
+from .redis import RedisConnector
 from .redis import GroupHistoryCache
+from .dos import GroupHistoryStorage
 
 
 class GroupHistoryTable(GroupHistoryDBI):
@@ -42,10 +43,10 @@ class GroupHistoryTable(GroupHistoryDBI):
     CACHE_EXPIRES = 300    # seconds
     CACHE_REFRESHING = 32  # seconds
 
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
         self.__dos = GroupHistoryStorage(root=root, public=public, private=private)
-        self.__redis = GroupHistoryCache()
+        self.__redis = GroupHistoryCache(connector=connector)
         man = CacheManager()
         self.__history_cache = man.get_pool(name='group.history')  # ID => List
 

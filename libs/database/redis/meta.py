@@ -59,12 +59,11 @@ class MetaCache(Cache):
         js = json_encode(obj=dictionary)
         value = utf8_encode(string=js)
         key = self.__key(identifier=identifier)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     async def get_meta(self, identifier: ID) -> Optional[Meta]:
         key = self.__key(identifier=identifier)
-        value = self.get(name=key)
+        value = await self.get(name=key)
         if value is None:
             return None
         js = utf8_decode(data=value)

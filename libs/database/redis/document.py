@@ -59,7 +59,7 @@ class DocumentCache(Cache):
     async def get_documents(self, identifier: ID) -> Optional[List[Document]]:
         array = []
         name = self.__cache_name(identifier=identifier)
-        value = self.get(name=name)
+        value = await self.get(name=name)
         if value is None:
             # not found
             return None
@@ -87,5 +87,4 @@ class DocumentCache(Cache):
         js = json_encode(obj=array)
         value = utf8_encode(string=js)
         name = self.__cache_name(identifier=identifier)
-        self.set(name=name, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=name, value=value, expires=self.EXPIRES)

@@ -59,7 +59,7 @@ class GroupHistoryCache(Cache, Logging):
 
     async def load_group_histories(self, group: ID) -> List[Tuple[GroupCommand, ReliableMessage]]:
         name = self.__cache_name(group=group)
-        value = self.get(name=name)
+        value = await self.get(name=name)
         if value is None:
             # cache not found
             return []
@@ -94,5 +94,4 @@ class GroupHistoryCache(Cache, Logging):
         js = json_encode(obj=array)
         value = utf8_encode(string=js)
         name = self.__cache_name(group=group)
-        self.set(name=name, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=name, value=value, expires=self.EXPIRES)

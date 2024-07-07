@@ -43,6 +43,8 @@ from dimples.database.t_cipherkey import CipherKeyTable
 
 from ..common import Season, VideoDBI
 
+from .redis import RedisConnector
+
 from .t_meta import MetaTable
 from .t_document import DocumentTable
 from .t_group import GroupTable
@@ -53,23 +55,23 @@ from .t_video import SeasonTable, VideoSearchTable
 
 class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
 
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
         self.__users = []
         self.__contacts = {}
         # Entity
         self.__private_table = PrivateKeyTable(root=root, public=public, private=private)
-        self.__meta_table = MetaTable(root=root, public=public, private=private)
-        self.__document_table = DocumentTable(root=root, public=public, private=private)
-        self.__group_table = GroupTable(root=root, public=public, private=private)
-        self.__history_table = GroupHistoryTable(root=root, public=public, private=private)
+        self.__meta_table = MetaTable(root=root, public=public, private=private, connector=connector)
+        self.__document_table = DocumentTable(root=root, public=public, private=private, connector=connector)
+        self.__group_table = GroupTable(root=root, public=public, private=private, connector=connector)
+        self.__history_table = GroupHistoryTable(root=root, public=public, private=private, connector=connector)
         # Message
         self.__cipherkey_table = CipherKeyTable(root=root, public=public, private=private)
         # # ANS
         # self.__ans_table = AddressNameTable(root=root, public=public, private=private)
         # Video
-        self.__season_table = SeasonTable(root=root, public=public, private=private)
-        self.__search_table = VideoSearchTable(root=root, public=public, private=private)
+        self.__season_table = SeasonTable(root=root, public=public, private=private, connector=connector)
+        self.__search_table = VideoSearchTable(root=root, public=public, private=private, connector=connector)
 
     def show_info(self):
         # Entity

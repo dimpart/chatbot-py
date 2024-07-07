@@ -60,13 +60,12 @@ class SeasonCache(Cache):
         """ Save season with page URL """
         key = self.__key(url=url)
         value = encode_map(info=season)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     async def load_season(self, url: URI) -> Optional[Season]:
         """ Load season with page URL """
         key = self.__key(url=url)
-        value = self.get(name=key)
+        value = await self.get(name=key)
         dictionary = decode_map(data=value)
         return Season.parse_season(season=dictionary)
 
@@ -101,13 +100,12 @@ class VideoSearchCache(Cache):
         }
         key = self.__key(keywords=keywords)
         value = encode_map(info=info)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     async def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
         """ Load season with page URL """
         key = self.__key(keywords=keywords)
-        value = self.get(name=key)
+        value = await self.get(name=key)
         info = decode_map(data=value)
         if info is None:
             return None, None

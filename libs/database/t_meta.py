@@ -31,6 +31,7 @@ from dimples import ID, Meta
 from dimples.utils import CacheManager
 from dimples.common import MetaDBI
 
+from .redis import RedisConnector
 from .redis import MetaCache
 from .dos import MetaStorage
 
@@ -41,10 +42,10 @@ class MetaTable(MetaDBI):
     CACHE_EXPIRES = 60    # seconds
     CACHE_REFRESHING = 8  # seconds
 
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
         self.__dos = MetaStorage(root=root, public=public, private=private)
-        self.__redis = MetaCache()
+        self.__redis = MetaCache(connector=connector)
         man = CacheManager()
         self.__cache = man.get_pool(name='meta')  # ID => Meta
 

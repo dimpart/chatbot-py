@@ -31,8 +31,9 @@ from dimples import DocumentDBI
 
 from ..utils import CacheManager
 
-from .dos import DocumentStorage
+from .redis import RedisConnector
 from .redis import DocumentCache
+from .dos import DocumentStorage
 
 
 class DocumentTable(DocumentDBI):
@@ -41,10 +42,10 @@ class DocumentTable(DocumentDBI):
     CACHE_EXPIRES = 60    # seconds
     CACHE_REFRESHING = 8  # seconds
 
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
         self.__dos = DocumentStorage(root=root, public=public, private=private)
-        self.__redis = DocumentCache()
+        self.__redis = DocumentCache(connector=connector)
         man = CacheManager()
         self.__docs_cache = man.get_pool(name='documents')  # ID => List[Document]
 

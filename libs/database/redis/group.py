@@ -56,7 +56,7 @@ class GroupCache(Cache):
 
     async def get_members(self, group: ID) -> Optional[List[ID]]:
         key = self.__members_cache_name(identifier=group)
-        value = self.get(name=key)
+        value = await self.get(name=key)
         if value is not None:
             text = utf8_decode(data=value)
             assert text is not None, 'failed to decode string: %s' % value
@@ -67,8 +67,7 @@ class GroupCache(Cache):
         text = '\n'.join(users)
         value = utf8_encode(string=text)
         key = self.__members_cache_name(identifier=group)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     """
         Group administrators
@@ -81,7 +80,7 @@ class GroupCache(Cache):
 
     async def get_administrators(self, group: ID) -> Optional[List[ID]]:
         key = self.__administrators_cache_name(identifier=group)
-        value = self.get(name=key)
+        value = await self.get(name=key)
         if value is not None:
             text = utf8_decode(data=value)
             assert text is not None, 'failed to decode string: %s' % value
@@ -92,8 +91,7 @@ class GroupCache(Cache):
         text = '\n'.join(users)
         value = utf8_encode(string=text)
         key = self.__administrators_cache_name(identifier=group)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     """
         Group assistants
@@ -106,7 +104,7 @@ class GroupCache(Cache):
 
     async def get_assistants(self, group: ID) -> Optional[List[ID]]:
         key = self.__assistants_cache_name(identifier=group)
-        value = self.get(name=key)
+        value = await self.get(name=key)
         if value is not None:
             text = utf8_decode(data=value)
             assert text is not None, 'failed to decode string: %s' % value
@@ -117,5 +115,4 @@ class GroupCache(Cache):
         text = '\n'.join(bots)
         value = utf8_encode(string=text)
         key = self.__assistants_cache_name(identifier=group)
-        self.set(name=key, value=value, expires=self.EXPIRES)
-        return True
+        return await self.set(name=key, value=value, expires=self.EXPIRES)

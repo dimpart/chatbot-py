@@ -31,8 +31,9 @@ from dimples import ID
 from dimples.utils import CacheManager
 from dimples.common import GroupDBI
 
-from .dos import GroupStorage
+from .redis import RedisConnector
 from .redis import GroupCache
+from .dos import GroupStorage
 
 
 class GroupTable(GroupDBI):
@@ -41,10 +42,10 @@ class GroupTable(GroupDBI):
     CACHE_EXPIRES = 60    # seconds
     CACHE_REFRESHING = 8  # seconds
 
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
         self.__dos = GroupStorage(root=root, public=public, private=private)
-        self.__redis = GroupCache()
+        self.__redis = GroupCache(connector=connector)
         man = CacheManager()
         self.__members_cache = man.get_pool(name='group.members')                # ID => List[ID]
         self.__assistants_cache = man.get_pool(name='group.assistants')          # ID => List[ID]

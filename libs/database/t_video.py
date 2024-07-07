@@ -30,6 +30,8 @@ from dimples import DateTime
 from dimples.utils import CacheManager
 
 from ..common import Season
+
+from .redis import RedisConnector
 from .redis import SeasonCache, VideoSearchCache
 
 
@@ -40,9 +42,9 @@ class SeasonTable:
     CACHE_REFRESHING = 8  # seconds
 
     # noinspection PyUnusedLocal
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
-        self.__redis = SeasonCache()
+        self.__redis = SeasonCache(connector=connector)
         man = CacheManager()
         self.__cache = man.get_pool(name='video_seasons')  # URL => Season
 
@@ -91,9 +93,9 @@ class VideoSearchTable:
     CACHE_REFRESHING = 8  # seconds
 
     # noinspection PyUnusedLocal
-    def __init__(self, root: str = None, public: str = None, private: str = None):
+    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
         super().__init__()
-        self.__redis = VideoSearchCache()
+        self.__redis = VideoSearchCache(connector=connector)
         man = CacheManager()
         self.__cache = man.get_pool(name='video_search')  # URL => Season
 
