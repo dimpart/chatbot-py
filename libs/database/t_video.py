@@ -23,115 +23,152 @@
 # SOFTWARE.
 # ==============================================================================
 
+import threading
 from typing import Optional, List, Tuple
+
+from aiou.mem import CachePool
 
 from dimples import URI
 from dimples import DateTime
-from dimples.utils import CacheManager
+from dimples.utils import SharedCacheManager
+from dimples.database import DbInfo, DbTask
 
 from ..common import Season
 
-from .redis import RedisConnector
 from .redis import SeasonCache, VideoSearchCache
+
+
+class SeaTask(DbTask):
+
+    MEM_CACHE_EXPIRES = 3600  # seconds
+    MEM_CACHE_REFRESH = 32    # seconds
+
+    def __init__(self, url: URI,
+                 cache_pool: CachePool, redis: SeasonCache,
+                 mutex_lock: threading.Lock):
+        super().__init__(cache_pool=cache_pool,
+                         cache_expires=self.MEM_CACHE_EXPIRES,
+                         cache_refresh=self.MEM_CACHE_REFRESH,
+                         mutex_lock=mutex_lock)
+        self._url = url
+        self._redis = redis
+
+    # Override
+    def cache_key(self) -> URI:
+        return self._url
+
+    async def _load_redis_cache(self) -> Optional[Season]:
+        return await self._redis.load_season(url=self._url)
+
+    async def _save_redis_cache(self, value: Season) -> bool:
+        pass
+
+    async def _load_local_storage(self) -> Optional[Season]:
+        pass
+
+    async def _save_local_storage(self, value: Season) -> bool:
+        pass
+
+
+class VidTask(DbTask):
+
+    MEM_CACHE_EXPIRES = 3600  # seconds
+    MEM_CACHE_REFRESH = 32    # seconds
+
+    def __init__(self, keywords: str,
+                 cache_pool: CachePool, redis: VideoSearchCache,
+                 mutex_lock: threading.Lock):
+        super().__init__(cache_pool=cache_pool,
+                         cache_expires=self.MEM_CACHE_EXPIRES,
+                         cache_refresh=self.MEM_CACHE_REFRESH,
+                         mutex_lock=mutex_lock)
+        self._keywords = keywords
+        self._redis = redis
+
+    # Override
+    def cache_key(self) -> str:
+        return self._keywords
+
+    async def _load_redis_cache(self) -> Optional[Tuple[Optional[List[URI]], Optional[DateTime]]]:
+        return await self._redis.load_results(keywords=self._keywords)
+
+    async def _save_redis_cache(self, value: Tuple[Optional[List[URI]], Optional[DateTime]]) -> bool:
+        pass
+
+    async def _load_local_storage(self) -> Optional[Tuple[Optional[List[URI]], Optional[DateTime]]]:
+        pass
+
+    async def _save_local_storage(self, value: Tuple[Optional[List[URI]], Optional[DateTime]]) -> bool:
+        pass
 
 
 class SeasonTable:
     """ Implementations of VideoDBI """
 
-    CACHE_EXPIRES = 3600  # seconds
-    CACHE_REFRESHING = 8  # seconds
-
-    # noinspection PyUnusedLocal
-    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
+    def __init__(self, info: DbInfo):
         super().__init__()
-        self.__redis = SeasonCache(connector=connector)
-        man = CacheManager()
-        self.__cache = man.get_pool(name='video_seasons')  # URL => Season
+        man = SharedCacheManager()
+        self._cache = man.get_pool(name='video_seasons')  # URL => Season
+        self._redis = SeasonCache(connector=info.redis_connector)
+        self._lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
     def show_info(self):
         print('!!!  seasons cached in memory only !!!')
+
+    def _new_task(self, url: URI) -> SeaTask:
+        return SeaTask(url=url,
+                       cache_pool=self._cache, redis=self._redis,
+                       mutex_lock=self._lock)
 
     #
     #   Video DBI
     #
 
     async def save_season(self, season: Season, url: URI) -> bool:
-        # 1. store into redis server
-        if await self.__redis.save_season(season=season, url=url):
-            # 2. clear cache to reload
-            self.__cache.erase(key=url)
-            return True
+        with self._lock:
+            # 1. store into redis server
+            if await self._redis.save_season(season=season, url=url):
+                # 2. clear cache to reload
+                self._cache.erase(key=url)
+                return True
 
     async def load_season(self, url: URI) -> Optional[Season]:
-        now = DateTime.now()
-        # 1. check memory cache
-        value, holder = self.__cache.fetch(key=url, now=now)
-        if value is None:
-            # cache empty
-            if holder is None:
-                # cache not load yet, wait to load
-                self.__cache.update(key=url, life_span=self.CACHE_REFRESHING, now=now)
-            else:
-                if holder.is_alive(now=now):
-                    # cache not exists
-                    return None
-                # cache expired, wait to reload
-                holder.renewal(duration=self.CACHE_REFRESHING, now=now)
-            # 2. check redis server
-            value = await self.__redis.load_season(url=url)
-            # 3. update memory cache
-            self.__cache.update(key=url, value=value, life_span=self.CACHE_EXPIRES, now=now)
-        # OK, return cached value
-        return value
+        task = self._new_task(url=url)
+        return await task.load()
 
 
 class VideoSearchTable:
     """ Implementations of VideoDBI """
 
-    CACHE_EXPIRES = 3600  # seconds
-    CACHE_REFRESHING = 8  # seconds
-
-    # noinspection PyUnusedLocal
-    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
+    def __init__(self, info: DbInfo):
         super().__init__()
-        self.__redis = VideoSearchCache(connector=connector)
-        man = CacheManager()
-        self.__cache = man.get_pool(name='video_search')  # URL => Season
+        man = SharedCacheManager()
+        self._cache = man.get_pool(name='video_search')  # URL => Season
+        self._redis = VideoSearchCache(connector=info.redis_connector)
+        self._lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
     def show_info(self):
         print('!!!  seasons cached in memory only !!!')
+
+    def _new_task(self, keywords: str) -> VidTask:
+        return VidTask(keywords=keywords,
+                       cache_pool=self._cache, redis=self._redis,
+                       mutex_lock=self._lock)
 
     #
     #   Video DBI
     #
 
     async def save_results(self, results: List[URI], keywords: str) -> bool:
-        # 1. store into redis server
-        if await self.__redis.save_results(results=results, keywords=keywords):
-            # 2. clear cache to reload
-            self.__cache.erase(key=keywords)
-            return True
+        with self._lock:
+            # 1. store into redis server
+            if await self._redis.save_results(results=results, keywords=keywords):
+                # 2. clear cache to reload
+                self._cache.erase(key=keywords)
+                return True
 
     async def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
-        now = DateTime.now()
-        # 1. check memory cache
-        value, holder = self.__cache.fetch(key=keywords, now=now)
-        if value is None:
-            # cache empty
-            if holder is None:
-                # cache not load yet, wait to load
-                self.__cache.update(key=keywords, life_span=self.CACHE_REFRESHING, now=now)
-            else:
-                if holder.is_alive(now=now):
-                    # cache not exists
-                    return None, None
-                # cache expired, wait to reload
-                holder.renewal(duration=self.CACHE_REFRESHING, now=now)
-            # 2. check redis server
-            value = await self.__redis.load_results(keywords=keywords)
-            # 3. update memory cache
-            self.__cache.update(key=keywords, value=value, life_span=self.CACHE_EXPIRES, now=now)
-        # OK, return cached value
-        return value
+        task = self._new_task(keywords=keywords)
+        return await task.load()

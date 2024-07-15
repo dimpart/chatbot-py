@@ -38,40 +38,38 @@ from dimples import ReliableMessage
 from dimples import LoginCommand, GroupCommand, ResetCommand
 from dimples import AccountDBI, MessageDBI, SessionDBI
 from dimples import ProviderInfo, StationInfo
-from dimples.database.t_private import PrivateKeyTable
-from dimples.database.t_cipherkey import CipherKeyTable
+from dimples.database import DbInfo
+from dimples.database import PrivateKeyTable
+from dimples.database import CipherKeyTable
+from dimples.database import MetaTable
+from dimples.database import DocumentTable
+from dimples.database import GroupTable
+from dimples.database import GroupHistoryTable
 
 from ..common import Season, VideoDBI
-
-from .redis import RedisConnector
-
-from .t_meta import MetaTable
-from .t_document import DocumentTable
-from .t_group import GroupTable
-from .t_grp_history import GroupHistoryTable
 
 from .t_video import SeasonTable, VideoSearchTable
 
 
 class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
 
-    def __init__(self, connector: RedisConnector, root: str = None, public: str = None, private: str = None):
+    def __init__(self, info: DbInfo):
         super().__init__()
         self.__users = []
         self.__contacts = {}
         # Entity
-        self.__private_table = PrivateKeyTable(root=root, public=public, private=private)
-        self.__meta_table = MetaTable(root=root, public=public, private=private, connector=connector)
-        self.__document_table = DocumentTable(root=root, public=public, private=private, connector=connector)
-        self.__group_table = GroupTable(root=root, public=public, private=private, connector=connector)
-        self.__history_table = GroupHistoryTable(root=root, public=public, private=private, connector=connector)
+        self.__private_table = PrivateKeyTable(info=info)
+        self.__meta_table = MetaTable(info=info)
+        self.__document_table = DocumentTable(info=info)
+        self.__group_table = GroupTable(info=info)
+        self.__history_table = GroupHistoryTable(info=info)
         # Message
-        self.__cipherkey_table = CipherKeyTable(root=root, public=public, private=private)
+        self.__cipherkey_table = CipherKeyTable(info=info)
         # # ANS
-        # self.__ans_table = AddressNameTable(root=root, public=public, private=private)
+        # self.__ans_table = AddressNameTable(info=info)
         # Video
-        self.__season_table = SeasonTable(root=root, public=public, private=private, connector=connector)
-        self.__search_table = VideoSearchTable(root=root, public=public, private=private, connector=connector)
+        self.__season_table = SeasonTable(info=info)
+        self.__search_table = VideoSearchTable(info=info)
 
     def show_info(self):
         # Entity

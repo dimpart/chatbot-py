@@ -28,13 +28,12 @@ from typing import Optional, Union, Dict, List, Tuple
 from dimples import json_encode, json_decode, utf8_encode, utf8_decode
 from dimples import URI, DateTime
 from dimples import Mapper
+from dimples.database.redis import RedisCache
 
 from ...common import Season
 
-from .base import Cache
 
-
-class SeasonCache(Cache):
+class SeasonCache(RedisCache):
 
     # season cached in Redis will be removed after 3 days.
     EXPIRES = 3600 * 24 * 3  # seconds
@@ -70,7 +69,7 @@ class SeasonCache(Cache):
         return Season.parse_season(season=dictionary)
 
 
-class VideoSearchCache(Cache):
+class VideoSearchCache(RedisCache):
 
     # search cached in Redis will be removed after 24 hours.
     EXPIRES = 3600 * 24  # seconds

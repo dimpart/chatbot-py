@@ -23,15 +23,14 @@ async-timeout # 4.0.3
 # charset-normalizer # 3.3.2
 
 aiou==0.3.0
+tvbox==0.3.3
 
-startrek==2.1.1
-tcp==2.1.1
+startrek==2.1.2
+tcp==2.1.2
 
 mkm==2.0.0
 dkd==2.0.0
 dimp==2.0.0
 dimsdk==2.0.0
 dimplugins==2.0.0
-dimples==1.2.4
-
-tvbox==0.3.3
+dimples==1.2.5

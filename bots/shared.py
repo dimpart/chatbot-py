@@ -39,6 +39,7 @@ from dimples.client import ClientArchivist, ClientFacebook
 from libs.utils import Path
 from libs.utils import Singleton
 from libs.database.redis import RedisConnector
+from libs.database import DbInfo
 from libs.database import Database
 
 from libs.chat import ChatStorage
@@ -155,9 +156,10 @@ async def create_database(config: Config) -> Database:
     root = config.database_root
     public = config.database_public
     private = config.database_private
-    connector = create_redis_connector(config=config)
+    redis_conn = create_redis_connector(config=config)
+    info = DbInfo(redis_connector=redis_conn, root_dir=root, public_dir=public, private_dir=private)
     # create database
-    db = Database(root=root, public=public, private=private, connector=connector)
+    db = Database(info=info)
     db.show_info()
     # update neighbor stations (default provider)
     provider = ProviderInfo.GSP

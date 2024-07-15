@@ -86,11 +86,10 @@ __all__ = [
     'Daemon',
 
     'Singleton',
-    'Log', 'Logging',
     'Path', 'File', 'TextFile', 'JSONFile',
-    'CachePool', 'CacheHolder', 'CacheManager',
     'FrequencyChecker', 'RecentTimeChecker',
 
+    'Log', 'Logging',
     'Config',
 
     'is_before',

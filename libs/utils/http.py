@@ -30,7 +30,7 @@ from requests import Response, Session
 from requests.cookies import RequestsCookieJar
 
 from dimples.utils import Log, Logging
-from dimples.utils import CacheManager
+from dimples.utils import SharedCacheManager
 from dimples import DateTime
 
 
@@ -113,7 +113,7 @@ class HttpClient(Logging):
         self.__session = session
         self.__cookies = {}
         self.__base = base_url
-        man = CacheManager()
+        man = SharedCacheManager()
         self.__web_cache = man.get_pool(name='web_pages')  # url => html
 
     @property
