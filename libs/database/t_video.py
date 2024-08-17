@@ -26,11 +26,10 @@
 import threading
 from typing import Optional, List, Tuple
 
-from aiou.mem import CachePool
-
 from dimples import URI
 from dimples import DateTime
 from dimples.utils import SharedCacheManager
+from dimples.utils import CachePool
 from dimples.database import DbInfo, DbTask
 
 from ..common import Season

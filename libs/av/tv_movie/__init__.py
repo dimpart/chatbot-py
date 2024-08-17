@@ -38,6 +38,8 @@ from .client import SearchClient
 # from .tvscan import SearchContext
 from .tvscan import TVScan
 
+from .page import WebMaster
+
 __all__ = [
 
     # 'SearchBox', 'SearchHandler',
@@ -47,5 +49,7 @@ __all__ = [
 
     # 'SearchContext',
     'TVScan',
+
+    'WebMaster',
 
 ]
