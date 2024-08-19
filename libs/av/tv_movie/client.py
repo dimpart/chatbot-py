@@ -246,16 +246,21 @@ async def _respond_live_urls(lives: List[Dict], request: ChatRequest, box: Video
     text += 'Total %d source(s).' % count
     # search tag
     tag = request.content.get('tag')
+    title = request.content.get('title')
     hidden = request.content.get('hidden')
     cid = request.identifier
     Log.info(msg='respond %d sources with tag %s to %s' % (count, tag, cid))
     return await box.respond_markdown(text=text, request=request, muted='yes', extra={
+        'hidden': hidden,
+
         'app': 'chat.dim.tvbox',
         'mod': 'lives',
         'act': 'respond',
-        'lives': lives,
+        'expires': 600,
+
         'tag': tag,
-        'hidden': hidden,
+        'title': title,
+        'lives': lives,
         'description': TVScan.LIST_DESC,
     })
 
@@ -269,17 +274,22 @@ async def _respond_homepage(text: Optional[str], text_format: Optional[str], req
         text_format = 'markdown'
     # search tag
     tag = request.content.get('tag')
+    title = request.content.get('title')
     hidden = request.content.get('hidden')
     cid = request.identifier
     Log.info(msg='respond %d bytes with tag %s to %s' % (len(text), tag, cid))
     return await box.respond_text(text=text, request=request, extra={
         'format': text_format,
         'muted': 'yes',
+        'hidden': hidden,
+
         'app': 'chat.dim.sites',
         'mod': 'homepage',
         'act': 'respond',
+        'expires': 600,
+
         'tag': tag,
-        'hidden': hidden,
+        'title': title,
     })
 
 

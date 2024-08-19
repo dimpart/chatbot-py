@@ -99,7 +99,8 @@ def build_season_full(season: Season, index: int, total: int) -> str:
         text += '![](%s "")\n' % cover
     # description
     if desc is not None:
-        text += '```\n%s\n```\n' % desc
+        # text += '```\n%s\n```\n' % desc
+        text += _build_desc(desc=desc)
     # show tubes
     name = md_esc(name)
     tubes = season.tubes
@@ -119,4 +120,12 @@ def build_season_full(season: Season, index: int, total: int) -> str:
             if cover is not None:
                 alt_text += '; cover=%s' % cover
             text += ' > \\[[%s](%s "%s")\\]' % (i_title, m3u8, alt_text)
+    return text
+
+
+def _build_desc(desc: str) -> str:
+    text = ''
+    array = desc.strip().splitlines()
+    for line in array:
+        text += '> %s\n' % line
     return text
