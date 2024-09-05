@@ -51,7 +51,6 @@ from libs.client import Emitter, Monitor
 from libs.client import SharedGroupManager
 
 from libs.av.tv_movie import TVScan
-from libs.av.tv_movie import WebMaster
 
 
 @Singleton
@@ -133,9 +132,6 @@ async def create_config(app_name: str, default_config: str) -> Config:
     list_desc = config.get_string(section='tvbox', option='description')
     if list_desc is not None:
         TVScan.LIST_DESC = list_desc
-    # config webmaster
-    wm = WebMaster()
-    wm.config = config
     # OK
     return config
 

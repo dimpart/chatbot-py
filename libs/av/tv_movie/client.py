@@ -46,7 +46,6 @@ from ...client import Monitor
 from .engine import Task, Engine
 from .engine import KeywordManager
 from .tvscan import TVScan, LiveConfig
-from .page import WebMaster
 
 
 class SearchBox(VideoBox):
@@ -118,7 +117,6 @@ class SearchHandler(ChatProcessor):
             }
         })
         self.__tv = TVScan(config=config)
-        self.__wm = WebMaster()
 
     # Override
     async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
@@ -170,12 +168,6 @@ class SearchHandler(ChatProcessor):
             tv.clear_caches()
             array = await tv.get_lives()
             await _respond_live_urls(lives=array, request=request, box=context)
-            return True
-        elif kw_len == 12 and keywords.lower() == 'china travel':
-            wm = self.__wm
-            text = await wm.load_homepage()
-            text_format = wm.format
-            await _respond_homepage(text=text, text_format=text_format, request=request, box=context)
             return True
         else:
             coro = self._search(task=task, box=context)
@@ -262,34 +254,6 @@ async def _respond_live_urls(lives: List[Dict], request: ChatRequest, box: Video
         'title': title,
         'lives': lives,
         'description': TVScan.LIST_DESC,
-    })
-
-
-async def _respond_homepage(text: Optional[str], text_format: Optional[str], request: ChatRequest, box: VideoBox):
-    if text is None:
-        text = '## 404 Not Found\n' \
-               'The requested resource could not be found but may be available in the future.'
-        text_format = 'markdown'
-    elif text_format is None:
-        text_format = 'markdown'
-    # search tag
-    tag = request.content.get('tag')
-    title = request.content.get('title')
-    hidden = request.content.get('hidden')
-    cid = request.identifier
-    Log.info(msg='respond %d bytes with tag %s to %s' % (len(text), tag, cid))
-    return await box.respond_text(text=text, request=request, extra={
-        'format': text_format,
-        'muted': 'yes',
-        'hidden': hidden,
-
-        'app': 'chat.dim.sites',
-        'mod': 'homepage',
-        'act': 'respond',
-        'expires': 600,
-
-        'tag': tag,
-        'title': title,
     })
 
 
