@@ -33,7 +33,6 @@ from dimples import Content
 from dimples import TextContent
 from dimples import CommonFacebook
 
-from ...utils import Log
 from ...utils import Singleton, Runner
 from ...chat import Request, ChatRequest
 from ...chat import ChatBox, VideoBox, ChatClient
@@ -45,7 +44,6 @@ from ...client import Monitor
 
 from .engine import Task, Engine
 from .engine import KeywordManager
-from .tvscan import TVScan, LiveConfig
 
 
 class SearchBox(VideoBox):
@@ -108,15 +106,6 @@ class SearchHandler(ChatProcessor):
     def __init__(self, engine: Engine):
         super().__init__(agent=engine.agent)
         self.__engine = engine
-        # TODO: LiveConfig for TV channels
-        config = LiveConfig(info={
-            'tvbox': {
-                'sources': [
-                    TVScan.INDEX_URI,
-                ],
-            }
-        })
-        self.__tv = TVScan(config=config)
 
     # Override
     async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
@@ -159,18 +148,7 @@ class SearchHandler(ChatProcessor):
         #  2. search
         #
         task = context.new_task(keywords=keywords, request=request)
-        if kw_len == 11 and keywords.lower() == 'tv channels':
-            tv = self.__tv
-            tv.clear_caches()
-            coro = tv.search(task=task)
-        elif kw_len == 19 and keywords.lower() == 'live stream sources':
-            tv = self.__tv
-            tv.clear_caches()
-            array = await tv.get_lives()
-            await _respond_live_urls(lives=array, request=request, box=context)
-            return True
-        else:
-            coro = self._search(task=task, box=context)
+        coro = self._search(task=task, box=context)
         # searching in background
         return await coro
         # thr = Runner.async_thread(coro=coro)
@@ -225,36 +203,6 @@ async def _respond_history(history: List[Dict], request: ChatRequest, box: Video
             user += ' (%s)' % await box.get_name(identifier=group)
         text += '| %s | %s | %s |\n' % (user, cmd, when)
     return await box.respond_markdown(text=text, request=request)
-
-
-async def _respond_live_urls(lives: List[Dict], request: ChatRequest, box: VideoBox):
-    count = len(lives)
-    text = 'Live Stream Sources:\n'
-    text += '\n----\n'
-    for item in lives:
-        url = item.get('url')
-        text += '- [%s](%s#lives.txt "LIVE")\n' % (url, url)
-    text += '\n----\n'
-    text += 'Total %d source(s).' % count
-    # search tag
-    tag = request.content.get('tag')
-    title = request.content.get('title')
-    hidden = request.content.get('hidden')
-    cid = request.identifier
-    Log.info(msg='respond %d sources with tag %s to %s' % (count, tag, cid))
-    return await box.respond_markdown(text=text, request=request, muted='yes', extra={
-        'hidden': hidden,
-
-        'app': 'chat.dim.tvbox',
-        'mod': 'lives',
-        'act': 'respond',
-        'expires': 600,
-
-        'tag': tag,
-        'title': title,
-        'lives': lives,
-        'description': TVScan.LIST_DESC,
-    })
 
 
 @Singleton

@@ -23,7 +23,6 @@ async-timeout # 4.0.3
 # charset-normalizer # 3.3.2
 
 aiou==0.3.0
-tvbox==1.0.0
 
 startrek==2.2.0
 tcp==2.2.0

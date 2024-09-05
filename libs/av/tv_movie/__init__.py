@@ -35,17 +35,11 @@ from .client import SearchClient
 
 # from .engine import Task, Engine
 
-# from .tvscan import SearchContext
-from .tvscan import TVScan
-
 __all__ = [
 
     # 'SearchBox', 'SearchHandler',
     'SearchClient',
 
     # 'Task', 'Engine',
-
-    # 'SearchContext',
-    'TVScan',
 
 ]
