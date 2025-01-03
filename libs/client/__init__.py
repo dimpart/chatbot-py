@@ -29,10 +29,13 @@
 
 """
 
+from dimples.client.cpu import ClientContentProcessorCreator
 from dimples.client import ClientSession, SessionState
-from dimples.client import ClientContentProcessorCreator
+from dimples.client import ClientFacebook
 from dimples.client import ClientMessenger
 from dimples.client import Terminal
+
+from ..common import CommonArchivist as ClientArchivist
 
 from .processor import ClientProcessor
 from .packer import ClientPacker
@@ -40,25 +43,27 @@ from .packer import ClientPacker
 from .emitter import Emitter
 from .monitor import Monitor
 
-from .group import SharedGroupManager
-
 
 __all__ = [
 
     #
     #   Client
     #
-    'ClientSession', 'SessionState',
-    'ClientContentProcessorCreator',
-    'ClientMessenger',
-    'Terminal',
 
+    'ClientContentProcessorCreator',
+
+    'ClientSession', 'SessionState',
+
+    'ClientArchivist',
+    'ClientFacebook',
+
+    'ClientMessenger',
     'ClientProcessor',
     'ClientPacker',
 
+    'Terminal',
+
     'Emitter',
     'Monitor',
-
-    'SharedGroupManager',
 
 ]

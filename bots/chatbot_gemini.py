@@ -42,12 +42,13 @@ from libs.utils import Log, Runner
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
+
 from libs.ai.gemini import GeminiChatClient
 from libs.ai.gemini import GeminiHandler
 
 
 from bots.shared import GlobalVariable
-from bots.shared import start_bot
+from bots.shared import create_config, start_bot
 
 
 class BotMessageProcessor(ClientProcessor):
@@ -61,7 +62,9 @@ class BotMessageProcessor(ClientProcessor):
         client.add_processor(processor=GeminiHandler(agent='API', auth_token=api_key))
         client.add_processor(processor=GeminiHandler(agent='BAK', auth_token=api_key))
         # Runner.async_task(coro=client.start())
-        Runner.thread_run(runner=client)
+        # Runner.thread_run(runner=client)
+        thr = Runner.async_thread(coro=client.run())
+        thr.start()
         return client
 
 
@@ -75,15 +78,14 @@ DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
 async def async_main():
-    # create & start bot
-    client = await start_bot(default_config=DEFAULT_CONFIG,
-                             app_name='ChatBot: Gemini',
-                             ans_name='gege',
-                             processor_class=BotMessageProcessor)
-    # main run loop
-    await client.start()
-    await client.run()
-    # await client.stop()
+    # create global variable
+    shared = GlobalVariable()
+    config = await create_config(app_name='ChatBot: Gemini', default_config=DEFAULT_CONFIG)
+    await shared.prepare(config=config)
+    #
+    #  Create & start the bot
+    #
+    client = await start_bot(ans_name='gege', processor_class=BotMessageProcessor)
     Log.warning(msg='bot stopped: %s' % client)
 
 

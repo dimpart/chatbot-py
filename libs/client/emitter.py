@@ -30,13 +30,12 @@ from dimples import EncryptKey, ID
 from dimples import InstantMessage, ReliableMessage
 from dimples import Envelope, Content
 from dimples import TextContent, FileContent
+from dimples.group import SharedGroupManager
 from dimples.client import ClientMessenger
 
 from ..utils import md5, hex_encode
 from ..utils import filename_from_data
 from ..utils import Singleton, Log, Logging
-
-from .group import SharedGroupManager
 
 
 @Singleton
@@ -104,7 +103,7 @@ class Emitter(Logging):
         if receiver.is_group:
             # send by group manager
             g_man = SharedGroupManager()
-            r_msg = await g_man.send_message(msg=msg)
+            r_msg = await g_man.send_instant_message(msg=msg)
         else:
             # send by shared messenger
             messenger = self.messenger
@@ -119,7 +118,7 @@ class Emitter(Logging):
             content.group = receiver
         messenger = self.messenger
         facebook = messenger.facebook
-        current = facebook.current_user
+        current = await facebook.current_user
         assert current is not None, 'current user not set'
         sender = current.identifier
         # 1. pack instant message

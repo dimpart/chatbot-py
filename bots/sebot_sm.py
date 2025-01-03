@@ -42,9 +42,12 @@ from libs.utils import Log, Runner
 from libs.chat import ChatClient
 from libs.client import ClientProcessor
 
+
 from libs.av.tv_movie import SearchClient
 
-from bots.shared import start_bot
+
+from bots.shared import GlobalVariable
+from bots.shared import create_config, start_bot
 
 
 class BotMessageProcessor(ClientProcessor):
@@ -55,7 +58,9 @@ class BotMessageProcessor(ClientProcessor):
         # TODO: add search engines
         # ...
         # Runner.async_task(coro=client.start())
-        Runner.thread_run(runner=client)
+        # Runner.thread_run(runner=client)
+        thr = Runner.async_thread(coro=client.run())
+        thr.start()
         return client
 
 
@@ -68,18 +73,21 @@ Log.LEVEL = Log.DEVELOP
 DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
 
 
-async def main():
-    # create & start bot
-    client = await start_bot(default_config=DEFAULT_CONFIG,
-                             app_name='ChatBot: Site Manager',
-                             ans_name='king',
-                             processor_class=BotMessageProcessor)
-    # main run loop
-    await client.start()
-    await client.run()
-    # await client.stop()
+async def async_main():
+    # create global variable
+    shared = GlobalVariable()
+    config = await create_config(app_name='ChatBot: Site Manager', default_config=DEFAULT_CONFIG)
+    await shared.prepare(config=config)
+    #
+    #  Create & start the bot
+    #
+    client = await start_bot(ans_name='king', processor_class=BotMessageProcessor)
     Log.warning(msg='bot stopped: %s' % client)
 
 
+def main():
+    Runner.sync_run(main=async_main())
+
+
 if __name__ == '__main__':
-    Runner.sync_run(main=main())
+    main()

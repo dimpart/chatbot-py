@@ -29,10 +29,22 @@
 
 """
 
+from dimples import CommonArchivist
+from dimples import CommonFacebook
+from dimples import CommonMessenger
+
+from dimples.common.compat import CommonLoader as ExtensionLoader
+
 from .dbi import *
 
 
 __all__ = [
+
+    'CommonArchivist',
+    'CommonFacebook',
+    'CommonMessenger',
+
+    'ExtensionLoader',
 
     #
     #   Database Interface

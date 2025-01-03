@@ -197,6 +197,8 @@ class ChatRequest(Request, Logging):
     async def __filter(self, text: str) -> Optional[str]:
         sender = self.envelope.sender
         if EntityType.BOT == sender.type:
+            if len(text) > 128:
+                text = '%s ... %s' % (text[:100], text[-22:])
             self.info('ignore message from another bot: %s, "%s"' % (sender, text))
             return None
         elif EntityType.STATION == sender.type:
@@ -247,13 +249,13 @@ async def get_language(identifier: ID, facebook: CommonFacebook) -> str:
     if visa is None:
         return 'en'
     # check 'app:language'
-    app = visa.get_property(key='app')
+    app = visa.get_property(name='app')
     if isinstance(app, Dict):
         language = app.get('language')
     else:
         language = None
     # check 'sys:locale'
-    sys = visa.get_property(key='sys')
+    sys = visa.get_property(name='sys')
     if isinstance(sys, Dict):
         locale = sys.get('locale')
     else:

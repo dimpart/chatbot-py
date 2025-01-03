@@ -150,7 +150,8 @@ class Monitor(Runner, Logging):
         self.__config = None
         # start ticking
         self.__report_time = None
-        Runner.thread_run(runner=self)
+        # auto start
+        self.start()
 
     @property
     def config(self) -> Optional[Config]:
@@ -217,13 +218,9 @@ class Monitor(Runner, Logging):
         supervisors = config.get_list(section='monitor', option='supervisors')
         return ID.convert(array=supervisors)
 
-    # Override
-    async def setup(self):
-        pass
-
-    # Override
-    async def finish(self):
-        pass
+    def start(self):
+        thr = Runner.async_thread(coro=self.run())
+        thr.start()
 
     # Override
     async def process(self) -> bool:
