@@ -43,7 +43,9 @@ from .storage import ChatStorage
 # noinspection PyAbstractClass
 class ChatBox(ChatContext, Logging, ABC):
 
-    EXPIRES = 3600 * 36  # seconds
+    # Remove chat box after 3 days
+    # (auto greeting when open a new chat box)
+    CHAT_EXPIRES = 3600 * 72  # seconds
 
     def __init__(self, identifier: ID, facebook: CommonFacebook, proxy: ChatProxy):
         super().__init__(identifier=identifier)
@@ -80,7 +82,7 @@ class ChatBox(ChatContext, Logging, ABC):
         return name
 
     def is_expired(self, now: DateTime) -> bool:
-        expired = self.__last_time + self.EXPIRES
+        expired = self.__last_time + self.CHAT_EXPIRES
         return now > expired
 
     def _refresh_time(self, when: DateTime):
