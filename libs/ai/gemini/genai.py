@@ -106,7 +106,8 @@ class GenerativeAI(Logging):
         if info is None:
             return None
         data = utf8_encode(string=json_encode(obj=info))
-        url = '/v1beta/models/gemini-pro:generateContent?key=%s' % self.__auth_token
+        # url = '/v1beta/models/gemini-pro:generateContent?key=%s' % self.__auth_token
+        url = '/v1beta/models/gemini-1.5-flash:generateContent?key=%s' % self.__auth_token
         response = self.http_post(url=url, headers={
             'Content-Type': 'application/json',
             # 'Authorization': self.__auth_token,

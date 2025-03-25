@@ -89,13 +89,19 @@ class ChatProcessor(Logging, ABC):
         self.error(msg='unsupported request: %s' % request)
 
     async def _handle_translate(self, prompt: str, request: TranslateRequest, context: ChatContext) -> bool:
+        # TODO: check memory cache
         # query AI server
         answer = await self._query(prompt=prompt, request=request, context=context)
         record = '[%s] %s' % (self.agent, answer)
         await context.save_response(text=record, prompt=prompt, request=request)
-        if answer is None or len(answer) == 0:
+        if answer is None:
             self.error(msg='response error: "%s" => "%s"' % (prompt, record))
             return False
+        else:
+            answer = answer.strip()
+            if len(answer) == 0:
+                self.info(msg='respond nothing: "%s" => "%s"' % (prompt, record))
+                return False
         # OK
         content = request.content
         tag = content.get('tag')
@@ -121,9 +127,14 @@ class ChatProcessor(Logging, ABC):
         answer = await self._query(prompt=prompt, request=request, context=context)
         record = '[%s] %s' % (self.agent, answer)
         await context.save_response(text=record, prompt=prompt, request=request)
-        if answer is None or len(answer) == 0:
+        if answer is None:
             self.error(msg='response error: "%s" => "%s"' % (prompt, record))
             return False
+        else:
+            answer = answer.strip()
+            if len(answer) == 0:
+                self.info(msg='respond nothing: "%s" => "%s"' % (prompt, record))
+                return False
         # OK
         await context.respond_markdown(text=answer, request=request)
         return True

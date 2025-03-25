@@ -30,7 +30,6 @@ from typing import Optional, List, Dict
 from dimples import DateTime
 from dimples import ID
 from dimples import Content
-from dimples import TextContent
 from dimples import CommonFacebook
 
 from ...utils import Singleton, Runner
@@ -100,6 +99,11 @@ class SearchBox(VideoBox):
         emitter = Emitter()
         return await emitter.send_content(content=content, receiver=receiver)
 
+    # Override
+    async def save_response(self, text: str, prompt: str, request: Request) -> bool:
+        # return await super().save_response(text=text, prompt=prompt, request=request)
+        return False
+
 
 class SearchHandler(ChatProcessor):
 
@@ -108,7 +112,8 @@ class SearchHandler(ChatProcessor):
         self.__engine = engine
 
     # Override
-    async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
+    async def _query(self, prompt: str, request: Request, context: ChatContext) -> Optional[str]:
+        assert isinstance(request, ChatRequest), 'request error: %s' % request
         assert isinstance(context, SearchBox), 'chat context error: %s' % context
         #
         #  0. check group
@@ -130,7 +135,7 @@ class SearchHandler(ChatProcessor):
         keywords = prompt.strip()
         kw_len = len(keywords)
         if kw_len == 0:
-            return True
+            return ''
         else:
             context.cancel_task()
             # save command in history
@@ -138,19 +143,20 @@ class SearchHandler(ChatProcessor):
             his_man.add_command(cmd=keywords, when=request.time, sender=sender, group=group)
         # system commands
         if kw_len == 6 and keywords.lower() == 'cancel':
-            return True
+            return ''
         elif kw_len == 4 and keywords.lower() == 'stop':
-            return True
+            return ''
         elif kw_len == 12 and keywords.lower() == 'show history':
             await _respond_history(history=his_man.commands, request=request, box=context)
-            return True
+            return ''
         #
         #  2. search
         #
         task = context.new_task(keywords=keywords, request=request)
         coro = self._search(task=task, box=context)
         # searching in background
-        return await coro
+        ok = await coro
+        return '' if ok else None
         # thr = Runner.async_thread(coro=coro)
         # thr.start()
         # return True
@@ -180,9 +186,6 @@ async def _respond_204(history: List[str], keywords: str, request: ChatRequest, 
     text += '\n----\n'
     for his in history:
         text += '- **%s**\n' % his
-    text += '\n'
-    text += 'You can also input this command to scan TV channels:\n'
-    text += '\n- **TV channels**'
     return await box.respond_markdown(text=text, request=request)
 
 
@@ -233,8 +236,7 @@ class HistoryManager:
 class SearchClient(ChatClient):
 
     def __init__(self, facebook: CommonFacebook):
-        super().__init__()
-        self.__facebook = facebook
+        super().__init__(facebook=facebook)
         self.__engines: List[Engine] = []
 
     def add_engine(self, engine: Engine):
@@ -242,7 +244,7 @@ class SearchClient(ChatClient):
 
     # Override
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
-        facebook = self.__facebook
+        facebook = self.facebook
         processors = []
         for engine in self.__engines:
             processors.append(SearchHandler(engine=engine))
