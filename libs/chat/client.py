@@ -26,23 +26,28 @@
 import threading
 import weakref
 from abc import ABC, abstractmethod
-from typing import Optional, Set
+from typing import Optional, Set, List
 
 from dimples import DateTime
-from dimples import ID
+from dimples import EntityType, ID
+from dimples import Envelope
+from dimples import TextContent, FileContent, CustomizedContent
+from dimples import CommonFacebook
 
 from ..utils import Logging
 from ..utils import Runner
 
-from .base import Request
+from .base import Request, Greeting
+from .base import ChatRequest, TranslateRequest
 from .box import ChatBox
 
 
 class ChatClient(Runner, Logging, ABC):
     """ Chat Boxes Pool """
 
-    def __init__(self):
+    def __init__(self, facebook: CommonFacebook):
         super().__init__(interval=Runner.INTERVAL_SLOW)
+        self.__facebook = facebook
         self.__lock = threading.Lock()
         self.__requests = []
         # boxes pool
@@ -50,12 +55,16 @@ class ChatClient(Runner, Logging, ABC):
         self.__boxes: Set[ChatBox] = set()          # Set[ChatBox]
         self.__next_purge_time = 0
 
-    def append(self, request: Request):
+    @property
+    def facebook(self) -> CommonFacebook:
+        return self.__facebook
+
+    def _append_request(self, request: Request):
         """ Add request """
         with self.__lock:
             self.__requests.append(request)
 
-    def _next(self) -> Optional[Request]:
+    def _next_request(self) -> Optional[Request]:
         """ Pop request """
         with self.__lock:
             if len(self.__requests) > 0:
@@ -98,7 +107,7 @@ class ChatClient(Runner, Logging, ABC):
 
     # Override
     async def process(self) -> bool:
-        request = self._next()
+        request = self._next_request()
         if request is not None:
             text = await request.build()
             if text is None:
@@ -118,3 +127,47 @@ class ChatClient(Runner, Logging, ABC):
         # nothing to do now
         self._purge()
         return False
+
+    #
+    #   Interfaces for Message Processor
+    #
+
+    def process_text_content(self, content: TextContent, envelope: Envelope):
+        request = ChatRequest(content=content, envelope=envelope, facebook=self.__facebook)
+        self._append_request(request=request)
+
+    def process_file_content(self, content: FileContent, envelope: Envelope):
+        request = ChatRequest(content=content, envelope=envelope, facebook=self.__facebook)
+        self._append_request(request=request)
+
+    def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
+        mod = content.module
+        if mod == 'translate':
+            self._process_translate_content(content=content, envelope=envelope)
+        elif mod == 'users':
+            self._process_users_content(content=content, envelope=envelope)
+
+    def _process_translate_content(self, content: CustomizedContent, envelope: Envelope):
+        act = content.action
+        if act == 'request':
+            self.info(msg='translate "%s" for "%s"' % (content.get('text'), envelope.sender))
+            trans = TranslateRequest(content=content, envelope=envelope, facebook=self.__facebook)
+            self._append_request(request=trans)
+        else:
+            self.error(msg='translate content error: %s' % content)
+
+    def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
+        users = content.get('users')
+        if isinstance(users, List):
+            self.info(msg='received users: %s' % users)
+        else:
+            self.error(msg='users content error: %s, %s' % (content, envelope))
+            return
+        for item in users:
+            identifier = ID.parse(identifier=item.get('U'))
+            if identifier is None or identifier.type != EntityType.USER:
+                self.warning(msg='ignore user: %s' % item)
+                continue
+            self.info(msg='say hi for %s' % identifier)
+            greeting = Greeting(identifier=identifier, content=content, envelope=envelope, facebook=self.__facebook)
+            self._append_request(request=greeting)

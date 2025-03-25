@@ -25,6 +25,7 @@
 
 from .base import Request
 from .base import Setting, Greeting, ChatRequest
+from .base import TranslateRequest
 
 from .context import ChatContext
 from .delegate import ChatProcessor, ChatProxy
@@ -41,6 +42,7 @@ __all__ = [
 
     'Request',
     'Setting', 'Greeting', 'ChatRequest',
+    'TranslateRequest',
 
     'ChatContext',
     'ChatProcessor', 'ChatProxy',

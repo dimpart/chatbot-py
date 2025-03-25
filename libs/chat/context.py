@@ -118,6 +118,10 @@ class ChatContext(Dictionary, ABC):
 
     async def respond_text(self, text: str, request: Request, extra: Dict = None) -> TextContent:
         content = TextContent.create(text=text)
+        await self.respond_content(content=content, request=request, extra=extra)
+        return content
+
+    async def respond_content(self, content: Content, request: Request, extra: Dict = None) -> Content:
         if extra is not None:
             for key in extra:
                 content[key] = extra[key]

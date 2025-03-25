@@ -24,13 +24,14 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict
 
-from dimples import Content, TextContent, FileContent
+from dimples import TextContent, CustomizedContent
 
-from ..utils import Logging
+from ..utils import Log, Logging
+from ..utils import json_decode
 
-from .base import Request, Greeting, ChatRequest
+from .base import Request, Greeting, ChatRequest, TranslateRequest
 from .context import ChatContext
 
 
@@ -56,38 +57,107 @@ class ChatProcessor(Logging, ABC):
         return self.__agent  # 'OpenAI'
 
     async def process_request(self, request: Request, context: ChatContext) -> bool:
-        if isinstance(request, ChatRequest):
-            content = request.content
-            return await self._process_content(content=content, request=request, context=context)
+        if isinstance(request, TranslateRequest):
+            # translate
+            prompt = request.text
+            prompt = prompt.strip()
+            if prompt is None or len(prompt) == 0:
+                self.error(msg='translate content error: %s, envelope: %s' % (request.content, request.envelope))
+                return False
+            return await self._handle_translate(prompt=prompt, request=request, context=context)
         elif isinstance(request, Greeting):
-            text = request.text
-            if text is not None and len(text) > 0:
-                return await self._say_hi(prompt=text, request=request, context=context)
+            # say hello
+            prompt = request.text
+            prompt = prompt.strip()
+            if prompt is None or len(prompt) == 0:
+                self.error(msg='greeting content error: %s, envelope: %s' % (request.content, request.envelope))
+                return False
+            return await self._handle_text(prompt=prompt, request=request, context=context)
+        elif isinstance(request, ChatRequest):
+            content = request.content
+            if isinstance(content, TextContent):
+                # text conversation
+                prompt = request.text
+                if prompt is None or len(prompt) == 0:
+                    prompt = content.text
+                prompt = prompt.strip()
+                if prompt is None or len(prompt) == 0:
+                    self.error(msg='text content error: %s, envelope: %s' % (content, request.envelope))
+                    return False
+                return await self._handle_text(prompt=prompt, request=request, context=context)
+        # error
+        self.error(msg='unsupported request: %s' % request)
 
-    async def _process_content(self, content: Content, request: ChatRequest, context: ChatContext) -> bool:
-        if isinstance(content, TextContent):
-            return await self._process_text_content(content=content, request=request, context=context)
-        elif isinstance(content, FileContent):
-            return await self._process_file_content(content=content, request=request, context=context)
-        else:
-            self.error(msg='unsupported content: %s, envelope: %s' % (content, request.envelope))
+    async def _handle_translate(self, prompt: str, request: TranslateRequest, context: ChatContext) -> bool:
+        # query AI server
+        answer = await self._query(prompt=prompt, request=request, context=context)
+        record = '[%s] %s' % (self.agent, answer)
+        await context.save_response(text=record, prompt=prompt, request=request)
+        if answer is None or len(answer) == 0:
+            self.error(msg='response error: "%s" => "%s"' % (prompt, record))
+            return False
+        # OK
+        content = request.content
+        tag = content.get('tag')
+        if tag is None:
+            tag = content.sn
+        res = CustomizedContent.create(app='chat.dim.translate', mod='translate', act='respond')
+        res['tag'] = tag
+        result = _fetch_json_result(text=answer)
+        if isinstance(result, Dict):
+            translation = result.get('translation')
+            if translation is not None and len(translation) > 0:
+                res['text'] = translation
+                res['result'] = result
+        if 'text' not in res:
+            res['text'] = result
+        await context.respond_content(content=res, request=request, extra={
+            'muted': True,
+        })
+        return True
 
-    async def _process_text_content(self, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
-        text = request.text
-        if text is not None and len(text) > 0:
-            return await self._query(prompt=text, content=content, request=request, context=context)
-
-    async def _process_file_content(self, content: FileContent, request: ChatRequest, context: ChatContext) -> bool:
-        pass
-
-    async def _say_hi(self, prompt: str, request: Greeting, context: ChatContext) -> bool:
-        """ Build greeting message & query the server """
-        pass
+    async def _handle_text(self, prompt: str, request: Request, context: ChatContext) -> bool:
+        # query AI server
+        answer = await self._query(prompt=prompt, request=request, context=context)
+        record = '[%s] %s' % (self.agent, answer)
+        await context.save_response(text=record, prompt=prompt, request=request)
+        if answer is None or len(answer) == 0:
+            self.error(msg='response error: "%s" => "%s"' % (prompt, record))
+            return False
+        # OK
+        await context.respond_markdown(text=answer, request=request)
+        return True
 
     @abstractmethod
-    async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
+    async def _query(self, prompt: str, request: Request, context: ChatContext) -> Optional[str]:
         """ Build message(s) & query the server """
         raise NotImplemented
+
+
+def _fetch_json_result(text: str) -> Optional[Dict]:
+    # fetch code block
+    start = text.find('```')
+    if start < 0:
+        return None
+    end = text.rfind('```')
+    if end <= start:
+        return None
+    else:
+        block = text[start:end+3]
+    # fetch json code
+    start = block.find('{')
+    if start < 0:
+        return None
+    end = block.rfind('}')
+    if end <= start:
+        return None
+    else:
+        code = block[start:end+1]
+    # decode result
+    try:
+        return json_decode(string=code)
+    except Exception as error:
+        Log.error(msg='translate result error: %s, %s' % (error, text))
 
 
 class ChatProxy(Logging):

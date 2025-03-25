@@ -32,6 +32,7 @@ from dimples import Envelope, Content
 from dimples import CommonFacebook
 
 from ..utils import Logging
+from ..utils import json_encode
 
 
 class Request(ABC):
@@ -145,6 +146,103 @@ class Greeting(Request, Logging):
                ' considering my language habits and location.' \
                ' Please keep our names unchanged and' \
                ' not to translate them in your response.' % (name, language)
+        self.__text = text
+        return text
+
+
+class TranslateRequest(Request, Logging):
+    """ Prompt from translation
+        ~~~~~~~~~~~~~~~~~~~~~~~
+
+        content : {
+            type : 0xCC,
+            sn   : 123,
+
+            app   : "chat.dim.translate",  // application
+            mod   : "translate",           // module name
+            act   : "request",             // action name (or "respond")
+
+            tag   : 123,
+
+            text   : "{TEXT}",  // or {TRANSLATION} in respond
+            code   : "{LANG_CODE}",
+            result : {
+                from        : "{SOURCE_LANGUAGE}",
+                to          : "{TARGET_LANGUAGE}",
+                code        : "{LANG_CODE}",
+                text        : "{TEXT}",        // source text
+                translation : "{TRANSLATION}"  // target text
+            }
+        }
+    """
+
+    def __init__(self, envelope: Envelope, content: Content, facebook: CommonFacebook):
+        super().__init__()
+        self.__envelope = envelope
+        self.__content = content
+        self.__facebook = facebook
+        self.__text = None
+
+    @property
+    def facebook(self) -> CommonFacebook:
+        return self.__facebook
+
+    @property
+    def envelope(self) -> Envelope:
+        return self.__envelope
+
+    @property
+    def content(self) -> Content:
+        return self.__content
+
+    @property  # Override
+    def identifier(self) -> ID:
+        group = self.content.group
+        if group is not None:
+            return group
+        return self.envelope.sender
+
+    @property  # Override
+    def time(self) -> Optional[DateTime]:
+        return self.content.time
+
+    @property  # Override
+    def text(self) -> Optional[str]:
+        return self.__text
+
+    # Override
+    async def build(self) -> Optional[str]:
+        # check text
+        text = self.content.get('text')
+        if text is None:
+            self.error(msg='no text to translate: %s' % self.content)
+            return None
+        else:
+            text = text.strip()
+            if len(text) == 0:
+                self.error(msg='no text to translate: %s' % self.content)
+                return None
+        # check language code
+        code = self.content.get('code')
+        if code is None:
+            sender = self.envelope.sender
+            assert sender.is_user, 'sender error: %s' % sender
+            code = await get_language(identifier=sender, facebook=self.facebook)
+        # build prompt
+        req = json_encode({
+            'text': text,
+            'code': code,
+        })
+        text = 'My language code is "%s", please translate this text for me:\n' \
+               '\n%s\n\n' \
+               'output the result in JSON format:\n' \
+               '\n{' \
+               '\n    "from": "{name of source language}",' \
+               '\n    "to"  : "{name of target language}",' \
+               '\n    "code": "%s",' \
+               '\n    "text": "...",' \
+               '\n    "translation": "..."' \
+               '\n}' % (code, req, code)
         self.__text = text
         return text
 

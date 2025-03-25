@@ -26,15 +26,13 @@
 from abc import abstractmethod
 from typing import List
 
-from dimples import EntityType, ID
 from dimples import ReliableMessage
-from dimples import Envelope
 from dimples import Content, TextContent, FileContent, CustomizedContent
 from dimples import CommonFacebook, CommonMessenger
 
 from dimples.client import ClientMessageProcessor
 
-from ..chat import Greeting, ChatRequest, ChatClient
+from ..chat import ChatClient
 
 
 class ClientProcessor(ClientMessageProcessor):
@@ -54,42 +52,16 @@ class ClientProcessor(ClientMessageProcessor):
         """ Create Chat Client """
         raise NotImplemented
 
-    def _process_text_content(self, content: TextContent, envelope: Envelope):
-        request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
-        self.__chat_client.append(request=request)
-
-    def _process_file_content(self, content: FileContent, envelope: Envelope):
-        request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
-        self.__chat_client.append(request=request)
-
-    def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
-        users = content.get('users')
-        if isinstance(users, List):
-            self.info(msg='received users: %s' % users)
-        else:
-            self.error(msg='users content error: %s, %s' % (content, envelope))
-            return
-        for item in users:
-            identifier = ID.parse(identifier=item.get('U'))
-            if identifier is None or identifier.type != EntityType.USER:
-                self.warning(msg='ignore user: %s' % item)
-                continue
-            self.info(msg='say hi for %s' % identifier)
-            greeting = Greeting(identifier=identifier, content=content, envelope=envelope, facebook=self.facebook)
-            self.__chat_client.append(request=greeting)
-
     # Override
     async def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
         if isinstance(content, TextContent):
-            self._process_text_content(content=content, envelope=r_msg.envelope)
+            self.__chat_client.process_text_content(content=content, envelope=r_msg.envelope)
             return []
         elif isinstance(content, FileContent):
-            self._process_file_content(content=content, envelope=r_msg.envelope)
+            self.__chat_client.process_file_content(content=content, envelope=r_msg.envelope)
             return []
         elif isinstance(content, CustomizedContent):
-            mod = content.module
-            if mod == 'users':
-                self._process_users_content(content=content, envelope=r_msg.envelope)
+            self.__chat_client.process_customized_content(content=content, envelope=r_msg.envelope)
             return []
         # system contents
         return await super().process_content(content=content, r_msg=r_msg)

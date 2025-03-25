@@ -27,12 +27,10 @@ from typing import Optional, Union, List, Dict
 
 from requests import Response
 
-from dimples import TextContent
-
 from ...utils import utf8_encode, json_encode, json_decode
 from ...utils import Log, Logging
 from ...utils import HttpClient
-from ...chat import Greeting, ChatRequest
+from ...chat import Request
 from ...chat import ChatContext, ChatProcessor
 
 from .queue import MessageQueue
@@ -46,41 +44,13 @@ class GeminiHandler(ChatProcessor):
         self.__api = GenerativeAI(auth_token=auth_token)
 
     # Override
-    async def _query(self, prompt: str, content: TextContent, request: ChatRequest, context: ChatContext) -> bool:
+    async def _query(self, prompt: str, request: Request, context: ChatContext) -> Optional[str]:
         assert isinstance(context, GeminiChatBox), 'chat context error: %s' % context
         message_queue = context.message_queue
         try:
-            answer = await self.__api.ask(question=prompt, message_queue=message_queue)
+            return await self.__api.ask(question=prompt, message_queue=message_queue)
         except Exception as error:
             self.error(msg='API error: %s, "%s"' % (error, prompt))
-            answer = None
-        text = '[%s] %s' % (self.agent, answer)
-        if answer is None or len(answer) == 0:
-            self.error(msg='response error: "%s" => "%s"' % (prompt, text))
-            return False
-        # OK
-        await context.respond_markdown(text=answer, request=request)
-        await context.save_response(text=text, prompt=prompt, request=request)
-        return True
-
-    # Override
-    async def _say_hi(self, prompt: str, request: Greeting, context: ChatContext) -> bool:
-        assert isinstance(context, GeminiChatBox), 'chat context error: %s' % context
-        message_queue = context.message_queue
-        try:
-            answer = await self.__api.ask(question=prompt, message_queue=message_queue)
-        except Exception as error:
-            self.error(msg='API error: %s, "%s"' % (error, prompt))
-            answer = None
-        text = '[%s] %s' % (self.agent, answer)
-        if answer is None or len(answer) == 0:
-            self.error(msg='response error: "%s" => "%s"' % (prompt, text))
-            await context.save_response(text=text, prompt=prompt, request=request)
-            return False
-        # OK
-        await context.respond_markdown(text=answer, request=request)
-        await context.save_response(text=text, prompt=prompt, request=request)
-        return True
 
 
 class GenerativeAI(Logging):

@@ -94,8 +94,7 @@ class GPTChatClient(ChatClient):
                      ' and willing to answer any questions.'
 
     def __init__(self, facebook: CommonFacebook):
-        super().__init__()
-        self.__facebook = facebook
+        super().__init__(facebook=facebook)
         self.__processors: List[ChatProcessor] = []
         self.__system_setting = Setting(definition=self.SYSTEM_SETTING)
 
@@ -107,7 +106,7 @@ class GPTChatClient(ChatClient):
 
     # Override
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
-        facebook = self.__facebook
+        facebook = self.facebook
         setting = self.__system_setting
         # copy handlers in random order
         processors = self._chat_processors()
