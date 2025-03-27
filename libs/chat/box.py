@@ -34,7 +34,7 @@ from ..utils import Logging
 
 from .base import get_nickname
 from .base import Request
-from .base import Greeting, ChatRequest
+from .base import Greeting, ChatRequest, TranslateRequest
 from .context import ChatContext
 from .delegate import ChatProxy, ChatProcessor
 from .storage import ChatStorage
@@ -106,6 +106,9 @@ class ChatBox(ChatContext, Logging, ABC):
         self._refresh_time(when=request.time)
         # chatting
         if isinstance(request, ChatRequest):
+            # question from user
+            self.__greeted = True
+        elif isinstance(request, TranslateRequest):
             # question from user
             self.__greeted = True
         elif self.__greeted:

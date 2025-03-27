@@ -107,18 +107,27 @@ class ChatProcessor(Logging, ABC):
         tag = content.get('tag')
         if tag is None:
             tag = content.sn
+        code = content.get('code')
+        hidden = content.get('hidden')
+        txt_fmt = content.get('format')  # markdown
+        # build response
         res = CustomizedContent.create(app='chat.dim.translate', mod='translate', act='respond')
-        res['tag'] = tag
+        if code is not None:
+            res['code'] = code
         result = _fetch_json_result(text=answer)
         if isinstance(result, Dict):
-            translation = result.get('translation')
-            if translation is not None and len(translation) > 0:
-                res['text'] = translation
+            tr = result.get('translation')
+            if tr is not None and len(tr) > 0:
+                res['text'] = tr
                 res['result'] = result
         if 'text' not in res:
-            res['text'] = result
+            res['text'] = answer
         await context.respond_content(content=res, request=request, extra={
-            'muted': True,
+            'format': txt_fmt,
+            'muted': hidden,
+            'hidden': hidden,
+
+            'tag': tag,
         })
         return True
 
