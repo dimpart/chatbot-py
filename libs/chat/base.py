@@ -182,6 +182,7 @@ class TranslateRequest(Request, Logging):
         self.__content = content
         self.__facebook = facebook
         self.__text = None
+        self.__code = None
 
     @property
     def facebook(self) -> CommonFacebook:
@@ -209,6 +210,10 @@ class TranslateRequest(Request, Logging):
     @property  # Override
     def text(self) -> Optional[str]:
         return self.__text
+
+    @property
+    def code(self) -> Optional[str]:
+        return self.__code
 
     # Override
     async def build(self) -> Optional[str]:
@@ -244,6 +249,7 @@ class TranslateRequest(Request, Logging):
                '\n    "translation": "..."' \
                '\n}' % (code, req, code)
         self.__text = text
+        self.__code = code
         return text
 
 

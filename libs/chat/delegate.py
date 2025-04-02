@@ -26,13 +26,14 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
-from dimples import TextContent, CustomizedContent
+from dimples import TextContent
 
 from ..utils import Log, Logging
 from ..utils import json_decode
 
 from .base import Request, Greeting, ChatRequest, TranslateRequest
 from .context import ChatContext
+from .translation import TranslateResult, TranslateContent, Translator
 
 
 class ChatProcessor(Logging, ABC):
@@ -89,46 +90,48 @@ class ChatProcessor(Logging, ABC):
         self.error(msg='unsupported request: %s' % request)
 
     async def _handle_translate(self, prompt: str, request: TranslateRequest, context: ChatContext) -> bool:
-        # TODO: check memory cache
-        # query AI server
-        answer = await self._query(prompt=prompt, request=request, context=context)
-        record = '[%s] %s' % (self.agent, answer)
-        await context.save_response(text=record, prompt=prompt, request=request)
-        if answer is None:
-            self.error(msg='response error: "%s" => "%s"' % (prompt, record))
-            return False
-        else:
-            answer = answer.strip()
-            if len(answer) == 0:
-                self.info(msg='respond nothing: "%s" => "%s"' % (prompt, record))
-                return False
-        # OK
         content = request.content
-        tag = content.get('tag')
-        if tag is None:
-            tag = content.sn
-        code = content.get('code')
-        hidden = content.get('hidden')
-        txt_fmt = content.get('format')  # markdown
-        # build response
-        res = CustomizedContent.create(app='chat.dim.translate', mod='translate', act='respond')
-        if code is not None:
-            res['code'] = code
-        result = _fetch_json_result(text=answer)
-        if isinstance(result, Dict):
-            tr = result.get('translation')
-            if tr is not None and len(tr) > 0:
-                res['text'] = tr
-                res['result'] = result
+        #
+        #  1. query
+        #
+        translator = Translator()
+        text = content.get('text')
+        answer = translator.fetch(text=text, code=request.code)
+        if answer is not None:
+            # response from cache
+            record = '[%s] cached: %s' % (self.agent, answer)
+            await context.save_response(text=record, prompt=prompt, request=request)
+            info = _fetch_json_result(text=answer)
+            # assert isinstance(info, Dict), 'response error: %s' % answer
+            result = TranslateResult(dictionary=info)
+        else:
+            # query AI server
+            answer = await self._query(prompt=prompt, request=request, context=context)
+            record = '[%s] %s' % (self.agent, answer)
+            await context.save_response(text=record, prompt=prompt, request=request)
+            if answer is None:
+                self.error(msg='response error: "%s" => "%s"' % (prompt, record))
+                return False
+            else:
+                answer = answer.strip()
+                if len(answer) == 0:
+                    self.warning(msg='respond nothing: "%s" => "%s"' % (prompt, record))
+                    return False
+            info = _fetch_json_result(text=answer)
+            if info is None:
+                info = {}
+            # else:
+            #     assert isinstance(info, Dict), 'response error: %s' % answer
+            result = TranslateResult(dictionary=info)
+            if result.valid:
+                translator.cache(text=text, code=request.code, response=answer)
+        #
+        #  2. respond
+        #
+        res = TranslateContent.respond(result=result, query=request.content)
         if 'text' not in res:
             res['text'] = answer
-        await context.respond_content(content=res, request=request, extra={
-            'format': txt_fmt,
-            'muted': hidden,
-            'hidden': hidden,
-
-            'tag': tag,
-        })
+        await context.respond_content(content=res, request=request)
         return True
 
     async def _handle_text(self, prompt: str, request: Request, context: ChatContext) -> bool:
