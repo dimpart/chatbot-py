@@ -90,13 +90,11 @@ class ChatProcessor(Logging, ABC):
         self.error(msg='unsupported request: %s' % request)
 
     async def _handle_translate(self, prompt: str, request: TranslateRequest, context: ChatContext) -> bool:
-        content = request.content
         #
         #  1. query
         #
         translator = Translator()
-        text = content.get('text')
-        answer = translator.fetch(text=text, code=request.code)
+        answer = translator.fetch(request=request)
         if answer is not None:
             # response from cache
             record = '[%s] cached: %s' % (self.agent, answer)
@@ -124,14 +122,20 @@ class ChatProcessor(Logging, ABC):
             #     assert isinstance(info, Dict), 'response error: %s' % answer
             result = TranslateResult(dictionary=info)
             if result.valid:
-                translator.cache(text=text, code=request.code, response=answer)
+                translator.cache(request=request, response=answer)
         #
         #  2. respond
         #
         res = TranslateContent.respond(result=result, query=request.content)
-        if 'text' not in res:
+        mod = request.content.get('mod')
+        if mod == 'test':
+            res['mod'] = 'test'
+        elif 'text' not in res:
             res['text'] = answer
         await context.respond_content(content=res, request=request)
+        # clear expired responses
+        cnt = translator.purge()
+        self.debug(msg='purged %d response(s)' % cnt)
         return True
 
     async def _handle_text(self, prompt: str, request: Request, context: ChatContext) -> bool:

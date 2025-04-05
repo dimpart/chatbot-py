@@ -39,6 +39,7 @@ from ..utils import Runner
 
 from .base import Request, Greeting
 from .base import ChatRequest, TranslateRequest
+from .translation import Translator
 from .box import ChatBox
 
 
@@ -141,16 +142,21 @@ class ChatClient(Runner, Logging, ABC):
         self._append_request(request=request)
 
     def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
+        app = content.application
         mod = content.module
-        if mod == 'translate':
+        if mod == Translator.MOD or app == Translator.APP:
             self._process_translate_content(content=content, envelope=envelope)
         elif mod == 'users':
             self._process_users_content(content=content, envelope=envelope)
 
     def _process_translate_content(self, content: CustomizedContent, envelope: Envelope):
+        mod = content.module
         act = content.action
         if act == 'request':
-            self.info(msg='translate "%s" for "%s"' % (content.get('text'), envelope.sender))
+            if mod == 'test':
+                self.info(msg='say hi to translator: "%s" for "%s"' % (content.get('text'), envelope.sender))
+            else:
+                self.info(msg='translate "%s" for "%s"' % (content.get('text'), envelope.sender))
             trans = TranslateRequest(content=content, envelope=envelope, facebook=self.__facebook)
             self._append_request(request=trans)
         else:

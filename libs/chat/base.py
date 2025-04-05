@@ -176,6 +176,9 @@ class TranslateRequest(Request, Logging):
         }
     """
 
+    WARNING = 'WARNING: This translation function requires sending messages to third-party AI servers,' \
+              ' so there is a risk of message leakage. Please be aware!'
+
     def __init__(self, envelope: Envelope, content: Content, facebook: CommonFacebook):
         super().__init__()
         self.__envelope = envelope
@@ -217,20 +220,26 @@ class TranslateRequest(Request, Logging):
 
     # Override
     async def build(self) -> Optional[str]:
+        sender = self.envelope.sender
+        content = self.content
+        text = content.get('text')
         # check text
-        text = self.content.get('text')
-        if text is None:
-            self.error(msg='no text to translate: %s' % self.content)
+        mod = content.get('mod')
+        if mod == 'test':
+            text = self.WARNING
+            content['text'] = text
+            self.info(msg='building warning message for translator: "%s" %s' % (text, sender))
+        elif text is None:
+            self.error(msg='no text to translate: %s, %s' % (content, sender))
             return None
         else:
             text = text.strip()
             if len(text) == 0:
-                self.error(msg='no text to translate: %s' % self.content)
+                self.error(msg='no text to translate: %s, %s' % (content, sender))
                 return None
         # check language code
-        code = self.content.get('code')
+        code = content.get('code')
         if code is None:
-            sender = self.envelope.sender
             assert sender.is_user, 'sender error: %s' % sender
             code = await get_language(identifier=sender, facebook=self.facebook)
         # build prompt
@@ -238,19 +247,26 @@ class TranslateRequest(Request, Logging):
             'text': text,
             'code': code,
         })
-        text = 'My language code is "%s", please translate this text for me:\n' \
-               '\n%s\n\n' \
-               'output the result in JSON format:\n' \
-               '\n{' \
-               '\n    "from": "{name of source language}",' \
-               '\n    "to"  : "{name of target language}",' \
-               '\n    "code": "%s",' \
-               '\n    "text": "...",' \
-               '\n    "translation": "..."' \
-               '\n}' % (code, req, code)
-        self.__text = text
+        prompt = '''
+My language code is "%s", please translate this text for me:
+
+    %s
+
+output the result in JSON format:
+
+    {
+        "from": "{source language}",
+        "to"  : "{target language}",
+        "code": "%s",
+        "text": "...",
+        "translation": "..."
+    }
+
+and I need you to show the values of "from" and "to" in target language.
+                 ''' % (code, req, code)
+        self.__text = prompt
         self.__code = code
-        return text
+        return prompt
 
 
 class ChatRequest(Request, Logging):

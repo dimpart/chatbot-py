@@ -23,12 +23,14 @@
 # SOFTWARE.
 # ==============================================================================
 
+import threading
 from typing import Optional, Dict
 
 from dimples import DateTime, Dictionary
 from dimples import Content, AppCustomizedContent
 
 from ..utils import Singleton
+from .base import TranslateRequest
 
 
 """
@@ -85,10 +87,8 @@ class TranslateResult(Dictionary):
             return False
         elif self.to_code is None:
             return False
-        # elif self.translation is None:
-        #     return False
-        else:
-            return True
+        # sometimes the AI server would return translation in 'text' field
+        return self.translation is not None or self.text is not None
 
 
 class TranslateContent(AppCustomizedContent):
@@ -124,7 +124,7 @@ class TranslateContent(AppCustomizedContent):
 
     @classmethod
     def respond(cls, result: TranslateResult, query: Content):
-        response = TranslateContent(app='chat.dim.translate', mod='translate', act='respond')
+        response = TranslateContent(app=Translator.APP, mod=Translator.MOD, act='respond')
         #
         #  check translation
         #
@@ -168,42 +168,108 @@ class TranslateContent(AppCustomizedContent):
 @Singleton
 class Translator:
 
+    APP = 'chat.dim.translate'
+    MOD = 'translate'
+
     def __init__(self):
         super().__init__()
-        # text => lang code => response
-        self.__caches: Dict[str, Dict[str, TranslateResponse]] = {}
+        self.__cache = TranslateCache()
+        self.__lock = threading.Lock()
+        self.__expired = DateTime.current_timestamp() + 600
 
-    def fetch(self, text: str, code: str) -> Optional[str]:
-        table = self.__caches.get(text)
-        if table is not None:
-            record = table.get(code)
+    def purge(self):
+        now = DateTime.current_timestamp()
+        if now < self.__expired:
+            return -1
+        else:
+            self.__expired = now + 600
+        # clear expired responses
+        with self.__lock:
+            return self.__cache.purge()
+
+    def fetch(self, request: TranslateRequest) -> Optional[str]:
+        with self.__lock:
+            return self.__cache.fetch(request=request)
+
+    def cache(self, request: TranslateRequest, response: str):
+        with self.__lock:
+            self.__cache.cache(request=request, response=response)
+
+
+# private
+class TranslateCache:
+
+    def __init__(self):
+        super().__init__()
+        # lang_code => text => response
+        self.__table: Dict[str, Dict[str, TranslateResponse]] = {}
+
+    def purge(self):
+        count = 0
+        for code in self.__table:
+            dictionary = self.__table.get(code)
+            if dictionary is None:
+                continue
+            empties = []
+            for text in dictionary:
+                response = dictionary.get(text)
+                if response is None:
+                    empties.append(text)
+                elif response.expired:
+                    empties.append(text)
+            for text in empties:
+                dictionary.pop(text, None)
+                count += 1
+        return count
+
+    def fetch(self, request: TranslateRequest) -> Optional[str]:
+        content = request.content
+        text = content.get('text')
+        code = request.code
+        # get dictionary with language code
+        dictionary = self.__table.get(code)
+        if dictionary is not None:
+            record = dictionary.get(text)
             if record is None:
                 # not found
-                pass
+                return None
             elif record.expired:
                 # expired
-                table.pop('code', None)
+                dictionary.pop(text, None)
+                return None
             else:
                 # got it
                 return record.response
 
-    def cache(self, text: str, code: str, response: str):
-        table = self.__caches.get(text)
-        if table is None:
-            table = {}
-            self.__caches[text] = table
-        table[code] = TranslateResponse(response=response)
+    def cache(self, request: TranslateRequest, response: str):
+        content = request.content
+        text = content.get('text')
+        code = request.code
+        # get dictionary with language code
+        dictionary = self.__table.get(code)
+        if dictionary is None:
+            dictionary = {}
+            self.__table[code] = dictionary
+        # cache with expires
+        mod = content.get('mod')
+        if mod == 'test':
+            expires = TranslateResponse.WARNING_EXPIRES
+        else:
+            expires = TranslateResponse.TEXT_EXPIRES
+        # update dictionary
+        dictionary[text] = TranslateResponse(response=response, expires=expires)
 
 
 # private
 class TranslateResponse:
 
-    EXPIRES = 3600
+    TEXT_EXPIRES = 3600
+    WARNING_EXPIRES = 3600 * 24
 
-    def __init__(self, response: str):
+    def __init__(self, response: str, expires: float):
         super().__init__()
         self.__response = response
-        self.__expired = DateTime.current_timestamp() + self.EXPIRES
+        self.__expired = DateTime.current_timestamp() + expires
 
     @property
     def response(self) -> str:
