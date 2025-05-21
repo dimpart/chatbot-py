@@ -38,9 +38,6 @@ from dimples.utils import *
 from dimples.group.manager import find
 from dimples.database.dos.document import parse_document
 
-from .http import HttpSession, HttpClient
-from .http import show_response
-
 from .pnf import get_filename, get_extension
 from .pnf import get_cache_name
 from .pnf import filename_from_url, filename_from_data
@@ -111,7 +108,6 @@ __all__ = [
     #   HTTP
     #
     'HttpSession', 'HttpClient',
-    'show_response',
 
     #
     #   Others

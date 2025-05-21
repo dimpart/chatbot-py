@@ -4,7 +4,8 @@ exec=python3
 
 function stop() {
     res=$(pgrep -f "${exec} .*$1")
-    for pid in ${res[*]}
+    #res=$(pgrep -f "$1")
+    for pid in ${res}
     do
         if [[ $((pid)) -gt 1 ]]
         then

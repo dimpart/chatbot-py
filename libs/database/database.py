@@ -39,7 +39,7 @@ from dimples import LoginCommand, GroupCommand, ResetCommand
 from dimples import AccountDBI, MessageDBI, SessionDBI
 from dimples import ProviderInfo, StationInfo
 from dimples import MetaUtils
-from dimples.database import DbInfo
+from dimples.utils import Config
 from dimples.database import PrivateKeyTable
 from dimples.database import CipherKeyTable
 from dimples.database import MetaTable
@@ -54,23 +54,23 @@ from .t_video import SeasonTable, VideoSearchTable
 
 class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
 
-    def __init__(self, info: DbInfo):
+    def __init__(self, config: Config):
         super().__init__()
         self.__users = []
         self.__contacts = {}
         # Entity
-        self.__private_table = PrivateKeyTable(info=info)
-        self.__meta_table = MetaTable(info=info)
-        self.__document_table = DocumentTable(info=info)
-        self.__group_table = GroupTable(info=info)
-        self.__history_table = GroupHistoryTable(info=info)
+        self.__private_table = PrivateKeyTable(config=config)
+        self.__meta_table = MetaTable(config=config)
+        self.__document_table = DocumentTable(config=config)
+        self.__group_table = GroupTable(config=config)
+        self.__history_table = GroupHistoryTable(config=config)
         # Message
-        self.__cipherkey_table = CipherKeyTable(info=info)
+        self.__cipherkey_table = CipherKeyTable(config=config)
         # # ANS
-        # self.__ans_table = AddressNameTable(info=info)
+        # self.__ans_table = AddressNameTable(config=config)
         # Video
-        self.__season_table = SeasonTable(info=info)
-        self.__search_table = VideoSearchTable(info=info)
+        self.__season_table = SeasonTable(config=config)
+        self.__search_table = VideoSearchTable(config=config)
 
     def show_info(self):
         # Entity

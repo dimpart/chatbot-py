@@ -28,15 +28,34 @@ function title() {
     echo ""
 }
 
+
+if [[ "$*" == "restart" ]]
+then
+    launch="restart"
+    echo "========================"
+    echo "    Restarting ..."
+    echo "========================"
+else
+    launch="start"
+    echo "========================"
+    echo "    Starting ..."
+    echo "========================"
+fi
+
+
+#
+#   Service Bots
+#
+
 title "DIM Chat Bots"
-restart gege "bots/chatbot_gemini.py"
-restart gigi "bots/chatbot_gpt.py"
-#restart ling "bots/chatbot_ling.py"
-#restart xiao "bots/chatbot_xiao.py"
+${launch} gege "bots/chatbot_gemini.py"
+${launch} gigi "bots/chatbot_gpt.py"
+#${launch} ling "bots/chatbot_ling.py"
+#${launch} xiao "bots/chatbot_xiao.py"
 
 title "DIM Search Bots"
-restart king "bots/sebot_sm.py"
-restart simon "bots/sebot_sd.py"
+${launch} king "bots/sebot_sm.py"
+${launch} simon "bots/sebot_sd.py"
 
 echo ""
 echo "    >>> Done <<<"

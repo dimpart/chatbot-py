@@ -110,7 +110,8 @@ class ChatBox(ChatContext, Logging, ABC):
             self.__greeted = True
         elif isinstance(request, TranslateRequest):
             # question from user
-            self.__greeted = True
+            pass
+            # self.__greeted = True
         elif self.__greeted:
             assert isinstance(request, Greeting), 'request error: %s' % request
             # no need to greet again

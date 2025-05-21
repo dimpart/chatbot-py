@@ -30,7 +30,8 @@ from dimples import URI
 from dimples import DateTime
 from dimples.utils import SharedCacheManager
 from dimples.utils import CachePool
-from dimples.database import DbInfo, DbTask
+from dimples.utils import Config
+from dimples.database import DbTask
 
 from ..common import Season
 
@@ -104,11 +105,11 @@ class VidTask(DbTask):
 class SeasonTable:
     """ Implementations of VideoDBI """
 
-    def __init__(self, info: DbInfo):
+    def __init__(self, config: Config):
         super().__init__()
         man = SharedCacheManager()
         self._cache = man.get_pool(name='video_seasons')  # URL => Season
-        self._redis = SeasonCache(connector=info.redis_connector)
+        self._redis = SeasonCache(config=config)
         self._lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
@@ -140,11 +141,11 @@ class SeasonTable:
 class VideoSearchTable:
     """ Implementations of VideoDBI """
 
-    def __init__(self, info: DbInfo):
+    def __init__(self, config: Config):
         super().__init__()
         man = SharedCacheManager()
         self._cache = man.get_pool(name='video_search')  # URL => Season
-        self._redis = VideoSearchCache(connector=info.redis_connector)
+        self._redis = VideoSearchCache(config=config)
         self._lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic

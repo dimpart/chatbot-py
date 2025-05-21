@@ -32,14 +32,11 @@ from dimples import Document
 from dimples import CommonFacebook
 from dimples import AccountDBI, MessageDBI, SessionDBI
 from dimples.utils import Config
-from dimples.common import ProviderInfo
 from dimples.group import SharedGroupManager
 from dimples.client import ClientChecker
 
 from libs.utils import Path
 from libs.utils import Singleton
-from libs.database.redis import RedisConnector
-from libs.database import DbInfo
 from libs.database import Database
 
 from libs.chat import ChatStorage
@@ -64,6 +61,8 @@ class GlobalVariable:
         self.__database: Optional[Database] = None
         self.__facebook: Optional[ClientFacebook] = None
         self.__messenger: Optional[ClientMessenger] = None
+        # load extensions
+        ExtensionLoader().run()
 
     @property
     def config(self) -> Config:
@@ -109,9 +108,8 @@ class GlobalVariable:
 
     async def prepare(self, config: Config):
         #
-        #  Step 1: load config
+        #  Step 0: load ANS
         #
-        ExtensionLoader().run()
         ans_records = config.ans_records
         if ans_records is not None:
             # load ANS records from 'config.ini'
@@ -158,39 +156,10 @@ class GlobalVariable:
         cs.bot = current_user
 
 
-def create_redis_connector(config: Config) -> Optional[RedisConnector]:
-    redis_enable = config.get_boolean(section='redis', option='enable')
-    if redis_enable:
-        # create redis connector
-        host = config.get_string(section='redis', option='host')
-        if host is None:
-            host = 'localhost'
-        port = config.get_integer(section='redis', option='port')
-        if port is None or port <= 0:
-            port = 6379
-        username = config.get_string(section='redis', option='username')
-        password = config.get_string(section='redis', option='password')
-        return RedisConnector(host=host, port=port, username=username, password=password)
-
-
 async def create_database(config: Config) -> Database:
     """ create database with directories """
-    root = config.database_root
-    public = config.database_public
-    private = config.database_private
-    redis_conn = create_redis_connector(config=config)
-    info = DbInfo(redis_connector=redis_conn, root_dir=root, public_dir=public, private_dir=private)
-    # create database
-    db = Database(info=info)
+    db = Database(config=config)
     db.show_info()
-    # update neighbor stations (default provider)
-    provider = ProviderInfo.GSP
-    neighbors = config.neighbors
-    if len(neighbors) > 0:
-        # await db.remove_stations(provider=provider)
-        for node in neighbors:
-            print('adding neighbor node: %s' % node)
-            await db.add_station(identifier=None, host=node.host, port=node.port, provider=provider)
     # config chat storage
     cs = ChatStorage()
     cs.root = config.get_string(section='history', option='root')
@@ -214,7 +183,7 @@ def show_help(app_name: str, default_config: str):
     print('    %s' % app_name)
     print('')
     print('usages:')
-    print('    %s [--config=<FILE>] [BID]' % cmd)
+    print('    %s [--config=<FILE>]' % cmd)
     print('    %s [-h|--help]' % cmd)
     print('')
     print('optional arguments:')
@@ -250,24 +219,9 @@ async def create_config(app_name: str, default_config: str) -> Config:
         print('')
         sys.exit(0)
     # load config from file
-    config = Config.load(file=ini_file)
+    config = Config()
+    await config.load(path=ini_file)
     print('>>> config loaded: %s => %s' % (ini_file, config))
-    # check arguments for Bot ID
-    if len(args) == 1:
-        identifier = ID.parse(identifier=args[0])
-        if identifier is None:
-            show_help(app_name=app_name, default_config=default_config)
-            print('')
-            print('!!! Bot ID error: %s' % args[0])
-            print('')
-            sys.exit(0)
-        # set bot ID into config['bot']['id']
-        bot = config.get('bot')
-        if bot is None:
-            bot = {}
-            config['bot'] = bot
-        bot['id'] = str(identifier)
-    # OK
     return config
 
 
@@ -276,29 +230,12 @@ async def create_config(app_name: str, default_config: str) -> Config:
 #
 
 
-def check_bot_id(config: Config, ans_name: str) -> bool:
-    identifier = config.get_identifier(section='bot', option='id')
-    if identifier is not None:
-        # got it
-        return True
-    identifier = config.get_identifier(section='ans', option=ans_name)
-    if identifier is None:
-        # failed to get Bot ID
-        return False
-    bot_sec = config.get('bot')
-    if bot_sec is None:
-        bot_sec = {}
-        config['bot'] = bot_sec
-    bot_sec['id'] = str(identifier)
-    return True
-
-
 async def start_bot(ans_name: str, processor_class) -> Terminal:
     shared = GlobalVariable()
     config = shared.config
-    if not check_bot_id(config=config, ans_name=ans_name):
-        raise LookupError('Failed to get Bot ID: %s in %s' % (ans_name, config))
-    bot_id = config.get_identifier(section='bot', option='id')
+    bot_id = config.get_identifier(section='ans', option=ans_name)
+    bot_id = ID.parse(bot_id)
+    assert bot_id is not None, 'Failed to get Bot ID: %s' % config
     await shared.login(current_user=bot_id)
     # create terminal
     host = config.station_host
