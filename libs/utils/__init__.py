@@ -34,6 +34,7 @@
 """
 
 from dimples.utils import *
+from dimples.utils.http import Response, fetch_cookies
 
 from dimples.group.manager import find
 from dimples.database.dos.document import parse_document
@@ -65,6 +66,14 @@ _md_chars = {
     '<', '>', '{', '}',
     '"', "'",
 }
+
+
+def show_response(response: Response):
+    status_code = response.status_code
+    text = response.text
+    Log.info(msg='[HTTP]\t> response: code=%d, len=%d' % (status_code, len(text)))
+    Log.debug(msg='[HTTP]\t> response: %d, %s' % (status_code, text))
+    Log.info(msg='[HTTP]\t> cookies: %s' % fetch_cookies(response=response))
 
 
 __all__ = [
@@ -108,6 +117,8 @@ __all__ = [
     #   HTTP
     #
     'HttpSession', 'HttpClient',
+
+    'show_response',
 
     #
     #   Others
