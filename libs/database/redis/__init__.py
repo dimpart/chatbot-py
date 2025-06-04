@@ -31,7 +31,7 @@
 
 from dimples.database.redis import *
 
-from .video import SeasonCache, VideoSearchCache
+from .video import SeasonCache, EpisodeCache
 
 
 __all__ = [
@@ -45,6 +45,6 @@ __all__ = [
     'StationCache',
 
     'SeasonCache',
-    'VideoSearchCache',
+    'EpisodeCache',
 
 ]

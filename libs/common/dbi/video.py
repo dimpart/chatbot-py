@@ -24,11 +24,12 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Dict, List, Tuple
+from typing import Optional, Any, Dict, List
 
 from dimples import DateTime
 from dimples import Mapper, Dictionary
 from dimples import URI
+from dimples import ID
 
 
 class Episode(Dictionary):
@@ -299,17 +300,37 @@ class Season(Dictionary):
 class VideoDBI(ABC):
 
     @abstractmethod
-    async def save_season(self, season: Season, url: URI) -> bool:
+    async def save_episode(self, episode: Episode, identifier: ID) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    async def load_season(self, url: URI) -> Optional[Season]:
+    async def load_episode(self, url: URI, identifier: ID) -> Optional[Episode]:
         raise NotImplemented
 
     @abstractmethod
-    async def save_search_results(self, results: List[URI], keywords: str) -> bool:
+    async def save_season(self, season: Season, identifier: ID) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    async def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+    async def load_season(self, url: URI, identifier: ID) -> Optional[Season]:
+        raise NotImplemented
+
+    #
+    #   Video List
+    #
+
+    @abstractmethod
+    async def save_video_results(self, results: Dict[str, List], identifier: ID) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    async def load_video_results(self, identifier: ID) -> Dict[str, List]:
+        raise NotImplemented
+
+    @abstractmethod
+    async def save_blocked_list(self, array: List[str], identifier: ID) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    async def load_blocked_list(self, identifier: ID) -> List[str]:
         raise NotImplemented

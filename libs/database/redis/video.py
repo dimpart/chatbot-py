@@ -23,20 +23,20 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union, Dict, List, Tuple
+from typing import Optional, Union, Dict
 
 from dimples import json_encode, json_decode, utf8_encode, utf8_decode
-from dimples import URI, DateTime
+from dimples import URI
 from dimples import Mapper
 from dimples.database.redis import RedisCache
 
-from ...common import Season
+from ...common import Episode, Season
 
 
 class SeasonCache(RedisCache):
 
-    # season cached in Redis will be removed after 3 days.
-    EXPIRES = 3600 * 24 * 3  # seconds
+    # season cached in Redis will be removed after 24 hours.
+    EXPIRES = 3600 * 24  # seconds
 
     @property  # Override
     def db_name(self) -> Optional[str]:
@@ -55,8 +55,9 @@ class SeasonCache(RedisCache):
     def __key(self, url: URI) -> str:
         return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
 
-    async def save_season(self, season: Season, url: URI) -> bool:
+    async def save_season(self, season: Season) -> bool:
         """ Save season with page URL """
+        url = season.page
         key = self.__key(url=url)
         value = encode_map(info=season)
         return await self.set(name=key, value=value, expires=self.EXPIRES)
@@ -69,10 +70,10 @@ class SeasonCache(RedisCache):
         return Season.parse_season(season=dictionary)
 
 
-class VideoSearchCache(RedisCache):
+class EpisodeCache(RedisCache):
 
-    # search cached in Redis will be removed after 24 hours.
-    EXPIRES = 3600 * 24  # seconds
+    # episode cached in Redis will be removed after 3 days.
+    EXPIRES = 3600 * 24 * 3  # seconds
 
     @property  # Override
     def db_name(self) -> Optional[str]:
@@ -80,38 +81,30 @@ class VideoSearchCache(RedisCache):
 
     @property  # Override
     def tbl_name(self) -> str:
-        return 'search'
+        return 'episode'
 
     """
-        Video Search
-        ~~~~~~~~~~~~
+        Episode
+        ~~~~~~~
 
-        redis key: 'video.search.{keywords}'
+        redis key: 'video.episode.{URL}'
     """
-    def __key(self, keywords: URI) -> str:
-        return '%s.%s.%s' % (self.db_name, self.tbl_name, keywords)
+    def __key(self, url: URI) -> str:
+        return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
 
-    async def save_results(self, results: List[URI], keywords: str) -> bool:
-        """ Save season with page URL """
-        info = {
-            'time': DateTime.current_timestamp(),
-            'results': results,
-        }
-        key = self.__key(keywords=keywords)
-        value = encode_map(info=info)
+    async def save_episode(self, episode: Episode) -> bool:
+        """ Save episode with URL """
+        url = episode.url
+        key = self.__key(url=url)
+        value = encode_map(info=episode)
         return await self.set(name=key, value=value, expires=self.EXPIRES)
 
-    async def load_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
-        """ Load season with page URL """
-        key = self.__key(keywords=keywords)
+    async def load_episode(self, url: URI) -> Optional[Episode]:
+        """ Load episode with URL """
+        key = self.__key(url=url)
         value = await self.get(name=key)
-        info = decode_map(data=value)
-        if info is None:
-            return None, None
-        # got
-        results = info.get('results')
-        created_time = info.get('time')
-        return results, DateTime.parse(created_time)
+        dictionary = decode_map(data=value)
+        return Episode.parse_episode(episode=dictionary)
 
 
 def encode_map(info: Union[Dict, Mapper]) -> bytes:

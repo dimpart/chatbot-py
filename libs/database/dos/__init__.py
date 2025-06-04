@@ -31,6 +31,9 @@
 
 from dimples.database.dos import *
 
+from .video import SeasonStorage
+from .video import VideoStorage
+
 __all__ = [
 
     'Storage',
@@ -40,5 +43,8 @@ __all__ = [
     'GroupKeysStorage',
     'LoginStorage',
     'StationStorage',
+
+    'SeasonStorage',
+    'VideoStorage',
 
 ]

@@ -31,7 +31,7 @@
 
 from typing import Optional, Tuple, List, Dict
 
-from dimples import URI, DateTime
+from dimples import URI
 from dimples import SymmetricKey, PrivateKey, SignKey, DecryptKey
 from dimples import ID, Meta, Document
 from dimples import ReliableMessage
@@ -47,9 +47,10 @@ from dimples.database import DocumentTable
 from dimples.database import GroupTable
 from dimples.database import GroupHistoryTable
 
-from ..common import Season, VideoDBI
+from ..common import Episode, Season, VideoDBI
 
-from .t_video import SeasonTable, VideoSearchTable
+from .t_video import EpisodeTable, SeasonTable
+from .t_video_search import VideoBlockTable, VideoSearchTable
 
 
 class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
@@ -69,7 +70,9 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
         # # ANS
         # self.__ans_table = AddressNameTable(config=config)
         # Video
+        self.__episode_table = EpisodeTable(config=config)
         self.__season_table = SeasonTable(config=config)
+        self.__block_table = VideoBlockTable(config=config)
         self.__search_table = VideoSearchTable(config=config)
 
     def show_info(self):
@@ -84,7 +87,9 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
         # # ANS
         # self.__ans_table.show_info()
         # Video
+        self.__episode_table.show_info()
         self.__season_table.show_info()
+        self.__block_table.show_info()
         self.__search_table.show_info()
 
     """
@@ -438,17 +443,33 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
     #
 
     # Override
-    async def save_season(self, season: Season, url: URI) -> bool:
-        return await self.__season_table.save_season(season=season, url=url)
+    async def save_episode(self, episode: Episode, identifier: ID) -> bool:
+        return await self.__episode_table.save_episode(episode=episode, identifier=identifier)
 
     # Override
-    async def load_season(self, url: URI) -> Optional[Season]:
-        return await self.__season_table.load_season(url=url)
+    async def load_episode(self, url: URI, identifier: ID) -> Optional[Episode]:
+        return await self.__episode_table.load_episode(url=url, identifier=identifier)
 
     # Override
-    async def save_search_results(self, results: List[URI], keywords: str) -> bool:
-        return await self.__search_table.save_results(results=results, keywords=keywords)
+    async def save_season(self, season: Season, identifier: ID) -> bool:
+        return await self.__season_table.save_season(season=season, identifier=identifier)
 
     # Override
-    async def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
-        return await self.__search_table.load_results(keywords=keywords)
+    async def load_season(self, url: URI, identifier: ID) -> Optional[Season]:
+        return await self.__season_table.load_season(url=url, identifier=identifier)
+
+    # Override
+    async def save_video_results(self, results: Dict[str, List], identifier: ID) -> bool:
+        return await self.__search_table.save_video_results(results=results, identifier=identifier)
+
+    # Override
+    async def load_video_results(self, identifier: ID) -> Dict[str, List]:
+        return await self.__search_table.load_video_results(identifier=identifier)
+
+    # Override
+    async def save_blocked_list(self, array: List[str], identifier: ID) -> bool:
+        return await self.__block_table.save_blocked_list(array=array, identifier=identifier)
+
+    # Override
+    async def load_blocked_list(self, identifier: ID) -> List[str]:
+        return await self.__block_table.load_blocked_list(identifier=identifier)

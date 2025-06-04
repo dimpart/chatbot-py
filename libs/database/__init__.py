@@ -66,6 +66,9 @@ __all__ = [
     'LoginStorage',
     'StationStorage',
 
+    'SeasonStorage',
+    'VideoStorage',
+
     #
     #   Redis
     #
@@ -74,7 +77,7 @@ __all__ = [
     'GroupCache', 'GroupHistoryCache',
 
     'SeasonCache',
-    'VideoSearchCache',
+    'EpisodeCache',
 
     #
     #   Database
