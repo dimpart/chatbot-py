@@ -32,6 +32,7 @@ from dimples.database.dos.base import template_replace
 from dimples.database.dos import Storage
 
 from ...common import Season
+from ...common import VideoTree
 
 
 class SeasonStorage(Storage):
@@ -39,9 +40,9 @@ class SeasonStorage(Storage):
         Season in a TV drama
         ~~~~~~~~~~~~~~~~~~~~
 
-        file path: '.dim/protected/{ADDRESS}/video_seasons/{AB}/season-{TAG}.js'
+        file path: '.dim/protected/{ADDRESS}/video_seasons/{AB}/{CD}/season-{TAG}.js'
     """
-    season_path = '{PROTECTED}/{ADDRESS}/video_seasons/{AB}/season-{TAG}.js'
+    season_path = '{PROTECTED}/{ADDRESS}/video_seasons/{AB}/{CD}/season-{TAG}.js'
 
     def show_info(self):
         path = self.protected_path(self.season_path)
@@ -82,17 +83,20 @@ class VideoStorage(Storage):
 
             results format:
                 {
-                    'keyword': [
-                        {
-                            "url": "{SEASON_PAGE}",
-                            "name": "{SEASON_NAME}"
-                        }
-                    ]
+                    '{KEYWORD}' : {
+                        'time': 1234,
+                        'list': [
+                            {
+                                'url': '{SEASON_PAGE}',
+                                'name': '{SEASON_NAME}'
+                            }
+                        ]
+                    }
                 }
 
             blocked format:
                 [
-                    "keyword"
+                    "{KEYWORD}"
                 ]
 
         file path: '.dim/protected/{ADDRESS}/video_results.js'
@@ -115,29 +119,28 @@ class VideoStorage(Storage):
         path = self.protected_path(self.blocked_path)
         return template_replace(path, 'ADDRESS', str(identifier.address))
 
-    async def load_video_results(self, identifier: ID) -> Dict[str, List]:
+    async def load_video_results(self, identifier: ID) -> Optional[VideoTree]:
         path = self.__results_path(identifier=identifier)
         info = await self.read_json(path=path)
         if info is None:
             self.warning(msg='video results not exists: %s' % path)
-            info = {}
-        else:
-            self.info(msg='loaded %d video result(s) from: %s' % (len(info), path))
-        return info
+            return None
+        self.info(msg='loaded %d video result(s) from: %s' % (len(info), path))
+        return VideoTree(dictionary=info)
 
-    async def save_video_results(self, results: Dict[str, List], identifier: ID) -> bool:
+    async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
+        info = results.dictionary
         path = self.__results_path(identifier=identifier)
         self.info(msg='saving %d video result(s) to path: %s' % (len(results), path))
-        return await self.write_json(container=results, path=path)
+        return await self.write_json(container=info, path=path)
 
-    async def load_blocked_list(self, identifier: ID) -> List[str]:
+    async def load_blocked_list(self, identifier: ID) -> Optional[List[str]]:
         path = self.__blocked_path(identifier=identifier)
         array = await self.read_json(path=path)
         if array is None:
             self.warning(msg='blocked list not exists: %s' % path)
-            array = []
-        else:
-            self.info(msg='loaded %d blocked keyword(s) from: %s' % (len(array), path))
+            return None
+        self.info(msg='loaded %d blocked keyword(s) from: %s' % (len(array), path))
         return array
 
     async def save_blocked_list(self, array: List[str], identifier: ID) -> bool:

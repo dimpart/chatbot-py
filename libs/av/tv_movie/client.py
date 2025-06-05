@@ -33,6 +33,7 @@ from dimples import Content
 from dimples import CommonFacebook
 
 from ...utils import Singleton, Runner
+from ...utils import Config
 from ...chat import Request, ChatRequest
 from ...chat import ChatBox, VideoBox, ChatClient
 from ...chat import ChatContext
@@ -42,7 +43,6 @@ from ...client import Emitter
 from ...client import Monitor
 
 from .engine import Task, Engine
-from .engine import KeywordManager
 
 
 class SearchBox(VideoBox):
@@ -147,7 +147,10 @@ class SearchHandler(ChatProcessor):
         elif kw_len == 4 and keywords.lower() == 'stop':
             return ''
         elif kw_len == 12 and keywords.lower() == 'show history':
-            await _respond_history(history=his_man.commands, request=request, box=context)
+            if sender in his_man.supervisors:
+                await _respond_history(history=his_man.commands, request=request, box=context)
+            else:
+                await _respond_403(request=request, box=context)
             return ''
         #
         #  2. search
@@ -173,8 +176,8 @@ class SearchHandler(ChatProcessor):
             return True
         # check error code
         if code == 0:
-            key_man = KeywordManager()
-            await _respond_204(history=key_man.keywords, keywords=task.keywords, request=task.request, box=box)
+            tree = await box.load_video_results()
+            await _respond_204(history=tree.keywords, keywords=task.keywords, request=task.request, box=box)
         elif code != Engine.CANCELLED_CODE:  # code != -205:
             self.error(msg='search error from engine: %d %s' % (code, engine))
 
@@ -186,6 +189,13 @@ async def _respond_204(history: List[str], keywords: str, request: ChatRequest, 
     text += '\n----\n'
     for his in history:
         text += '- **%s**\n' % his
+    return await box.respond_markdown(text=text, request=request)
+
+
+async def _respond_403(request: ChatRequest, box: VideoBox):
+    text = 'Forbidden\n'
+    text += '\n----\n'
+    text += 'Permission Denied'
     return await box.respond_markdown(text=text, request=request)
 
 
@@ -215,8 +225,26 @@ class HistoryManager:
 
     def __init__(self):
         super().__init__()
+        self.__config: Config = None
         self.__commands: List[Dict] = []
         self.__lock = threading.Lock()
+
+    @property
+    def config(self) -> Optional[Config]:
+        return self.__config
+
+    @config.setter
+    def config(self, conf: Config):
+        self.__config = conf
+
+    @property
+    def supervisors(self) -> List[ID]:
+        conf = self.config
+        if conf is not None:
+            array = conf.get_list(section='admin', option='supervisors')
+            if array is not None:
+                return ID.convert(array=array)
+        return []
 
     @property
     def commands(self) -> List[Dict]:

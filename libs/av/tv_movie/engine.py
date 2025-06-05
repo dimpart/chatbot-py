@@ -23,13 +23,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 from abc import abstractmethod
-from typing import Optional, List
+from typing import Optional
 
 from dimples import URI
 
-from ...utils import Singleton, Logging
+from ...utils import Logging
 from ...utils import HttpClient
 from ...common import Season
 
@@ -166,7 +165,7 @@ class Engine(Logging):
         if season is None:
             season = await self._query_season(url=url, task=task)
             if season is not None:
-                await box.save_season(season=season, url=url)
+                await box.save_season(season=season)
         elif season.is_expired():
             self._update_season(season=season, task=task)
         return season
@@ -178,40 +177,3 @@ class Engine(Logging):
     def _update_season(self, season: Season, task: Task):
         """ add update task to the shared engine """
         pass
-
-
-@Singleton
-class KeywordManager:
-
-    MAX_LENGTH = 20
-
-    def __init__(self):
-        super().__init__()
-        self.__keywords: List[str] = []
-        self.__lock = threading.Lock()
-
-    @property
-    def keywords(self) -> List[str]:
-        with self.__lock:
-            return self.__keywords.copy()
-
-    def add_keyword(self, keyword: str):
-        with self.__lock:
-            count = len(self.__keywords)
-            index = 0
-            while index < count:
-                item = self.__keywords[index]
-                if item != keyword:
-                    index += 1
-                    continue
-                # keyword found
-                if index > 0:
-                    # move to the front
-                    self.__keywords.pop(index)
-                    self.__keywords.insert(0, keyword)
-                return False
-            # keyword not exists
-            self.__keywords.insert(0, keyword)
-            if count > self.MAX_LENGTH:
-                # remove the last one
-                self.__keywords.pop(count)

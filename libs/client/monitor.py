@@ -215,7 +215,7 @@ class Monitor(Runner, Logging):
         if config is None:
             self.error(msg='failed to get config')
             return []
-        supervisors = config.get_list(section='monitor', option='supervisors')
+        supervisors = config.get_list(section='admin', option='supervisors')
         return ID.convert(array=supervisors)
 
     def start(self):

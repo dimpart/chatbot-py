@@ -162,7 +162,7 @@ async def create_database(config: Config) -> Database:
     db.show_info()
     # config chat storage
     cs = ChatStorage()
-    cs.root = config.get_string(section='history', option='root')
+    cs.root = config.database_protected
     return db
 
 

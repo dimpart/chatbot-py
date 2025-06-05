@@ -24,12 +24,15 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, List, Dict
 
 from dimples import DateTime
+from dimples import Converter
 from dimples import Mapper, Dictionary
 from dimples import URI
 from dimples import ID
+
+from ...utils import Logging
 
 
 class Episode(Dictionary):
@@ -297,6 +300,67 @@ class Season(Dictionary):
         return Season(info=season)
 
 
+class VideoTree(Dictionary, Logging):
+    """
+        Video Results Tree
+        ~~~~~~~~~~~~~~~~~~
+
+        data format:
+            {
+                '{KEYWORD}' : {
+                    'time': 1234,
+                    'list': [
+                        {
+                            'url': '{SEASON_PAGE}',
+                            'name': '{SEASON_NAME}'
+                        }
+                    ]
+                }
+            }
+    """
+
+    @property
+    def keywords(self) -> List[str]:
+        """ Sorted keywords by last update time """
+        keys = self.keys()
+        array = []
+        # List[Tuple[str, float]]
+        for kw in keys:
+            videos = self.video_list(keyword=kw)
+            if videos is None or len(videos) == 0:
+                self.warning(msg='skip empty keyword: %s' % kw)
+                continue
+            last = self.last_time(keyword=kw)
+            if last is None:
+                self.error(msg='last update time lost: %s, %d' % (kw, len(videos)))
+                continue
+            array.append((kw, last.timestamp))
+        # sort with last update time
+        array.sort(key=lambda item: item[1], reverse=True)
+        # take keywords
+        return [item[0] for item in array]
+
+    def last_time(self, keyword: str) -> Optional[DateTime]:
+        """ Get last update time for this keyword """
+        results = self.get(key=keyword)
+        if results is not None:
+            time = results.get('time')
+            return Converter.get_datetime(value=time, default=None)
+
+    def video_list(self, keyword: str) -> Optional[List[Dict]]:
+        """ Get video list for this keyword """
+        results = self.get(key=keyword)
+        if results is not None:
+            return results.get('list')
+
+    def update_results(self, keyword: str, video_list: List[Dict]):
+        """ Set results for keyword """
+        self[keyword] = {
+            'time': DateTime.current_timestamp(),
+            'list': video_list,
+        }
+
+
 class VideoDBI(ABC):
 
     @abstractmethod
@@ -320,11 +384,11 @@ class VideoDBI(ABC):
     #
 
     @abstractmethod
-    async def save_video_results(self, results: Dict[str, List], identifier: ID) -> bool:
+    async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    async def load_video_results(self, identifier: ID) -> Dict[str, List]:
+    async def load_video_results(self, identifier: ID) -> Optional[VideoTree]:
         raise NotImplemented
 
     @abstractmethod
@@ -332,5 +396,5 @@ class VideoDBI(ABC):
         raise NotImplemented
 
     @abstractmethod
-    async def load_blocked_list(self, identifier: ID) -> List[str]:
+    async def load_blocked_list(self, identifier: ID) -> Optional[List[str]]:
         raise NotImplemented

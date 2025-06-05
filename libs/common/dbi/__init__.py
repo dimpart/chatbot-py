@@ -31,12 +31,17 @@
 
 from .video import Episode, Tube, Season
 
+from .video import VideoTree
+
 from .video import VideoDBI
 
 
 __all__ = [
 
     'Episode', 'Tube', 'Season',
+
+    'VideoTree',
+
     'VideoDBI',
 
 ]

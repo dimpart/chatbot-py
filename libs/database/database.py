@@ -47,7 +47,8 @@ from dimples.database import DocumentTable
 from dimples.database import GroupTable
 from dimples.database import GroupHistoryTable
 
-from ..common import Episode, Season, VideoDBI
+from ..common import Episode, Season
+from ..common import VideoTree, VideoDBI
 
 from .t_video import EpisodeTable, SeasonTable
 from .t_video_search import VideoBlockTable, VideoSearchTable
@@ -459,11 +460,11 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
         return await self.__season_table.load_season(url=url, identifier=identifier)
 
     # Override
-    async def save_video_results(self, results: Dict[str, List], identifier: ID) -> bool:
+    async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
         return await self.__search_table.save_video_results(results=results, identifier=identifier)
 
     # Override
-    async def load_video_results(self, identifier: ID) -> Dict[str, List]:
+    async def load_video_results(self, identifier: ID) -> Optional[VideoTree]:
         return await self.__search_table.load_video_results(identifier=identifier)
 
     # Override

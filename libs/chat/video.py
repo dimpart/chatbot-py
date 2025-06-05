@@ -24,12 +24,13 @@
 # ==============================================================================
 
 from abc import ABC
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
-from dimples import URI, DateTime
+from dimples import URI
 
 from ..utils import md_esc, utf8_encode, base64_encode
-from ..common import Season, VideoDBI
+from ..common import Episode, Season
+from ..common import VideoTree, VideoDBI
 
 from .box import ChatBox
 
@@ -44,21 +45,55 @@ class VideoBox(ChatBox, ABC):
         assert isinstance(db, VideoDBI), 'database error: %s' % db
         return db
 
-    async def save_season(self, season: Season, url: URI) -> bool:
+    async def save_episode(self, episode: Episode) -> bool:
+        user = await self.facebook.current_user
         db = self.database
-        return await db.save_season(season=season, url=url)
+        return await db.save_episode(episode=episode, identifier=user.identifier)
+
+    async def load_episode(self, url: URI) -> Optional[Episode]:
+        user = await self.facebook.current_user
+        db = self.database
+        return await db.load_episode(url=url, identifier=user.identifier)
+
+    async def save_season(self, season: Season) -> bool:
+        user = await self.facebook.current_user
+        db = self.database
+        return await db.save_season(season=season, identifier=user.identifier)
 
     async def load_season(self, url: URI) -> Optional[Season]:
+        user = await self.facebook.current_user
         db = self.database
-        return await db.load_season(url=url)
+        return await db.load_season(url=url, identifier=user.identifier)
 
-    async def save_search_results(self, results: List[URI], keywords: str) -> bool:
-        db = self.database
-        return await db.save_search_results(results=results, keywords=keywords)
+    #
+    #   Search Results
+    #
 
-    async def load_search_results(self, keywords: str) -> Tuple[Optional[List[URI]], Optional[DateTime]]:
+    async def save_video_results(self, results: VideoTree) -> bool:
+        user = await self.facebook.current_user
         db = self.database
-        return await db.load_search_results(keywords=keywords)
+        return await db.save_video_results(results=results, identifier=user.identifier)
+
+    async def load_video_results(self) -> VideoTree:
+        user = await self.facebook.current_user
+        db = self.database
+        tree = await db.load_video_results(identifier=user.identifier)
+        if tree is None:
+            tree = VideoTree()
+        return tree
+
+    async def save_blocked_list(self, array: List[str]) -> bool:
+        user = await self.facebook.current_user
+        db = self.database
+        return await db.save_blocked_list(array=array, identifier=user.identifier)
+
+    async def load_blocked_list(self) -> List[str]:
+        user = await self.facebook.current_user
+        db = self.database
+        array = await db.load_blocked_list(identifier=user.identifier)
+        if array is None:
+            array = []
+        return array
 
 
 def build_season(season: Season, index: int, total: int) -> str:

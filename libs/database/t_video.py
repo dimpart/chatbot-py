@@ -33,13 +33,14 @@ from dimples.utils import CachePool
 from dimples.utils import Config
 from dimples.database import DbTask
 
+from ..utils import Logging
 from ..common import Episode, Season
 
 from .dos import SeasonStorage
 from .redis import SeasonCache, EpisodeCache
 
 
-class EpiTask(DbTask):
+class EpiTask(DbTask[URI, Episode]):
 
     MEM_CACHE_EXPIRES = 3600  # seconds
     MEM_CACHE_REFRESH = 32    # seconds
@@ -72,7 +73,7 @@ class EpiTask(DbTask):
         pass
 
 
-class SeaTask(DbTask):
+class SeaTask(DbTask[URI, Season]):
 
     MEM_CACHE_EXPIRES = 3600  # seconds
     MEM_CACHE_REFRESH = 32    # seconds
@@ -106,7 +107,7 @@ class SeaTask(DbTask):
         return await self._dos.save_season(season=value, identifier=self._id)
 
 
-class EpisodeTable:
+class EpisodeTable(Logging):
     """ Implementations of VideoDBI """
 
     def __init__(self, config: Config):
@@ -130,15 +131,37 @@ class EpisodeTable:
     #
 
     async def save_episode(self, episode: Episode, identifier: ID) -> bool:
-        task = self._new_task(url=episode.url, identifier=identifier)
-        return await task.save(value=episode)
+        url = episode.url
+        assert url is not None, 'episode url not found: %s' % episode
+        #
+        #  1. check time
+        #
+        new_time = episode.time
+        if new_time is not None:
+            # check old record
+            task = self._new_task(url=url, identifier=identifier)
+            old = await task.load()
+            if old is not None:
+                # check time
+                old_time = old.time
+                if old_time is not None and old_time.after(other=new_time):
+                    self.warning(msg='ignore expired episode: %s' % episode)
+                    return False
+        #
+        #  2. save new record
+        #
+        task = self._new_task(url=url, identifier=identifier)
+        ok = await task.save(value=episode)
+        if not ok:
+            self.error(msg='failed to save episode: %s' % episode)
+        return ok
 
     async def load_episode(self, url: URI, identifier: ID) -> Optional[Episode]:
         task = self._new_task(url=url, identifier=identifier)
         return await task.load()
 
 
-class SeasonTable:
+class SeasonTable(Logging):
     """ Implementations of VideoDBI """
 
     def __init__(self, config: Config):
@@ -162,8 +185,30 @@ class SeasonTable:
     #
 
     async def save_season(self, season: Season, identifier: ID) -> bool:
-        task = self._new_task(url=season.page, identifier=identifier)
-        return await task.save(value=season)
+        url = season.page
+        assert url is not None, 'season url not found: %s' % season
+        #
+        #  1. check time
+        #
+        new_time = season.time
+        if new_time is not None:
+            # check old record
+            task = self._new_task(url=url, identifier=identifier)
+            old = await task.load()
+            if old is not None:
+                # check time
+                old_time = old.time
+                if old_time is not None and old_time.after(other=new_time):
+                    self.warning(msg='ignore expired season: %s' % season)
+                    return False
+        #
+        #  2. save new record
+        #
+        task = self._new_task(url=url, identifier=identifier)
+        ok = await task.save(value=season)
+        if not ok:
+            self.error(msg='failed to save season: %s' % season)
+        return ok
 
     async def load_season(self, url: URI, identifier: ID) -> Optional[Season]:
         task = self._new_task(url=url, identifier=identifier)

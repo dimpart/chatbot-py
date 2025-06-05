@@ -24,7 +24,7 @@
 # ==============================================================================
 
 import threading
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from dimples import ID
 from dimples.utils import SharedCacheManager
@@ -32,10 +32,11 @@ from dimples.utils import CachePool
 from dimples.utils import Config
 from dimples.database import DbTask
 
+from ..common import VideoTree
 from .dos import VideoStorage
 
 
-class BlkTask(DbTask):
+class BlkTask(DbTask[str, List[str]]):
 
     MEM_CACHE_EXPIRES = 3600  # seconds
     MEM_CACHE_REFRESH = 32    # seconds
@@ -67,7 +68,7 @@ class BlkTask(DbTask):
         return await self._dos.save_blocked_list(array=value, identifier=self._id)
 
 
-class VidTask(DbTask):
+class VidTask(DbTask[str, VideoTree]):
 
     MEM_CACHE_EXPIRES = 3600  # seconds
     MEM_CACHE_REFRESH = 32    # seconds
@@ -86,16 +87,16 @@ class VidTask(DbTask):
     def cache_key(self) -> str:
         return 'video_results'
 
-    async def _load_redis_cache(self) -> Optional[Dict[str, List]]:
+    async def _load_redis_cache(self) -> Optional[VideoTree]:
         pass
 
-    async def _save_redis_cache(self, value: Dict[str, List]) -> bool:
+    async def _save_redis_cache(self, value: VideoTree) -> bool:
         pass
 
-    async def _load_local_storage(self) -> Optional[Dict[str, List]]:
+    async def _load_local_storage(self) -> Optional[VideoTree]:
         return await self._dos.load_video_results(identifier=self._id)
 
-    async def _save_local_storage(self, value: Dict[str, List]) -> bool:
+    async def _save_local_storage(self, value: VideoTree) -> bool:
         return await self._dos.save_video_results(results=value, identifier=self._id)
 
 
@@ -152,10 +153,10 @@ class VideoSearchTable:
     #   Video DBI
     #
 
-    async def save_video_results(self, results: Dict[str, List], identifier: ID) -> bool:
+    async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
         task = self._new_task(identifier=identifier)
         return await task.save(value=results)
 
-    async def load_video_results(self, identifier: ID) -> Dict[str, List]:
+    async def load_video_results(self, identifier: ID) -> Optional[VideoTree]:
         task = self._new_task(identifier=identifier)
         return await task.load()

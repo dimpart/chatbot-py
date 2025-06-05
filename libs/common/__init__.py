@@ -51,6 +51,7 @@ __all__ = [
     #
 
     'Episode', 'Tube', 'Season',
+    'VideoTree',
     'VideoDBI',
 
 ]
