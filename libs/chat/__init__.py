@@ -31,8 +31,6 @@ from .context import ChatContext
 from .delegate import ChatProcessor, ChatProxy
 
 from .box import ChatBox
-from .video import VideoBox
-
 from .client import ChatClient
 
 from .storage import ChatStorage
@@ -47,7 +45,7 @@ __all__ = [
     'ChatContext',
     'ChatProcessor', 'ChatProxy',
 
-    'ChatBox', 'VideoBox',
+    'ChatBox',
     'ChatClient',
 
     'ChatStorage',

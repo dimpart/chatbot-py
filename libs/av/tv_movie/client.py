@@ -29,19 +29,23 @@ from typing import Optional, List, Dict
 
 from dimples import DateTime
 from dimples import ID
-from dimples import Content
+from dimples import Envelope, Content
+from dimples import CustomizedContent
 from dimples import CommonFacebook
 
 from ...utils import Singleton, Runner
+from ...utils import Log
 from ...utils import Config
+from ...common import Season
+from ...chat.base import get_nickname
 from ...chat import Request, ChatRequest
-from ...chat import ChatBox, VideoBox, ChatClient
+from ...chat import ChatBox, ChatClient
 from ...chat import ChatContext
 from ...chat import ChatProcessor, ChatProxy
-from ...chat.base import get_nickname
 from ...client import Emitter
 from ...client import Monitor
 
+from .video import VideoBox
 from .engine import Task, Engine
 
 
@@ -147,8 +151,34 @@ class SearchHandler(ChatProcessor):
         elif kw_len == 4 and keywords.lower() == 'stop':
             return ''
         elif kw_len == 12 and keywords.lower() == 'show history':
+            #
+            #  search history
+            #
             if sender in his_man.supervisors:
                 await _respond_history(history=his_man.commands, request=request, box=context)
+            else:
+                await _respond_403(request=request, box=context)
+            return ''
+        elif kw_len == 12 and keywords.lower() == 'blocked list':
+            #
+            #  blocked list
+            #
+            if sender in his_man.supervisors:
+                blocked_list = await context.load_blocked_list()
+                await _respond_blocked_list(keywords=blocked_list, request=request, box=context)
+            else:
+                await _respond_403(request=request, box=context)
+            return ''
+        elif 8 <= kw_len <= 128 and keywords.startswith('block: '):
+            #
+            #  block keyword
+            #
+            if sender in his_man.supervisors:
+                pos = keywords.startswith(':') + 1
+                blocked = keywords[pos:]
+                text = await self._block_keyword(keyword=blocked, box=context)
+                if text is not None:
+                    await context.respond_text(text=text, request=request)
             else:
                 await _respond_403(request=request, box=context)
             return ''
@@ -163,6 +193,27 @@ class SearchHandler(ChatProcessor):
         # thr = Runner.async_thread(coro=coro)
         # thr.start()
         # return True
+
+    async def _block_keyword(self, keyword: str, box: VideoBox) -> Optional[str]:
+        # trim keyword
+        keyword = keyword.strip()
+        keyword = keyword.strip('"')
+        if len(keyword) == 0:
+            self.error(msg='ignore empty keyword')
+            return None
+        # check keywords
+        array = await box.load_blocked_list()
+        if keyword in array:
+            self.warning(msg='ignore duplicated keyword: %s' % keyword)
+            return 'Keyword "%s" already blocked' % keyword
+        # add keywords
+        array.append(keyword)
+        ok = await box.save_blocked_list(array=array)
+        if not ok:
+            self.error(msg='failed to save blocked: %s, %s' % (keyword, array))
+            return 'Cannot block "%s" now' % keyword
+        # OK
+        return 'Keyword "%s" already blocked, blocked count: %d' % (keyword, len(array))
 
     async def _search(self, task: Task, box: SearchBox) -> bool:
         engine = self.__engine
@@ -196,6 +247,15 @@ async def _respond_403(request: ChatRequest, box: VideoBox):
     text = 'Forbidden\n'
     text += '\n----\n'
     text += 'Permission Denied'
+    return await box.respond_markdown(text=text, request=request)
+
+
+async def _respond_blocked_list(keywords: List[str], request: ChatRequest, box: VideoBox):
+    text = '## Blocked List\n'
+    for kw in keywords:
+        text += '* %s\n' % kw
+    text += '\n'
+    text += 'Total %d keyword(s)' % len(keywords)
     return await box.respond_markdown(text=text, request=request)
 
 
@@ -281,3 +341,147 @@ class SearchClient(ChatClient):
         #     processors = random.sample(processors, count)
         proxy = ChatProxy(service='TV_MOV', processors=processors)
         return SearchBox(identifier=identifier, facebook=facebook, proxy=proxy)
+
+    # Override
+    async def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
+        app = content.application
+        act = content.action
+        if app == 'chat.dim.video':
+            if act == 'request':
+                await self._process_video_request(content=content, envelope=envelope)
+            return
+        # others
+        return await super().process_customized_content(content=content, envelope=envelope)
+
+    async def _process_video_request(self, content: CustomizedContent, envelope: Envelope):
+        request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
+        box = self._get_box(identifier=request.identifier)
+        assert isinstance(box, SearchBox), 'search box error: %s' % box
+        mod = content.module
+        if mod == 'index':
+            video_list = await _fetch_video_index(box=box)
+            self.info(msg='responding %d video(s) to %s' % (len(video_list), request.identifier))
+            await _respond_video_index(video_list=video_list, request=request, box=box)
+        elif mod == 'season':
+            url_list = content.get('url_list')
+            if url_list is None:
+                url_list = []
+            self.info(msg='loading %d seasons for %s' % (len(url_list), request.identifier))
+            for url in url_list:
+                season = await box.load_season(url=url)
+                if season is None:
+                    self.warning(msg='season not found: %s' % url)
+                else:
+                    self.info(msg='responding season: %s' % url)
+                    await _respond_video_season(season=season, request=request, box=box)
+
+
+async def _fetch_video_index(box: VideoBox) -> List[Dict]:
+    tree = await box.load_video_results()
+    #
+    #  1. get keywords
+    #
+    keywords = []
+    all_keywords = tree.keywords
+    for kw in all_keywords:
+        if kw in keywords:
+            Log.warning(msg='duplicated keyword: %s' % kw)
+            continue
+        keywords.append(kw)
+    #
+    #  2. build bar chart
+    #
+    bars = []
+    max_w = 0
+    blocked_list = await box.load_blocked_list()
+    for kw in keywords:
+        if kw in blocked_list:
+            Log.warning(msg='ignore blocked keyword: %s' % kw)
+            continue
+        video_list = tree.video_list(keyword=kw)
+        if video_list is None:
+            continue
+        else:
+            video_list = video_list.copy()
+        # check blocked name
+        pos = len(video_list)
+        while pos > 0:
+            pos -= 1
+            item = video_list[pos]
+            assert item is Dict, 'video info error: %s' % item
+            if item.get('name') in blocked_list:
+                Log.warning(msg='ignore blocked video name: %s' % item)
+                video_list.pop(pos)
+        # OK
+        cnt = len(video_list)
+        if cnt > 0:
+            bars.append(video_list)
+            if cnt > max_w:
+                max_w = cnt
+    max_h = len(bars)
+    n = max_w + max_h - 1
+    #
+    #  3. build index
+    #
+    lt_array = []
+    x = 0
+    y = 0
+    while x < n and y < n:
+        # pick up item exists
+        if y < len(bars):
+            video_list = bars[y]
+            if x < len(video_list):
+                lt_array.append(video_list[x])
+        # move pointers to next position
+        if y == 0:
+            # next slash
+            y = x + 1
+            x = 0
+        else:
+            y = y - 1
+            x = x + 1
+    #
+    #   A:
+    #       1  2  3  4
+    #       5  6  7  8      =>      1 5 2 9 6 3 10 7 4 11 8 12
+    #       9 10 11 12
+    #
+    #   B:
+    #       1  2  3
+    #       4  5  6         =>      1 4 2 7 5 3 10 8 6 11 9 12
+    #       7  8  9
+    #      10 11 12
+    #
+    return lt_array
+
+
+async def _respond_video_index(video_list: List[Dict], request: ChatRequest, box: VideoBox):
+    response = CustomizedContent.create(app='chat.dim.video', mod='index', act='respond')
+    response['index'] = video_list
+    #
+    #  extra param: serial number
+    #
+    query = request.content
+    tag = query.get('tag')
+    if tag is None:
+        tag = query.sn
+    response['tag'] = tag
+    #
+    #  extra param: visibility
+    #
+    response['hidden'] = True
+    response['muted'] = True
+    # OK
+    await box.respond_content(content=response, request=request)
+
+
+async def _respond_video_season(season: Season, request: ChatRequest, box: VideoBox):
+    response = CustomizedContent.create(app='chat.dim.video', mod='season', act='respond')
+    response['season'] = season.dictionary
+    #
+    #  extra param: visibility
+    #
+    response['hidden'] = True
+    response['muted'] = True
+    # FIXME: respond markdown
+    await box.respond_content(content=response, request=request)

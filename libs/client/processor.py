@@ -55,13 +55,13 @@ class ClientProcessor(ClientMessageProcessor):
     # Override
     async def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
         if isinstance(content, TextContent):
-            self.__chat_client.process_text_content(content=content, envelope=r_msg.envelope)
+            await self.__chat_client.process_text_content(content=content, envelope=r_msg.envelope)
             return []
         elif isinstance(content, FileContent):
-            self.__chat_client.process_file_content(content=content, envelope=r_msg.envelope)
+            await self.__chat_client.process_file_content(content=content, envelope=r_msg.envelope)
             return []
         elif isinstance(content, CustomizedContent):
-            self.__chat_client.process_customized_content(content=content, envelope=r_msg.envelope)
+            await self.__chat_client.process_customized_content(content=content, envelope=r_msg.envelope)
             return []
         # system contents
         return await super().process_content(content=content, r_msg=r_msg)

@@ -133,23 +133,23 @@ class ChatClient(Runner, Logging, ABC):
     #   Interfaces for Message Processor
     #
 
-    def process_text_content(self, content: TextContent, envelope: Envelope):
+    async def process_text_content(self, content: TextContent, envelope: Envelope):
         request = ChatRequest(content=content, envelope=envelope, facebook=self.__facebook)
         self._append_request(request=request)
 
-    def process_file_content(self, content: FileContent, envelope: Envelope):
+    async def process_file_content(self, content: FileContent, envelope: Envelope):
         request = ChatRequest(content=content, envelope=envelope, facebook=self.__facebook)
         self._append_request(request=request)
 
-    def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
+    async def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
         app = content.application
         mod = content.module
         if mod == Translator.MOD or app == Translator.APP:
-            self._process_translate_content(content=content, envelope=envelope)
+            await self._process_translate_content(content=content, envelope=envelope)
         elif mod == 'users':
-            self._process_users_content(content=content, envelope=envelope)
+            await self._process_users_content(content=content, envelope=envelope)
 
-    def _process_translate_content(self, content: CustomizedContent, envelope: Envelope):
+    async def _process_translate_content(self, content: CustomizedContent, envelope: Envelope):
         mod = content.module
         act = content.action
         if act == 'request':
@@ -162,7 +162,7 @@ class ChatClient(Runner, Logging, ABC):
         else:
             self.error(msg='translate content error: %s' % content)
 
-    def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
+    async def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
         users = content.get('users')
         if isinstance(users, List):
             self.info(msg='received users: %s' % users)

@@ -31,8 +31,9 @@ from dimples import URI
 from ...utils import Logging
 from ...utils import HttpClient
 from ...common import Season
+from ...chat import ChatRequest
 
-from ...chat import ChatRequest, VideoBox
+from .video import VideoBox
 
 
 class Task:

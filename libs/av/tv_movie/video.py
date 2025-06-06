@@ -28,11 +28,11 @@ from typing import Optional, List
 
 from dimples import URI
 
-from ..utils import md_esc, utf8_encode, base64_encode
-from ..common import Episode, Season
-from ..common import VideoTree, VideoDBI
+from ...utils import md_esc, utf8_encode, base64_encode
+from ...common import Episode, Season
+from ...common import VideoTree, VideoDBI
 
-from .box import ChatBox
+from ...chat import ChatBox
 
 
 # noinspection PyAbstractClass
