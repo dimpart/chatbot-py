@@ -45,10 +45,10 @@ class VideoBox(ChatBox, ABC):
         assert isinstance(db, VideoDBI), 'database error: %s' % db
         return db
 
-    async def save_episode(self, episode: Episode) -> bool:
+    async def save_episode(self, episode: Episode, url: URI) -> bool:
         user = await self.facebook.current_user
         db = self.database
-        return await db.save_episode(episode=episode, identifier=user.identifier)
+        return await db.save_episode(episode=episode, url=url, identifier=user.identifier)
 
     async def load_episode(self, url: URI) -> Optional[Episode]:
         user = await self.facebook.current_user

@@ -30,10 +30,11 @@ from dimples import URI
 from dimples import Mapper
 from dimples.database.redis import RedisCache
 
+from ...utils import Logging
 from ...common import Episode, Season
 
 
-class SeasonCache(RedisCache):
+class SeasonCache(RedisCache, Logging):
 
     # season cached in Redis will be removed after 24 hours.
     EXPIRES = 3600 * 24  # seconds
@@ -53,6 +54,9 @@ class SeasonCache(RedisCache):
         redis key: 'video.season.{URL}'
     """
     def __key(self, url: URI) -> str:
+        pos = url.find('://')
+        if pos > 0:
+            url = url[pos+3:]
         return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
 
     async def save_season(self, season: Season) -> bool:
@@ -60,20 +64,27 @@ class SeasonCache(RedisCache):
         url = season.page
         key = self.__key(url=url)
         value = encode_map(info=season)
+        self.info(msg='caching season "%s" (%s) with key "%s"' % (season.name, url, key))
         return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     async def load_season(self, url: URI) -> Optional[Season]:
         """ Load season with page URL """
         key = self.__key(url=url)
         value = await self.get(name=key)
-        dictionary = decode_map(data=value)
-        return Season.parse_season(season=dictionary)
+        if value is None:
+            self.info(msg='season not cached: %s, url: %s' % (key, url))
+            return None
+        else:
+            self.info(msg='loaded season from cache: %s url: %s' % (key, url))
+        info = decode_map(data=value)
+        assert isinstance(info, Dict), 'season error: %s -> %s' % (key, info)
+        return Season.parse_season(season=info)
 
 
-class EpisodeCache(RedisCache):
+class EpisodeCache(RedisCache, Logging):
 
-    # episode cached in Redis will be removed after 3 days.
-    EXPIRES = 3600 * 24 * 3  # seconds
+    # episode cached in Redis will be removed after 30 days.
+    EXPIRES = 3600 * 24 * 30  # seconds
 
     @property  # Override
     def db_name(self) -> Optional[str]:
@@ -90,21 +101,32 @@ class EpisodeCache(RedisCache):
         redis key: 'video.episode.{URL}'
     """
     def __key(self, url: URI) -> str:
+        pos = url.find('://')
+        if pos > 0:
+            url = url[pos+3:]
         return '%s.%s.%s' % (self.db_name, self.tbl_name, url)
 
-    async def save_episode(self, episode: Episode) -> bool:
+    async def save_episode(self, episode: Episode, url: URI) -> bool:
         """ Save episode with URL """
-        url = episode.url
+        if url is None:
+            url = episode.url
         key = self.__key(url=url)
         value = encode_map(info=episode)
+        self.info(msg='caching episode "%s" (%s) with key "%s"' % (episode.title, url, key))
         return await self.set(name=key, value=value, expires=self.EXPIRES)
 
     async def load_episode(self, url: URI) -> Optional[Episode]:
         """ Load episode with URL """
         key = self.__key(url=url)
         value = await self.get(name=key)
-        dictionary = decode_map(data=value)
-        return Episode.parse_episode(episode=dictionary)
+        if value is None:
+            self.info(msg='episode not cached: %s, url: %s' % (key, url))
+            return None
+        else:
+            self.info(msg='loaded episode from cache: %s url: %s' % (key, url))
+        info = decode_map(data=value)
+        assert isinstance(info, Dict), 'episode error: %s -> %s' % (key, info)
+        return Episode.parse_episode(episode=info)
 
 
 def encode_map(info: Union[Dict, Mapper]) -> bytes:
@@ -114,11 +136,7 @@ def encode_map(info: Union[Dict, Mapper]) -> bytes:
     return utf8_encode(string=js)
 
 
-def decode_map(data: Optional[bytes]) -> Optional[Dict]:
-    if data is None:
-        return None
+def decode_map(data: bytes) -> Dict:
     js = utf8_decode(data=data)
     assert js is not None, 'failed to decode string: %s' % data
-    info = json_decode(string=js)
-    assert info is not None, 'failed to decode map: %s' % js
-    return info
+    return json_decode(string=js)

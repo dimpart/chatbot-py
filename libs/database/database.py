@@ -444,8 +444,8 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
     #
 
     # Override
-    async def save_episode(self, episode: Episode, identifier: ID) -> bool:
-        return await self.__episode_table.save_episode(episode=episode, identifier=identifier)
+    async def save_episode(self, episode: Episode, url: URI, identifier: ID) -> bool:
+        return await self.__episode_table.save_episode(episode=episode, url=url, identifier=identifier)
 
     # Override
     async def load_episode(self, url: URI, identifier: ID) -> Optional[Episode]:

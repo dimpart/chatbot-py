@@ -84,12 +84,9 @@ class VideoStorage(Storage):
             results format:
                 {
                     '{KEYWORD}' : {
-                        'time': 1234,
-                        'list': [
-                            {
-                                'url': '{SEASON_PAGE}',
-                                'name': '{SEASON_NAME}'
-                            }
+                        'time': 12345,
+                        'page_list': [
+                            '{SEASON_PAGE}'
                         ]
                     }
                 }
@@ -103,7 +100,7 @@ class VideoStorage(Storage):
         file path: '.dim/protected/{ADDRESS}/video_blocked.js'
     """
     results_path = '{PROTECTED}/{ADDRESS}/video_results.js'
-    blocked_path = '{PROTECTED}/{ADDRESS}/video_results.js'
+    blocked_path = '{PROTECTED}/{ADDRESS}/video_blocked.js'
 
     def show_info(self):
         path1 = self.protected_path(self.results_path)

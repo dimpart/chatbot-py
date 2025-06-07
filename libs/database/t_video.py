@@ -64,7 +64,7 @@ class EpiTask(DbTask[URI, Episode]):
         return await self._redis.load_episode(url=self._url)
 
     async def _save_redis_cache(self, value: Episode) -> bool:
-        return await self._redis.save_episode(episode=value)
+        return await self._redis.save_episode(episode=value, url=self._url)
 
     async def _load_local_storage(self) -> Optional[Episode]:
         pass
@@ -130,9 +130,10 @@ class EpisodeTable(Logging):
     #   Video DBI
     #
 
-    async def save_episode(self, episode: Episode, identifier: ID) -> bool:
-        url = episode.url
-        assert url is not None, 'episode url not found: %s' % episode
+    async def save_episode(self, episode: Episode, url: URI, identifier: ID) -> bool:
+        if url is None:
+            url = episode.url
+            assert url is not None, 'episode url not found: %s' % episode
         #
         #  1. check time
         #

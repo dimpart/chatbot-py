@@ -37,7 +37,7 @@ from ...utils import Logging
 
 class Episode(Dictionary):
 
-    EXPIRES = 3600 * 24  # seconds
+    EXPIRES = 3600 * 24 * 3  # seconds
 
     def __init__(self, info: Dict[str, Any] = None,
                  title: str = None, url: URI = None):
@@ -199,7 +199,7 @@ class Tube(Dictionary):
 
 class Season(Dictionary):
 
-    EXPIRES = 3600 * 5  # seconds
+    EXPIRES = 3600 * 10  # seconds
 
     def __init__(self, info: Dict[str, Any] = None,
                  page: URI = None,
@@ -308,12 +308,9 @@ class VideoTree(Dictionary, Logging):
         data format:
             {
                 '{KEYWORD}' : {
-                    'time': 1234,
-                    'list': [
-                        {
-                            'url': '{SEASON_PAGE}',
-                            'name': '{SEASON_NAME}'
-                        }
+                    'time': 12345,
+                    'page_list': [
+                        '{SEASON_PAGE}'
                     ]
                 }
             }
@@ -326,13 +323,13 @@ class VideoTree(Dictionary, Logging):
         array = []
         # List[Tuple[str, float]]
         for kw in keys:
-            videos = self.video_list(keyword=kw)
-            if videos is None or len(videos) == 0:
+            pages = self.page_list(keyword=kw)
+            if pages is None or len(pages) == 0:
                 self.warning(msg='skip empty keyword: %s' % kw)
                 continue
             last = self.last_time(keyword=kw)
             if last is None:
-                self.error(msg='last update time lost: %s, %d' % (kw, len(videos)))
+                self.error(msg='last update time lost: %s, %d' % (kw, len(pages)))
                 continue
             array.append((kw, last.timestamp))
         # sort with last update time
@@ -344,27 +341,27 @@ class VideoTree(Dictionary, Logging):
         """ Get last update time for this keyword """
         results = self.get(key=keyword)
         if results is not None:
-            time = results.get('time')
-            return Converter.get_datetime(value=time, default=None)
+            timestamp = results.get('time')
+            return Converter.get_datetime(value=timestamp, default=None)
 
-    def video_list(self, keyword: str) -> Optional[List[Dict]]:
-        """ Get video list for this keyword """
+    def page_list(self, keyword: str) -> Optional[List[URI]]:
+        """ Get season page list for this keyword """
         results = self.get(key=keyword)
         if results is not None:
-            return results.get('list')
+            return results.get('page_list')
 
-    def update_results(self, keyword: str, video_list: List[Dict]):
+    def update_results(self, keyword: str, page_list: List[URI]):
         """ Set results for keyword """
         self[keyword] = {
             'time': DateTime.current_timestamp(),
-            'list': video_list,
+            'page_list': page_list,
         }
 
 
 class VideoDBI(ABC):
 
     @abstractmethod
-    async def save_episode(self, episode: Episode, identifier: ID) -> bool:
+    async def save_episode(self, episode: Episode, url: URI, identifier: ID) -> bool:
         raise NotImplemented
 
     @abstractmethod

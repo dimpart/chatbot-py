@@ -33,6 +33,8 @@
                                              -- Albert Moky @ Jan. 23, 2019
 """
 
+from typing import List
+
 from dimples.utils import *
 from dimples.utils.http import Response, fetch_cookies
 
@@ -42,6 +44,47 @@ from dimples.database.dos.document import parse_document
 from .pnf import get_filename, get_extension
 from .pnf import get_cache_name
 from .pnf import filename_from_url, filename_from_data
+
+
+def zigzag_reduce(array: List[List]) -> List:
+    snake = []
+    #
+    #  check size
+    #
+    h = len(array)
+    w = 0
+    for line in array:
+        s = len(line)
+        if s > w:
+            w = s
+    n = w + h - 1
+    #
+    #  traverse
+    #
+    x = 0
+    y = 0
+    while x < n and y < n:
+        # pick up existing item
+        if y < len(array):
+            line = array[y]
+            if x < len(line):
+                snake.append(line[x])
+        # move pointers to next position
+        if y == 0:
+            # next slash
+            y = x + 1
+            x = 0
+        else:
+            x = x + 1
+            y = y - 1
+    #############################################
+    #                                           #
+    #   0 1 2 3                                 #
+    #   4 5         =>    0 4 1 6 5 2 7 3 8 9   #
+    #   6 7 8 9                                 #
+    #                                           #
+    #############################################
+    return snake
 
 
 def md_esc(text: str) -> str:
@@ -123,6 +166,8 @@ __all__ = [
     #
     #   Others
     #
+    'zigzag_reduce',
+
     'md_esc',
 
 ]

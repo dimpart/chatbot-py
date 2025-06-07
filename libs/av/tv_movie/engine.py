@@ -30,7 +30,7 @@ from dimples import URI
 
 from ...utils import Logging
 from ...utils import HttpClient
-from ...common import Season
+from ...common import Episode, Season
 from ...chat import ChatRequest
 
 from .video import VideoBox
@@ -158,23 +158,69 @@ class Engine(Logging):
         raise NotImplemented
 
     #
-    #   Query Season
+    #   Seasons
     #
+
     async def get_season(self, url: URI, task: Task) -> Optional[Season]:
-        box = task.box
-        season = await box.load_season(url=url)
+        # self.info(msg='getting season: %s' % url)
+        season = await self._load_season(url=url, task=task)
         if season is None:
             season = await self._query_season(url=url, task=task)
             if season is not None:
-                await box.save_season(season=season)
-        elif season.is_expired():
-            self._update_season(season=season, task=task)
+                self.info(msg='saving new season: %s' % season)
+                await self._save_season(season=season, task=task)
         return season
+
+    async def _save_season(self, season: Season, task: Task) -> bool:
+        ok = await task.box.save_season(season=season)
+        if not ok:
+            self.error(msg='failed to save season: %s' % season)
+        return ok
+
+    async def _load_season(self, url: URI, task: Task) -> Optional[Season]:
+        season = await task.box.load_season(url=url)
+        if season is not None and season.is_expired():
+            await self._update_season(season=season, task=task)
+        return season
+
+    async def _update_season(self, season: Season, task: Task):
+        """ add update task to the shared engine """
+        pass
 
     @abstractmethod
     async def _query_season(self, url: URI, task: Task) -> Optional[Season]:
         raise NotImplemented
 
-    def _update_season(self, season: Season, task: Task):
+    #
+    #   Episodes
+    #
+
+    async def _get_episode(self, url: URI, title: Optional[str], task: Task) -> Optional[Episode]:
+        # self.info(msg='getting episode: "%s" %s' % (title, url))
+        episode = await self._load_episode(url=url, task=task)
+        if episode is None:
+            episode = await self._query_episode(url=url, title=title, task=task)
+            if episode is not None:
+                self.info(msg='saving new episode: "%s" %s -> %s' % (title, url, episode))
+                await self._save_episode(episode=episode, url=url, task=task)
+        return episode
+
+    async def _save_episode(self, episode: Episode, url: URI, task: Task) -> bool:
+        ok = await task.box.save_episode(episode=episode, url=url)
+        if not ok:
+            self.error(msg='failed to save episode: %s' % episode)
+        return ok
+
+    async def _load_episode(self, url: URI, task: Task) -> Optional[Episode]:
+        episode = await task.box.load_episode(url=url)
+        if episode is not None and episode.is_expired():
+            await self._update_episode(episode=episode, task=task)
+        return episode
+
+    async def _update_episode(self, episode: Episode, task: Task):
         """ add update task to the shared engine """
         pass
+
+    @abstractmethod
+    async def _query_episode(self, url: URI, title: Optional[str], task: Task) -> Optional[Episode]:
+        raise NotImplemented

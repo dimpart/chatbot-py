@@ -33,6 +33,7 @@ from dimples import Envelope, Content
 from dimples import CustomizedContent
 from dimples import CommonFacebook
 
+from ...utils import zigzag_reduce
 from ...utils import Singleton, Runner
 from ...utils import Log
 from ...utils import Config
@@ -45,6 +46,7 @@ from ...chat import ChatProcessor, ChatProxy
 from ...client import Emitter
 from ...client import Monitor
 
+from .video import build_season_link
 from .video import VideoBox
 from .engine import Task, Engine
 
@@ -174,7 +176,7 @@ class SearchHandler(ChatProcessor):
             #  block keyword
             #
             if sender in his_man.supervisors:
-                pos = keywords.startswith(':') + 1
+                pos = keywords.find(':') + 1
                 blocked = keywords[pos:]
                 text = await self._block_keyword(keyword=blocked, box=context)
                 if text is not None:
@@ -285,17 +287,13 @@ class HistoryManager:
 
     def __init__(self):
         super().__init__()
-        self.__config: Config = None
         self.__commands: List[Dict] = []
         self.__lock = threading.Lock()
 
     @property
     def config(self) -> Optional[Config]:
-        return self.__config
-
-    @config.setter
-    def config(self, conf: Config):
-        self.__config = conf
+        monitor = Monitor()
+        return monitor.config
 
     @property
     def supervisors(self) -> List[ID]:
@@ -363,7 +361,7 @@ class SearchClient(ChatClient):
             self.info(msg='responding %d video(s) to %s' % (len(video_list), request.identifier))
             await _respond_video_index(video_list=video_list, request=request, box=box)
         elif mod == 'season':
-            url_list = content.get('url_list')
+            url_list = content.get('page_list')
             if url_list is None:
                 url_list = []
             self.info(msg='loading %d seasons for %s' % (len(url_list), request.identifier))
@@ -377,82 +375,59 @@ class SearchClient(ChatClient):
 
 
 async def _fetch_video_index(box: VideoBox) -> List[Dict]:
-    tree = await box.load_video_results()
-    #
-    #  1. get keywords
-    #
-    keywords = []
-    all_keywords = tree.keywords
-    for kw in all_keywords:
-        if kw in keywords:
-            Log.warning(msg='duplicated keyword: %s' % kw)
-            continue
-        keywords.append(kw)
-    #
-    #  2. build bar chart
-    #
-    bars = []
-    max_w = 0
     blocked_list = await box.load_blocked_list()
+    tree = await box.load_video_results()
+    keywords = tree.keywords
+    #
+    #  build two-dimension array
+    #
+    array: List[List[Dict]] = []
     for kw in keywords:
         if kw in blocked_list:
             Log.warning(msg='ignore blocked keyword: %s' % kw)
             continue
-        video_list = tree.video_list(keyword=kw)
-        if video_list is None:
+        url_list = tree.page_list(keyword=kw)
+        if url_list is None or len(url_list) == 0:
+            Log.warning(msg='ignore empty keyword: %s' % kw)
             continue
-        else:
-            video_list = video_list.copy()
-        # check blocked name
-        pos = len(video_list)
-        while pos > 0:
-            pos -= 1
-            item = video_list[pos]
-            assert item is Dict, 'video info error: %s' % item
-            if item.get('name') in blocked_list:
-                Log.warning(msg='ignore blocked video name: %s' % item)
-                video_list.pop(pos)
-        # OK
-        cnt = len(video_list)
-        if cnt > 0:
-            bars.append(video_list)
-            if cnt > max_w:
-                max_w = cnt
-    max_h = len(bars)
-    n = max_w + max_h - 1
+        line: List[Dict] = []
+        for url in url_list:
+            season = await box.load_season(url=url)
+            if season is None:
+                Log.error(msg='season not found: %s' % url)
+                continue
+            name = season.name
+            time = season.time
+            if name is None or time is None:
+                Log.error(msg='season error: %s' % season)
+                continue
+            elif name in blocked_list:
+                Log.warning(msg='ignore blocked season: %s, %s' % (name, url))
+                continue
+            line.append({
+                'page': url,
+                'name': name,
+                'time': time.timestamp,
+            })
+        if len(line) > 0:
+            array.append(line)
     #
-    #  3. build index
+    #  reduce video list
     #
-    lt_array = []
-    x = 0
-    y = 0
-    while x < n and y < n:
-        # pick up item exists
-        if y < len(bars):
-            video_list = bars[y]
-            if x < len(video_list):
-                lt_array.append(video_list[x])
-        # move pointers to next position
-        if y == 0:
-            # next slash
-            y = x + 1
-            x = 0
-        else:
-            y = y - 1
-            x = x + 1
-    #
-    #   A:
-    #       1  2  3  4
-    #       5  6  7  8      =>      1 5 2 9 6 3 10 7 4 11 8 12
-    #       9 10 11 12
-    #
-    #   B:
-    #       1  2  3
-    #       4  5  6         =>      1 4 2 7 5 3 10 8 6 11 9 12
-    #       7  8  9
-    #      10 11 12
-    #
-    return lt_array
+    snake: List[Dict] = zigzag_reduce(array=array)
+    y = len(snake)
+    while y > 1:
+        y -= 1
+        url = snake[y].get('page')
+        x = y
+        while x > 0:
+            x -= 1
+            if snake[x].get('page') == url:
+                # remove duplicated item
+                snake.pop(y)
+                break
+    # OK
+    return snake
 
 
 async def _respond_video_index(video_list: List[Dict], request: ChatRequest, box: VideoBox):
@@ -477,11 +452,36 @@ async def _respond_video_index(video_list: List[Dict], request: ChatRequest, box
 
 async def _respond_video_season(season: Season, request: ChatRequest, box: VideoBox):
     response = CustomizedContent.create(app='chat.dim.video', mod='season', act='respond')
-    response['season'] = season.dictionary
     #
     #  extra param: visibility
     #
     response['hidden'] = True
     response['muted'] = True
-    # FIXME: respond markdown
+    #
+    #  extra param: format
+    #
+    query = request.content
+    txt_fmt = query.get('format')  # markdown
+    if txt_fmt == 'markdown':
+        link = build_season_link(season=season, index=0, total=1)
+        cover = season.cover
+        if cover is None or cover.find('://') < 0:
+            Log.warning(msg='season cover not found: %s' % season)
+            text = link
+        else:
+            text = '![](%s "")\n\n%s' % (cover, link)
+        response['text'] = text
+        response['format'] = 'markdown'
+        # digest
+        time = season.time
+        if time is None:
+            time = DateTime.now()
+        response['season'] = {
+            'page': season.page,
+            'name': season.name,
+            'time': time.timestamp,
+        }
+    else:
+        response['season'] = season.dictionary
+    # OK
     await box.respond_content(content=response, request=request)
