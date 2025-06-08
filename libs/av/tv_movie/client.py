@@ -47,6 +47,7 @@ from ...client import Emitter
 from ...client import Monitor
 
 from .video import build_season_link
+from .video import VideoTree
 from .video import VideoBox
 from .engine import Task, Engine
 
@@ -161,7 +162,18 @@ class SearchHandler(ChatProcessor):
             else:
                 await _respond_403(request=request, box=context)
             return ''
-        elif kw_len == 12 and keywords.lower() == 'blocked list':
+        elif kw_len == 13 and keywords.lower() == 'show keywords':
+            #
+            #  search keywords
+            #
+            if sender in his_man.supervisors:
+                results = await context.load_video_results()
+                blocked_list = await context.load_blocked_list()
+                await _respond_keywords(results=results, blocked_list=blocked_list, request=request, box=context)
+            else:
+                await _respond_403(request=request, box=context)
+            return ''
+        elif kw_len == 17 and keywords.lower() == 'show blocked list':
             #
             #  blocked list
             #
@@ -254,9 +266,45 @@ async def _respond_403(request: ChatRequest, box: VideoBox):
 
 async def _respond_blocked_list(keywords: List[str], request: ChatRequest, box: VideoBox):
     text = '## Blocked List\n'
+    text += '\n----\n'
     for kw in keywords:
         text += '* %s\n' % kw
-    text += '\n'
+    text += '\n----\n'
+    text += 'Total %d keyword(s)' % len(keywords)
+    return await box.respond_markdown(text=text, request=request)
+
+
+async def _respond_keywords(results: VideoTree, blocked_list: List[str], request: ChatRequest, box: VideoBox):
+    text = '## Keywords\n'
+    text += '\n----\n'
+    keywords = results.keywords
+    for kw in keywords:
+        # get video list
+        page_list = results.page_list(keyword=kw)
+        count = 0 if page_list is None else len(page_list)
+        # show keyword
+        if kw in blocked_list:
+            text += '* %s, count = %d (BLOCKED)\n' % (kw, count)
+        else:
+            text += '* %s, count = %d\n' % (kw, count)
+        # show video names
+        if count > 0:
+            pos = 0
+            for url in page_list:
+                pos += 1
+                if pos > 10:
+                    text += '  %d. ...\n' % pos
+                    break
+                season = await box.load_season(url=url)
+                if season is None:
+                    text += '  %d. %s\n' % (pos, url)
+                else:
+                    name = season.name
+                    if name in blocked_list:
+                        text += '  %d. %s (BLOCKED)\n' % (pos, name)
+                    else:
+                        text += '  %d. %s\n' % (pos, name)
+    text += '\n----\n'
     text += 'Total %d keyword(s)' % len(keywords)
     return await box.respond_markdown(text=text, request=request)
 
@@ -356,14 +404,18 @@ class SearchClient(ChatClient):
         box = self._get_box(identifier=request.identifier)
         assert isinstance(box, SearchBox), 'search box error: %s' % box
         mod = content.module
-        if mod == 'index':
-            video_list = await _fetch_video_index(box=box)
+        if mod == 'playlist':
+            video_list = await _fetch_playlist(box=box)
             self.info(msg='responding %d video(s) to %s' % (len(video_list), request.identifier))
-            await _respond_video_index(video_list=video_list, request=request, box=box)
+            await _respond_playlist(video_list=video_list, request=request, box=box)
         elif mod == 'season':
             url_list = content.get('page_list')
             if url_list is None:
-                url_list = []
+                url = content.get('page')
+                if url is None:
+                    url_list = []
+                else:
+                    url_list = [url]
             self.info(msg='loading %d seasons for %s' % (len(url_list), request.identifier))
             for url in url_list:
                 season = await box.load_season(url=url)
@@ -374,7 +426,7 @@ class SearchClient(ChatClient):
                     await _respond_video_season(season=season, request=request, box=box)
 
 
-async def _fetch_video_index(box: VideoBox) -> List[Dict]:
+async def _fetch_playlist(box: VideoBox) -> List[Dict]:
     blocked_list = await box.load_blocked_list()
     tree = await box.load_video_results()
     keywords = tree.keywords
@@ -430,9 +482,9 @@ async def _fetch_video_index(box: VideoBox) -> List[Dict]:
     return snake
 
 
-async def _respond_video_index(video_list: List[Dict], request: ChatRequest, box: VideoBox):
-    response = CustomizedContent.create(app='chat.dim.video', mod='index', act='respond')
-    response['index'] = video_list
+async def _respond_playlist(video_list: List[Dict], request: ChatRequest, box: VideoBox):
+    response = CustomizedContent.create(app='chat.dim.video', mod='playlist', act='respond')
+    response['playlist'] = video_list
     #
     #  extra param: serial number
     #
@@ -441,6 +493,18 @@ async def _respond_video_index(video_list: List[Dict], request: ChatRequest, box
     if tag is None:
         tag = query.sn
     response['tag'] = tag
+    #
+    #  query title
+    #
+    title = query.get('title')
+    if title is not None:
+        response['title'] = title
+    #
+    #  query keywords
+    #
+    keywords = query.get('keywords')
+    if keywords is not None:
+        response['keywords'] = keywords
     #
     #  extra param: visibility
     #
