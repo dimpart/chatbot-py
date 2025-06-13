@@ -24,11 +24,12 @@
 # ==============================================================================
 
 from abc import ABC
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from dimples import URI
 
 from ...utils import md_esc, utf8_encode, base64_encode
+from ...utils import zigzag_reduce
 from ...common import Episode, Season
 from ...common import VideoTree, VideoDBI
 
@@ -94,6 +95,65 @@ class VideoBox(ChatBox, ABC):
         if array is None:
             array = []
         return array
+
+    #
+    #   Playlist
+    #
+
+    async def fetch_playlist(self) -> List[Dict]:
+        blocked_list = await self.load_blocked_list()
+        tree = await self.load_video_results()
+        keywords = tree.keywords
+        #
+        #  build two-dimension array
+        #
+        array: List[List[Dict]] = []
+        for kw in keywords:
+            if kw in blocked_list:
+                self.warning(msg='ignore blocked keyword: %s' % kw)
+                continue
+            url_list = tree.page_list(keyword=kw)
+            if url_list is None or len(url_list) == 0:
+                self.warning(msg='ignore empty keyword: %s' % kw)
+                continue
+            line: List[Dict] = []
+            for url in url_list:
+                season = await self.load_season(url=url)
+                if season is None:
+                    self.error(msg='season not found: %s' % url)
+                    continue
+                name = season.name
+                time = season.time
+                if name is None or time is None:
+                    self.error(msg='season error: %s' % season)
+                    continue
+                elif name in blocked_list:
+                    self.warning(msg='ignore blocked season: %s, %s' % (name, url))
+                    continue
+                line.append({
+                    'page': url,
+                    'name': name,
+                    'time': time.timestamp,
+                })
+            if len(line) > 0:
+                array.append(line)
+        #
+        #  reduce video list
+        #
+        snake: List[Dict] = zigzag_reduce(array=array)
+        y = len(snake)
+        while y > 1:
+            y -= 1
+            url = snake[y].get('page')
+            x = y
+            while x > 0:
+                x -= 1
+                if snake[x].get('page') == url:
+                    # remove duplicated item
+                    snake.pop(y)
+                    break
+        # OK
+        return snake
 
 
 def build_season(season: Season, index: int, total: int) -> str:

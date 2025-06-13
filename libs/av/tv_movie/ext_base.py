@@ -31,9 +31,10 @@ from dimples import URI
 from ...common import Season, Tube, Episode
 
 from .video import build_season
-from .engine import Task, Engine
+from .task import Task
 from .parser import TubeInfo, EpisodeInfo
 from .parser import Parser
+from .engine import Engine
 
 
 class BaseEngine(Engine, ABC):
@@ -106,11 +107,6 @@ class BaseEngine(Engine, ABC):
     #
     #   Searching
     #
-
-    @abstractmethod
-    async def get_search_page(self, keywords: str, page: int, task: Task) -> Optional[str]:
-        """ query search page with keywords and page number """
-        raise NotImplemented
 
     # Override
     async def search(self, task: Task) -> int:
@@ -253,6 +249,11 @@ class BaseEngine(Engine, ABC):
             tree.update_results(keyword=keywords, page_list=season_page_list)
             await box.save_video_results(results=tree)
         return count
+
+    @abstractmethod
+    async def get_search_page(self, keywords: str, page: int, task: Task) -> Optional[str]:
+        """ query search page with keywords and page number """
+        raise NotImplemented
 
     @abstractmethod
     async def _respond_season_names(self, html: str, total: int, sn: int, task: Task):

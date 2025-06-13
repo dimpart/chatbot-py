@@ -337,6 +337,12 @@ class VideoTree(Dictionary, Logging):
         # take keywords
         return [item[0] for item in array]
 
+    def page_list(self, keyword: str) -> Optional[List[URI]]:
+        """ Get season page list for this keyword """
+        results = self.get(key=keyword)
+        if results is not None:
+            return results.get('page_list')
+
     def last_time(self, keyword: str) -> Optional[DateTime]:
         """ Get last update time for this keyword """
         results = self.get(key=keyword)
@@ -344,11 +350,13 @@ class VideoTree(Dictionary, Logging):
             timestamp = results.get('time')
             return Converter.get_datetime(value=timestamp, default=None)
 
-    def page_list(self, keyword: str) -> Optional[List[URI]]:
-        """ Get season page list for this keyword """
+    def touch(self, keyword: str) -> bool:
+        """ Refresh last update time """
         results = self.get(key=keyword)
-        if results is not None:
-            return results.get('page_list')
+        if results is None:
+            return False
+        results['time'] = DateTime.current_timestamp()
+        return True
 
     def update_results(self, keyword: str, page_list: List[URI]):
         """ Set results for keyword """
