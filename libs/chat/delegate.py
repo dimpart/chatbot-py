@@ -150,7 +150,7 @@ class ChatProcessor(Logging, ABC):
             answer = answer.strip()
             if len(answer) == 0:
                 self.info(msg='respond nothing: "%s" => "%s"' % (prompt, record))
-                return False
+                return True
         # OK
         await context.respond_markdown(text=answer, request=request)
         return True

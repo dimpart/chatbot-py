@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from dimples import URI
@@ -31,63 +31,11 @@ from dimples import URI
 from ...utils import Logging
 from ...utils import HttpClient
 from ...common import Episode, Season
-from ...chat import ChatRequest
 
-from .video import VideoBox
-
-
-class Task:
-    """ Search Task """
-
-    CANCEL_PROMPT = '_If this task takes too long, you can input the commands below to stop it:_\n' \
-                    '- **cancel**\n' \
-                    '- **stop**\n' \
-                    '\n' \
-                    '### NOTICE:\n' \
-                    '_Another new task will interrupt the previous task too._'
-
-    def __init__(self, keywords: str, request: Optional[ChatRequest], box: VideoBox):
-        super().__init__()
-        self.__keywords = keywords
-        self.__request = request
-        self.__box = box
-        self.__cancelled = False
-
-    # Override
-    def __str__(self) -> str:
-        cname = self.__class__.__name__
-        return '<%s id="%s" keywords="%s" />' % (cname, self.box.identifier, self.keywords)
-
-    # Override
-    def __repr__(self) -> str:
-        cname = self.__class__.__name__
-        return '<%s id="%s" keywords="%s" />' % (cname, self.box.identifier, self.keywords)
-
-    @property
-    def keywords(self) -> str:
-        return self.__keywords
-
-    @property
-    def request(self) -> Optional[ChatRequest]:
-        return self.__request
-
-    @property
-    def box(self) -> VideoBox:
-        return self.__box
-
-    @property
-    def cancelled(self) -> bool:
-        return self.__cancelled
-
-    def cancel(self):
-        """ stop the task """
-        self.__cancelled = True
-
-    def copy(self):
-        return Task(keywords=self.keywords, request=self.request, box=self.box)
+from .task import Task
 
 
-class Engine(Logging):
+class Engine(Logging, ABC):
     """ Search Engine """
 
     CANCELLED_CODE = -205
