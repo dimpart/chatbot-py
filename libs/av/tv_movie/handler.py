@@ -39,7 +39,6 @@ from ...client import Monitor
 
 from ..task import Task
 from ..engine import Engine
-from ..video import VideoBox
 
 from .box import SearchBox
 from .response import VideoResponse
@@ -73,8 +72,7 @@ class SearchHandler(ChatProcessor):
         #  1. check keywords
         #
         keywords = prompt.strip()
-        kw_len = len(keywords)
-        if kw_len == 0:
+        if len(keywords) == 0:
             return ''
         else:
             context.cancel_task()
@@ -82,56 +80,7 @@ class SearchHandler(ChatProcessor):
             his_man = HistoryManager()
             his_man.add_command(cmd=keywords, when=request.time, sender=sender, group=group)
         # system commands
-        if kw_len == 6 and keywords.lower() == 'cancel':
-            return ''
-        elif kw_len == 4 and keywords.lower() == 'stop':
-            return ''
-        elif kw_len == 12 and keywords.lower() == 'show history':
-            #
-            #  search history
-            #
-            vr = VideoResponse(request=request, box=context)
-            if sender in his_man.supervisors:
-                await vr.respond_history(history=his_man.commands)
-            else:
-                await vr.respond_403()
-            return ''
-        elif kw_len == 13 and keywords.lower() == 'show keywords':
-            #
-            #  search keywords
-            #
-            vr = VideoResponse(request=request, box=context)
-            if sender in his_man.supervisors:
-                results = await context.load_video_results()
-                blocked_list = await context.load_blocked_list()
-                await vr.respond_keywords(results=results, blocked_list=blocked_list)
-            else:
-                await vr.respond_403()
-            return ''
-        elif kw_len == 17 and keywords.lower() == 'show blocked list':
-            #
-            #  blocked list
-            #
-            vr = VideoResponse(request=request, box=context)
-            if sender in his_man.supervisors:
-                blocked_list = await context.load_blocked_list()
-                await vr.respond_blocked_list(keywords=blocked_list)
-            else:
-                await vr.respond_403()
-            return ''
-        elif 8 <= kw_len <= 128 and keywords.startswith('block: '):
-            #
-            #  block keyword
-            #
-            if sender in his_man.supervisors:
-                pos = keywords.find(':') + 1
-                blocked = keywords[pos:]
-                text = await self._block_keyword(keyword=blocked, box=context)
-                if text is not None:
-                    await context.respond_text(text=text, request=request)
-            else:
-                vr = VideoResponse(request=request, box=context)
-                await vr.respond_403()
+        if keywords in Task.CANCEL_COMMANDS:
             return ''
         #
         #  2. search
@@ -144,27 +93,6 @@ class SearchHandler(ChatProcessor):
         # thr = Runner.async_thread(coro=coro)
         # thr.start()
         # return True
-
-    async def _block_keyword(self, keyword: str, box: VideoBox) -> Optional[str]:
-        # trim keyword
-        keyword = keyword.strip()
-        keyword = keyword.strip('"')
-        if len(keyword) == 0:
-            self.error(msg='ignore empty keyword')
-            return None
-        # check keywords
-        array = await box.load_blocked_list()
-        if keyword in array:
-            self.warning(msg='ignore duplicated keyword: %s' % keyword)
-            return 'Keyword "%s" already blocked' % keyword
-        # add keywords
-        array.append(keyword)
-        ok = await box.save_blocked_list(array=array)
-        if not ok:
-            self.error(msg='failed to save blocked: %s, %s' % (keyword, array))
-            return 'Cannot block "%s" now' % keyword
-        # OK
-        return 'Keyword "%s" already blocked, blocked count: %d' % (keyword, len(array))
 
     async def _search(self, task: Task, box: SearchBox) -> bool:
         engine = self.__engine

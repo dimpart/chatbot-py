@@ -308,10 +308,14 @@ class ChatRequest(Request, Logging):
 
     # Override
     async def build(self) -> Optional[str]:
-        text = self.content.get('text')
-        if text is not None and len(text) > 0:
-            text = await self.__filter(text=text)
-        self.__text = text
+        text = self.__text
+        if text is None:
+            text = self.content.get('text')
+            if text is None:
+                text = ''
+            else:
+                text = await self.__filter(text=text)
+            self.__text = text
         return text
 
     async def __filter(self, text: str) -> Optional[str]:

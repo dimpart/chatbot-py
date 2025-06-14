@@ -42,6 +42,11 @@ class Task:
                     '### NOTICE:\n' \
                     '_Another new task will interrupt the previous task too._'
 
+    CANCEL_COMMANDS = [
+        'cancel',
+        'stop',
+    ]
+
     def __init__(self, keywords: str, request: Optional[ChatRequest], box: VideoBox):
         super().__init__()
         self.__keywords = keywords

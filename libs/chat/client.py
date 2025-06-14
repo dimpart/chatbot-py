@@ -134,11 +134,11 @@ class ChatClient(Runner, Logging, ABC):
     #
 
     async def process_text_content(self, content: TextContent, envelope: Envelope):
-        request = ChatRequest(content=content, envelope=envelope, facebook=self.__facebook)
+        request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
         self._append_request(request=request)
 
     async def process_file_content(self, content: FileContent, envelope: Envelope):
-        request = ChatRequest(content=content, envelope=envelope, facebook=self.__facebook)
+        request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
         self._append_request(request=request)
 
     async def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
@@ -157,7 +157,7 @@ class ChatClient(Runner, Logging, ABC):
                 self.info(msg='say hi to translator: "%s" for "%s"' % (content.get('text'), envelope.sender))
             else:
                 self.info(msg='translate "%s" for "%s"' % (content.get('text'), envelope.sender))
-            trans = TranslateRequest(content=content, envelope=envelope, facebook=self.__facebook)
+            trans = TranslateRequest(content=content, envelope=envelope, facebook=self.facebook)
             self._append_request(request=trans)
         else:
             self.error(msg='translate content error: %s' % content)
@@ -175,5 +175,5 @@ class ChatClient(Runner, Logging, ABC):
                 self.warning(msg='ignore user: %s' % item)
                 continue
             self.info(msg='say hi for %s' % identifier)
-            greeting = Greeting(identifier=identifier, content=content, envelope=envelope, facebook=self.__facebook)
+            greeting = Greeting(identifier=identifier, content=content, envelope=envelope, facebook=self.facebook)
             self._append_request(request=greeting)
