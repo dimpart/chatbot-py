@@ -27,7 +27,7 @@ from typing import Optional
 
 from dimples import URI
 
-from ...chat import ChatRequest
+from ..chat import ChatRequest
 
 from .video import VideoBox
 

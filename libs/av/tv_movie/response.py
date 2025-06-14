@@ -33,8 +33,8 @@ from ...utils import Logging
 from ...common import Season, VideoTree
 from ...chat import ChatRequest
 
-from .video import build_season_link
-from .video import VideoBox
+from ..video import build_season_link
+from ..video import VideoBox
 
 
 class VideoResponse(Logging):

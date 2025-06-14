@@ -30,11 +30,11 @@ from dimples import URI
 
 from ...common import Season, Tube, Episode
 
-from .video import build_season
-from .task import Task
-from .parser import TubeInfo, EpisodeInfo
-from .parser import Parser
-from .engine import Engine
+from ..video import build_season
+from ..task import Task
+from ..engine import Engine
+from ..parser import TubeInfo, EpisodeInfo
+from ..parser import Parser
 
 
 class BaseEngine(Engine, ABC):

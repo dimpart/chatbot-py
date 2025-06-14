@@ -28,12 +28,12 @@ from typing import Optional, List, Dict
 
 from dimples import URI
 
-from ...utils import md_esc, utf8_encode, base64_encode
-from ...utils import zigzag_reduce
-from ...common import Episode, Season
-from ...common import VideoTree, VideoDBI
+from ..utils import md_esc, utf8_encode, base64_encode
+from ..utils import zigzag_reduce
+from ..common import Episode, Season
+from ..common import VideoTree, VideoDBI
 
-from ...chat import ChatBox
+from ..chat import ChatBox
 
 
 # noinspection PyAbstractClass

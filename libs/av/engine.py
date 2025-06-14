@@ -28,9 +28,9 @@ from typing import Optional
 
 from dimples import URI
 
-from ...utils import Logging
-from ...utils import HttpClient
-from ...common import Episode, Season
+from ..utils import Logging
+from ..utils import HttpClient
+from ..common import Episode, Season
 
 from .task import Task
 

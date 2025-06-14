@@ -30,16 +30,10 @@
     Search Engine
 """
 
-# from .client import SearchBox, SearchHandler
 from .client import SearchClient
-
-# from .engine import Task, Engine
 
 __all__ = [
 
-    # 'SearchBox', 'SearchHandler',
     'SearchClient',
-
-    # 'Task', 'Engine',
 
 ]
