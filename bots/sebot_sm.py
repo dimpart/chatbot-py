@@ -70,7 +70,7 @@ class BotMessageProcessor(ClientProcessor):
 Log.LEVEL = Log.DEVELOP
 
 
-DEFAULT_CONFIG = '/etc/dim_bots/config.ini'
+DEFAULT_CONFIG = '/etc/dim/bots.ini'
 
 
 async def async_main():
@@ -81,7 +81,7 @@ async def async_main():
     #
     #  Create & start the bot
     #
-    client = await start_bot(ans_name='king', processor_class=BotMessageProcessor)
+    client = await start_bot(ans_name='king', section='video', processor_class=BotMessageProcessor)
     Log.warning(msg='bot stopped: %s' % client)
 
 

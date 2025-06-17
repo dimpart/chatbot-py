@@ -50,12 +50,9 @@ fi
 title "DIM Chat Bots"
 ${launch} gege "bots/chatbot_gemini.py"
 ${launch} gigi "bots/chatbot_gpt.py"
-#${launch} ling "bots/chatbot_ling.py"
-#${launch} xiao "bots/chatbot_xiao.py"
 
 title "DIM Search Bots"
-${launch} king "bots/sebot_sm.py"
-${launch} simon "bots/sebot_sd.py"
+${launch} simon "bots/sebot_sm.py"
 
 echo ""
 echo "    >>> Done <<<"

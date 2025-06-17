@@ -27,10 +27,10 @@ import threading
 from typing import Optional, List
 
 from dimples import ID
-from dimples.utils import SharedCacheManager
 from dimples.utils import CachePool
 from dimples.utils import Config
 from dimples.database import DbTask
+from dimples.database.t_base import DataCache
 
 from ..common import VideoTree
 from .dos import VideoStorage
@@ -42,29 +42,24 @@ class BlkTask(DbTask[str, List[str]]):
     MEM_CACHE_REFRESH = 32    # seconds
 
     def __init__(self, identifier: ID,
-                 cache_pool: CachePool, storage: VideoStorage,
-                 mutex_lock: threading.Lock):
-        super().__init__(cache_pool=cache_pool,
+                 storage: VideoStorage,
+                 mutex_lock: threading.Lock, cache_pool: CachePool):
+        super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
-                         cache_refresh=self.MEM_CACHE_REFRESH,
-                         mutex_lock=mutex_lock)
+                         cache_refresh=self.MEM_CACHE_REFRESH)
         self._id = identifier
         self._dos = storage
 
-    # Override
+    @property  # Override
     def cache_key(self) -> str:
         return 'video_blocked'
 
-    async def _load_redis_cache(self) -> Optional[List[str]]:
-        pass
-
-    async def _save_redis_cache(self, value: List[str]) -> bool:
-        pass
-
-    async def _load_local_storage(self) -> Optional[List[str]]:
+    # Override
+    async def _read_data(self) -> Optional[List[str]]:
         return await self._dos.load_blocked_list(identifier=self._id)
 
-    async def _save_local_storage(self, value: List[str]) -> bool:
+    # Override
+    async def _write_data(self, value: List[str]) -> bool:
         return await self._dos.save_blocked_list(array=value, identifier=self._id)
 
 
@@ -74,49 +69,41 @@ class VidTask(DbTask[str, VideoTree]):
     MEM_CACHE_REFRESH = 32    # seconds
 
     def __init__(self, identifier: ID,
-                 cache_pool: CachePool, storage: VideoStorage,
-                 mutex_lock: threading.Lock):
-        super().__init__(cache_pool=cache_pool,
+                 storage: VideoStorage,
+                 mutex_lock: threading.Lock, cache_pool: CachePool):
+        super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
-                         cache_refresh=self.MEM_CACHE_REFRESH,
-                         mutex_lock=mutex_lock)
+                         cache_refresh=self.MEM_CACHE_REFRESH)
         self._id = identifier
         self._dos = storage
 
-    # Override
+    @property  # Override
     def cache_key(self) -> str:
         return 'video_results'
 
-    async def _load_redis_cache(self) -> Optional[VideoTree]:
-        pass
-
-    async def _save_redis_cache(self, value: VideoTree) -> bool:
-        pass
-
-    async def _load_local_storage(self) -> Optional[VideoTree]:
+    # Override
+    async def _read_data(self) -> Optional[VideoTree]:
         return await self._dos.load_video_results(identifier=self._id)
 
-    async def _save_local_storage(self, value: VideoTree) -> bool:
+    # Override
+    async def _write_data(self, value: VideoTree) -> bool:
         return await self._dos.save_video_results(results=value, identifier=self._id)
 
 
-class VideoBlockTable:
+class VideoBlockTable(DataCache):
     """ Implementations of VideoDBI """
 
     def __init__(self, config: Config):
-        super().__init__()
-        man = SharedCacheManager()
-        self._cache = man.get_pool(name='video_blocked')  # 'video_blocked' => []
+        super().__init__(pool_name='video_blocked')  # 'video_blocked' => []
         self._dos = VideoStorage(config=config)
-        self._lock = threading.Lock()
 
     def show_info(self):
         self._dos.show_info()
 
     def _new_task(self, identifier: ID) -> BlkTask:
         return BlkTask(identifier=identifier,
-                       cache_pool=self._cache, storage=self._dos,
-                       mutex_lock=self._lock)
+                       storage=self._dos,
+                       mutex_lock=self._mutex_lock, cache_pool=self._cache_pool)
 
     #
     #   Video DBI
@@ -128,26 +115,24 @@ class VideoBlockTable:
 
     async def load_blocked_list(self, identifier: ID) -> List[str]:
         task = self._new_task(identifier=identifier)
-        return await task.load()
+        array = await task.load()
+        return [] if array is None else array
 
 
-class VideoSearchTable:
+class VideoSearchTable(DataCache):
     """ Implementations of VideoDBI """
 
     def __init__(self, config: Config):
-        super().__init__()
-        man = SharedCacheManager()
-        self._cache = man.get_pool(name='video_results')  # 'video_blocked' => {}
+        super().__init__(pool_name='video_results')  # 'video_blocked' => {}
         self._dos = VideoStorage(config=config)
-        self._lock = threading.Lock()
 
     def show_info(self):
         self._dos.show_info()
 
     def _new_task(self, identifier: ID) -> VidTask:
         return VidTask(identifier=identifier,
-                       cache_pool=self._cache, storage=self._dos,
-                       mutex_lock=self._lock)
+                       storage=self._dos,
+                       mutex_lock=self._mutex_lock, cache_pool=self._cache_pool)
 
     #
     #   Video DBI

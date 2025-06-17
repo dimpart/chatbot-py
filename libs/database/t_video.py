@@ -28,12 +28,11 @@ from typing import Optional
 
 from dimples import URI
 from dimples import ID
-from dimples.utils import SharedCacheManager
 from dimples.utils import CachePool
 from dimples.utils import Config
 from dimples.database import DbTask
+from dimples.database.t_base import DataCache
 
-from ..utils import Logging
 from ..common import Episode, Season
 
 from .dos import SeasonStorage
@@ -46,31 +45,26 @@ class EpiTask(DbTask[URI, Episode]):
     MEM_CACHE_REFRESH = 32    # seconds
 
     def __init__(self, identifier: ID, url: URI,
-                 cache_pool: CachePool, redis: EpisodeCache,
-                 mutex_lock: threading.Lock):
-        super().__init__(cache_pool=cache_pool,
+                 redis: EpisodeCache,
+                 mutex_lock: threading.Lock, cache_pool: CachePool):
+        super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
-                         cache_refresh=self.MEM_CACHE_REFRESH,
-                         mutex_lock=mutex_lock)
+                         cache_refresh=self.MEM_CACHE_REFRESH)
         self._id = identifier
         self._url = url
         self._redis = redis
 
-    # Override
+    @property  # Override
     def cache_key(self) -> URI:
         return self._url
 
-    async def _load_redis_cache(self) -> Optional[Episode]:
+    # Override
+    async def _read_data(self) -> Optional[Episode]:
         return await self._redis.load_episode(url=self._url)
 
-    async def _save_redis_cache(self, value: Episode) -> bool:
+    # Override
+    async def _write_data(self, value: Episode) -> bool:
         return await self._redis.save_episode(episode=value, url=self._url)
-
-    async def _load_local_storage(self) -> Optional[Episode]:
-        pass
-
-    async def _save_local_storage(self, value: Episode) -> bool:
-        pass
 
 
 class SeaTask(DbTask[URI, Season]):
@@ -79,43 +73,48 @@ class SeaTask(DbTask[URI, Season]):
     MEM_CACHE_REFRESH = 32    # seconds
 
     def __init__(self, identifier: ID, url: URI,
-                 cache_pool: CachePool, redis: SeasonCache, storage: SeasonStorage,
-                 mutex_lock: threading.Lock):
-        super().__init__(cache_pool=cache_pool,
+                 redis: SeasonCache, storage: SeasonStorage,
+                 mutex_lock: threading.Lock, cache_pool: CachePool):
+        super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
-                         cache_refresh=self.MEM_CACHE_REFRESH,
-                         mutex_lock=mutex_lock)
+                         cache_refresh=self.MEM_CACHE_REFRESH)
         self._id = identifier
         self._url = url
         self._redis = redis
         self._dos = storage
 
-    # Override
+    @property  # Override
     def cache_key(self) -> URI:
         return self._url
 
-    async def _load_redis_cache(self) -> Optional[Season]:
-        return await self._redis.load_season(url=self._url)
+    # Override
+    async def _read_data(self) -> Optional[Season]:
+        # 1. get from redis server
+        season = await self._redis.load_season(url=self._url)
+        if season is not None:
+            return season
+        # 2. get from local storage
+        season = await self._dos.load_season(url=self._url, identifier=self._id)
+        if season is not None:
+            # 3. update redis server
+            await self._redis.save_season(season=season)
+            return season
 
-    async def _save_redis_cache(self, value: Season) -> bool:
-        return await self._redis.save_season(season=value)
+    # Override
+    async def _write_data(self, value: Season) -> bool:
+        # 1. store into redis server
+        ok1 = await self._redis.save_season(season=value)
+        # 2. save into local storage
+        ok2 = await self._dos.save_season(season=value, identifier=self._id)
+        return ok1 or ok2
 
-    async def _load_local_storage(self) -> Optional[Season]:
-        return await self._dos.load_season(url=self._url, identifier=self._id)
 
-    async def _save_local_storage(self, value: Season) -> bool:
-        return await self._dos.save_season(season=value, identifier=self._id)
-
-
-class EpisodeTable(Logging):
+class EpisodeTable(DataCache):
     """ Implementations of VideoDBI """
 
     def __init__(self, config: Config):
-        super().__init__()
-        man = SharedCacheManager()
-        self._cache = man.get_pool(name='video_episodes')  # URL => Episode
+        super().__init__(pool_name='video_episodes')  # URL => Episode
         self._redis = EpisodeCache(config=config)
-        self._lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
     def show_info(self):
@@ -123,8 +122,8 @@ class EpisodeTable(Logging):
 
     def _new_task(self, url: URI, identifier: ID) -> EpiTask:
         return EpiTask(url=url, identifier=identifier,
-                       cache_pool=self._cache, redis=self._redis,
-                       mutex_lock=self._lock)
+                       redis=self._redis,
+                       mutex_lock=self._mutex_lock, cache_pool=self._cache_pool)
 
     #
     #   Video DBI
@@ -162,24 +161,21 @@ class EpisodeTable(Logging):
         return await task.load()
 
 
-class SeasonTable(Logging):
+class SeasonTable(DataCache):
     """ Implementations of VideoDBI """
 
     def __init__(self, config: Config):
-        super().__init__()
-        man = SharedCacheManager()
-        self._cache = man.get_pool(name='video_seasons')  # URL => Season
+        super().__init__(pool_name='video_seasons')  # URL => Season
         self._redis = SeasonCache(config=config)
         self._dos = SeasonStorage(config=config)
-        self._lock = threading.Lock()
 
     def show_info(self):
         self._dos.show_info()
 
     def _new_task(self, url: URI, identifier: ID) -> SeaTask:
         return SeaTask(url=url, identifier=identifier,
-                       cache_pool=self._cache, redis=self._redis, storage=self._dos,
-                       mutex_lock=self._lock)
+                       redis=self._redis, storage=self._dos,
+                       mutex_lock=self._mutex_lock, cache_pool=self._cache_pool)
 
     #
     #   Video DBI
