@@ -54,7 +54,8 @@ class BotMessageProcessor(ClientProcessor):
 
     # Override
     def _create_chat_client(self) -> ChatClient:
-        client = GPTChatClient(facebook=self.facebook)
+        shared = GlobalVariable()
+        client = GPTChatClient(facebook=self.facebook, config=shared.config)
         # TODO: add GPT handler(s)
         # ...
         # Runner.async_task(coro=client.start())

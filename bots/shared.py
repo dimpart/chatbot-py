@@ -239,10 +239,10 @@ async def start_bot(ans_name: str, section: str, processor_class) -> Terminal:
     bot_id = ID.parse(bot_id)
     assert bot_id is not None, 'Failed to get Bot ID: %s' % config
     await shared.login(current_user=bot_id)
-    # update services
-    srv_path = config.get_string(section=section, option='services')
-    if srv_path is not None:
-        await update_services(file_path=srv_path)
+    # update file contents
+    if section is not None and len(section) > 0:
+        await update_prompts(config=config, section=section)
+        await update_services(config=config, section=section)
     # create terminal
     host = config.station_host
     port = config.station_port
@@ -253,7 +253,30 @@ async def start_bot(ans_name: str, section: str, processor_class) -> Terminal:
     return client
 
 
-async def update_services(file_path: str):
+async def update_prompts(config: Config, section: str):
+    # system
+    system_prompt = config.get_string(section=section, option='system_prompt')
+    if system_prompt is not None:
+        if system_prompt.startswith('/'):
+            Log.info(msg='updating system prompt: %s' % system_prompt)
+            text = await Storage.read_text(path=system_prompt)
+            if text is not None and len(text) > 0:
+                config.dictionary['system_prompt'] = text
+    # translation
+    translate_prompt = config.get_string(section=section, option='translate_prompt')
+    if translate_prompt is not None:
+        if translate_prompt.startswith('/'):
+            Log.info(msg='updating translate prompt: %s' % translate_prompt)
+            text = await Storage.read_text(path=translate_prompt)
+            if text is not None and len(text) > 0:
+                config.dictionary['translate_prompt'] = text
+
+
+async def update_services(config: Config, section: str) -> bool:
+    file_path = config.get_string(section=section, option='services')
+    if file_path is None:
+        return False
+    Log.info(msg='updating services: %s' % file_path)
     array = await Storage.read_json(path=file_path)
     if not isinstance(array, List):
         Log.warning(msg='failed to load services: %s, %s' % (file_path, array))

@@ -93,7 +93,10 @@ class Engine(Logging, ABC):
                               ' Chrome/116.0.0.0 Safari/537.36',
             }
         try:
-            return self.http_client.cache_get(url=url, headers=headers)
+            # response = self.http_client.cache_get(url=url, headers=headers)
+            response = self.http_client.http_get(url=url, headers=headers)
+            if response.status_code == 200:
+                return response.text
         except Exception as error:
             self.error(msg='failed to query url: %s, error: %s' % (url, error))
 

@@ -30,6 +30,7 @@ from dimples import ID
 from dimples import Content
 from dimples import CommonFacebook
 
+from ...utils import Config
 from ...chat import Request, Setting, ChatRequest
 from ...chat import ChatBox, ChatClient
 from ...chat import ChatProcessor, ChatProxy
@@ -89,14 +90,10 @@ class GPTChatBox(ChatBox):
 
 class GPTChatClient(ChatClient):
 
-    SYSTEM_SETTING = 'Your name is "Gigi", a smart and beautiful girl.' \
-                     ' You are set as a little assistant who is good at listening' \
-                     ' and willing to answer any questions.'
-
-    def __init__(self, facebook: CommonFacebook):
+    def __init__(self, facebook: CommonFacebook, config: Config):
         super().__init__(facebook=facebook)
         self.__processors: List[ChatProcessor] = []
-        self.__system_setting = Setting(definition=self.SYSTEM_SETTING)
+        self.__system_setting = Setting(config=config)
 
     def add_processor(self, processor: ChatProcessor):
         self.__processors.append(processor)

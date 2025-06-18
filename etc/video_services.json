@@ -1,0 +1,16 @@
+[
+    {
+      "type": "PlayList",
+      "ID": "SiteManager@2uhY6YNmtVJ6zvdJikVD8MkzVSMWUozqAa",
+
+      "input_mode": "text only",
+      "input_type": "text",
+      "input_action": "search",
+      "input_prompt": "Input video name / actor's name to search",
+
+      "title": "TV Series / Movies",
+      "subtitle": "Video Playlist",
+      "provider": "",
+      "icon": "https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/youtube-tv-icon.png"
+    }
+]

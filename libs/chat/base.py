@@ -31,8 +31,10 @@ from dimples import EntityType, ID
 from dimples import Envelope, Content
 from dimples import CommonFacebook
 
-from ..utils import Logging
 from ..utils import json_encode
+from ..utils import template_replace
+from ..utils import Logging
+from ..utils import Config
 
 
 class Request(ABC):
@@ -76,9 +78,9 @@ class Request(ABC):
 class Setting(Request):
     """ System Setting """
 
-    def __init__(self, definition: str):
+    def __init__(self, config: Config):
         super().__init__()
-        self.__definition = definition
+        self.__config = config
 
     @property  # Override
     def identifier(self) -> ID:
@@ -90,22 +92,24 @@ class Setting(Request):
 
     @property  # Override
     def text(self) -> Optional[str]:
-        return self.__definition
+        return self.__config.dictionary.get('system_prompt')
 
     # Override
     async def build(self) -> Optional[str]:
-        return self.__definition
+        return self.__config.dictionary.get('system_prompt')
 
 
 class Greeting(Request, Logging):
     """ Say Hi """
 
-    def __init__(self, identifier: ID, envelope: Envelope, content: Content, facebook: CommonFacebook):
+    def __init__(self, identifier: ID, envelope: Envelope, content: Content,
+                 facebook: CommonFacebook, config: Config):
         super().__init__()
         self.__identifier = identifier
         self.__envelope = envelope
         self.__content = content
         self.__facebook = facebook
+        self.__config = config
         self.__text = None
 
     @property
@@ -141,13 +145,16 @@ class Greeting(Request, Logging):
             self.error(msg='failed to get nickname for sender: %s' % sender)
             return None
         language = await get_language(identifier=sender, facebook=self.facebook)
-        text = 'My name is "%s", my current language environment code is "%s".' \
-               ' Please try to greet me in a language that suits me,' \
-               ' considering my language habits and location.' \
-               ' Please keep our names unchanged and' \
-               ' not to translate them in your response.' % (name, language)
-        self.__text = text
-        return text
+        prompt = self.__config.dictionary.get('greeting_prompt')
+        if prompt is None:
+            self.error(msg='failed to get template for greeting prompt')
+            return None
+        else:
+            prompt = template_replace(template=prompt, key='NAME', value=name)
+            prompt = template_replace(template=prompt, key='LANG_CODE', value=language)
+        # OK
+        self.__text = prompt
+        return prompt
 
 
 class TranslateRequest(Request, Logging):
@@ -179,11 +186,13 @@ class TranslateRequest(Request, Logging):
     WARNING = 'WARNING: This translation function requires sending messages to third-party AI servers,' \
               ' so there is a risk of message leakage. Please be aware!'
 
-    def __init__(self, envelope: Envelope, content: Content, facebook: CommonFacebook):
+    def __init__(self, envelope: Envelope, content: Content,
+                 facebook: CommonFacebook, config: Config):
         super().__init__()
         self.__envelope = envelope
         self.__content = content
         self.__facebook = facebook
+        self.__config = config
         self.__text = None
         self.__code = None
 
@@ -247,23 +256,14 @@ class TranslateRequest(Request, Logging):
             'text': text,
             'code': code,
         })
-        prompt = '''
-My language code is "%s", please translate this text for me:
-
-    %s
-
-output the result in JSON format:
-
-    {
-        "from": "{source language}",
-        "to"  : "{target language}",
-        "code": "%s",
-        "text": "...",
-        "translation": "..."
-    }
-
-and I need you to show the values of "from" and "to" in target language.
-                 ''' % (code, req, code)
+        prompt = self.__config.dictionary.get('translate_prompt')
+        if prompt is None:
+            self.error(msg='failed to get template for greeting prompt')
+            return None
+        else:
+            prompt = template_replace(template=prompt, key='LANG_CODE', value=code)
+            prompt = template_replace(template=prompt, key='REQ_JSON', value=req)
+        # OK
         self.__text = prompt
         self.__code = code
         return prompt

@@ -87,6 +87,7 @@ class CommonEngine(BaseEngine):
         if total > 0:
             self.info(msg='load %d result(s) for "%s"' % (total, keywords))
             tree.touch(keyword=keywords)
+            await box.save_video_results(results=tree)
             await self._respond_results(results=results, task=task)
             #
             #  check update time

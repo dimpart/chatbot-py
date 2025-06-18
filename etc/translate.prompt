@@ -1,0 +1,15 @@
+My language code is "{LANG_CODE}", please translate this text for me:
+
+    {REQ_JSON}
+
+output the result in JSON format:
+
+    {
+        "from": "{source language}",
+        "to"  : "{target language}",
+        "code": "{LANG_CODE}",
+        "text": "...",
+        "translation": "..."
+    }
+
+and I need you to show the values of "from" and "to" in target language.
