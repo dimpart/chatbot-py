@@ -262,6 +262,14 @@ async def update_prompts(config: Config, section: str):
             text = await Storage.read_text(path=system_prompt)
             if text is not None and len(text) > 0:
                 config.dictionary['system_prompt'] = text
+    # greeting
+    greeting_prompt = config.get_string(section=section, option='greeting_prompt')
+    if greeting_prompt is not None:
+        if greeting_prompt.startswith('/'):
+            Log.info(msg='updating greeting prompt: %s' % greeting_prompt)
+            text = await Storage.read_text(path=greeting_prompt)
+            if text is not None and len(text) > 0:
+                config.dictionary['greeting_prompt'] = text
     # translation
     translate_prompt = config.get_string(section=section, option='translate_prompt')
     if translate_prompt is not None:

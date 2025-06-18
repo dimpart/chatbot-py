@@ -91,7 +91,7 @@ class GPTChatBox(ChatBox):
 class GPTChatClient(ChatClient):
 
     def __init__(self, facebook: CommonFacebook, config: Config):
-        super().__init__(facebook=facebook)
+        super().__init__(facebook=facebook, config=config)
         self.__processors: List[ChatProcessor] = []
         self.__system_setting = Setting(config=config)
 

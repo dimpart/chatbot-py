@@ -36,6 +36,7 @@ from dimples import CommonFacebook
 
 from ..utils import Logging
 from ..utils import Runner
+from ..utils import Config
 
 from .base import Request, Greeting
 from .base import ChatRequest, TranslateRequest
@@ -46,9 +47,10 @@ from .box import ChatBox
 class ChatClient(Runner, Logging, ABC):
     """ Chat Boxes Pool """
 
-    def __init__(self, facebook: CommonFacebook):
+    def __init__(self, facebook: CommonFacebook, config: Config):
         super().__init__(interval=Runner.INTERVAL_SLOW)
         self.__facebook = facebook
+        self.__config = config
         self.__lock = threading.Lock()
         self.__requests = []
         # boxes pool
@@ -59,6 +61,10 @@ class ChatClient(Runner, Logging, ABC):
     @property
     def facebook(self) -> CommonFacebook:
         return self.__facebook
+
+    @property
+    def config(self) -> Config:
+        return self.__config
 
     def _append_request(self, request: Request):
         """ Add request """
@@ -157,7 +163,8 @@ class ChatClient(Runner, Logging, ABC):
                 self.info(msg='say hi to translator: "%s" for "%s"' % (content.get('text'), envelope.sender))
             else:
                 self.info(msg='translate "%s" for "%s"' % (content.get('text'), envelope.sender))
-            trans = TranslateRequest(content=content, envelope=envelope, facebook=self.facebook)
+            trans = TranslateRequest(content=content, envelope=envelope,
+                                     facebook=self.facebook, config=self.config)
             self._append_request(request=trans)
         else:
             self.error(msg='translate content error: %s' % content)
@@ -175,5 +182,6 @@ class ChatClient(Runner, Logging, ABC):
                 self.warning(msg='ignore user: %s' % item)
                 continue
             self.info(msg='say hi for %s' % identifier)
-            greeting = Greeting(identifier=identifier, content=content, envelope=envelope, facebook=self.facebook)
+            greeting = Greeting(identifier=identifier, content=content, envelope=envelope,
+                                facebook=self.facebook, config=self.config)
             self._append_request(request=greeting)

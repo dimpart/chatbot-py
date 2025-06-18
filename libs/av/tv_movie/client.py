@@ -30,6 +30,7 @@ from dimples import Envelope
 from dimples import TextContent, CustomizedContent
 from dimples import CommonFacebook
 
+from ...utils import Config
 from ...chat import ChatRequest
 from ...chat import ChatBox, ChatClient
 from ...chat import ChatProxy
@@ -44,8 +45,8 @@ from .handler import HistoryManager
 
 class SearchClient(ChatClient):
 
-    def __init__(self, facebook: CommonFacebook):
-        super().__init__(facebook=facebook)
+    def __init__(self, facebook: CommonFacebook, config: Config):
+        super().__init__(facebook=facebook, config=config)
         self.__engines: List[Engine] = []
 
     def add_engine(self, engine: Engine):
