@@ -256,28 +256,25 @@ async def start_bot(ans_name: str, section: str, processor_class) -> Terminal:
 async def update_prompts(config: Config, section: str):
     # system
     system_prompt = config.get_string(section=section, option='system_prompt')
-    if system_prompt is not None:
-        if system_prompt.startswith('/'):
-            Log.info(msg='updating system prompt: %s' % system_prompt)
-            text = await Storage.read_text(path=system_prompt)
-            if text is not None and len(text) > 0:
-                config.dictionary['system_prompt'] = text
+    if system_prompt is not None:  # and system_prompt.startswith('/'):
+        Log.info(msg='updating system prompt: %s' % system_prompt)
+        text = await Storage.read_text(path=system_prompt)
+        if text is not None and len(text) > 0:
+            config.dictionary['system_prompt'] = text
     # greeting
     greeting_prompt = config.get_string(section=section, option='greeting_prompt')
-    if greeting_prompt is not None:
-        if greeting_prompt.startswith('/'):
-            Log.info(msg='updating greeting prompt: %s' % greeting_prompt)
-            text = await Storage.read_text(path=greeting_prompt)
-            if text is not None and len(text) > 0:
-                config.dictionary['greeting_prompt'] = text
+    if greeting_prompt is not None:  # and greeting_prompt.startswith('/'):
+        Log.info(msg='updating greeting prompt: %s' % greeting_prompt)
+        text = await Storage.read_text(path=greeting_prompt)
+        if text is not None and len(text) > 0:
+            config.dictionary['greeting_prompt'] = text
     # translation
     translate_prompt = config.get_string(section=section, option='translate_prompt')
-    if translate_prompt is not None:
-        if translate_prompt.startswith('/'):
-            Log.info(msg='updating translate prompt: %s' % translate_prompt)
-            text = await Storage.read_text(path=translate_prompt)
-            if text is not None and len(text) > 0:
-                config.dictionary['translate_prompt'] = text
+    if translate_prompt is not None:  # and translate_prompt.startswith('/'):
+        Log.info(msg='updating translate prompt: %s' % translate_prompt)
+        text = await Storage.read_text(path=translate_prompt)
+        if text is not None and len(text) > 0:
+            config.dictionary['translate_prompt'] = text
 
 
 async def update_services(config: Config, section: str) -> bool:

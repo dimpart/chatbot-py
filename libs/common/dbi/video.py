@@ -353,10 +353,9 @@ class VideoTree(Dictionary, Logging):
     def touch(self, keyword: str) -> bool:
         """ Refresh last update time """
         results = self.get(key=keyword)
-        if results is None:
-            return False
-        results['time'] = DateTime.current_timestamp()
-        return True
+        if results is not None:
+            results['time'] = DateTime.current_timestamp()
+            return True
 
     def update_results(self, keyword: str, page_list: List[URI]):
         """ Set results for keyword """
