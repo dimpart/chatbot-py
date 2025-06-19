@@ -210,14 +210,6 @@ class Monitor(Runner, Logging):
             self.__barrels = {}
             return barrels.values()
 
-    def _get_supervisors(self) -> List[ID]:
-        config = self.config
-        if config is None:
-            self.error(msg='failed to get config')
-            return []
-        supervisors = config.get_list(section='admin', option='supervisors')
-        return ID.convert(array=supervisors)
-
     def start(self):
         thr = Runner.async_thread(coro=self.run())
         thr.start()
@@ -227,8 +219,11 @@ class Monitor(Runner, Logging):
         now = self._check_report_time()
         if now is None:
             return False
+        config = self.config
+        if config is None:
+            return False
         # check admins
-        admins = self._get_supervisors()
+        admins = await config.get_supervisors()
         barrels = self._get_barrels()
         self.info(msg='reporting %d service(s) to supervisor: %s' % (len(barrels), admins))
         # try to report one by one

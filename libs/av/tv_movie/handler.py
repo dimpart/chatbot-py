@@ -129,15 +129,6 @@ class HistoryManager:
         return monitor.config
 
     @property
-    def supervisors(self) -> List[ID]:
-        conf = self.config
-        if conf is not None:
-            array = conf.get_list(section='admin', option='supervisors')
-            if array is not None:
-                return ID.convert(array=array)
-        return []
-
-    @property
     def commands(self) -> List[Dict]:
         with self.__lock:
             return self.__commands.copy()

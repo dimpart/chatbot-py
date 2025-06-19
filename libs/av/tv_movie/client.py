@@ -147,7 +147,8 @@ class SearchClient(ChatClient):
         his_man = HistoryManager()
         his_man.add_command(cmd=cmd, when=request.time, sender=sender, group=group)
         # check permissions before executing command
-        if sender not in his_man.supervisors:
+        supervisors = await self.config.get_supervisors(facebook=self.facebook)
+        if sender not in supervisors:
             self.warning(msg='permission denied: "%s", sender: %s' % (cmd, sender))
             await vr.respond_403()
         elif cmd == 'help':
