@@ -41,8 +41,7 @@ class VideoBox(ChatBox, ABC):
 
     @property
     def database(self) -> VideoDBI:
-        archivist = self.facebook.archivist
-        db = archivist.database
+        db = self.facebook.barrack.database
         assert isinstance(db, VideoDBI), 'database error: %s' % db
         return db
 

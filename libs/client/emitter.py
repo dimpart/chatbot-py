@@ -25,6 +25,7 @@
 
 from typing import Optional, Tuple, Dict
 
+from dimples import EncodeAlgorithms
 from dimples import TransportableData
 from dimples import EncryptKey, ID
 from dimples import InstantMessage, ReliableMessage
@@ -98,7 +99,7 @@ class Emitter(Logging):
         pass
 
     async def _send_instant_message(self, msg: InstantMessage) -> Optional[ReliableMessage]:
-        self.info(msg='send message (type=%d): %s -> %s' % (msg.content.type, msg.sender, msg.receiver))
+        self.info(msg='send message (type=%s): %s -> %s' % (msg.content.type, msg.sender, msg.receiver))
         receiver = msg.receiver
         if receiver.is_group:
             # send by group manager
@@ -138,7 +139,7 @@ class Emitter(Logging):
         # 3. send
         r_msg = await self._send_instant_message(msg=i_msg)
         if r_msg is None and not i_msg.receiver.is_group:
-            self.warning(msg='not send yet (type=%d): %s' % (content.type, receiver))
+            self.warning(msg='not send yet (type=%s): %s' % (content.type, receiver))
         return i_msg, r_msg
 
     #
@@ -189,7 +190,7 @@ class Emitter(Logging):
         :param receiver:  destination
         """
         filename = '%s.jpeg' % hex_encode(data=md5(data=image))
-        ted = TransportableData.create(data=image)
+        ted = TransportableData.create(data=image, algorithm=EncodeAlgorithms.DEFAULT)
         content = FileContent.image(filename=filename, data=ted)
         content['length'] = len(image)
         content.thumbnail = thumbnail

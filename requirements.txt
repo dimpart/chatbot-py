@@ -27,10 +27,10 @@ aiou==1.1.0
 startrek==2.2.2
 tcp==2.2.2
 
-mkm==2.2.2
-dkd==2.2.2
-dimp==2.2.2
-dimsdk==2.2.2
-dimplugins==2.2.2
+mkm==2.3.0
+dkd==2.3.0
+dimp==2.3.0
+dimsdk==2.3.0
+dimplugins==2.3.0
 
-dimples==1.4.2
+dimples==1.5.0

@@ -84,7 +84,10 @@ class SearchClient(ChatClient):
         mod = content.module
         if mod == 'playlist':
             video_list = await box.fetch_playlist()
-            self.info(msg='responding %d video(s) to %s' % (len(video_list), request.identifier))
+            total = len(video_list)
+            if total > self.MAX_PLAY_ITEMS:
+                video_list = video_list[:self.MAX_PLAY_ITEMS]
+            self.info(msg='responding %d/%d video(s) to %s' % (len(video_list), total, request.identifier))
             await vr.respond_playlist(video_list=video_list)
         elif mod == 'season':
             url_list = content.get('page_list')
@@ -102,6 +105,8 @@ class SearchClient(ChatClient):
                 else:
                     self.info(msg='responding season: %s' % url)
                     await vr.respond_video_season(season=season)
+
+    MAX_PLAY_ITEMS = 5 * 7 * 8 * 9  # 2520
 
     ADMIN_COMMANDS = [
         'help',

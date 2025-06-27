@@ -82,11 +82,13 @@ class VideoResponse(Logging):
     async def respond_keywords(self, results: VideoTree, blocked_list: List[str]):
         text = '## Keywords\n'
         text += '\n----\n'
+        total_pages = 0
         keywords = results.keywords
         for kw in keywords:
             # get video list
             page_list = results.page_list(keyword=kw)
             count = 0 if page_list is None else len(page_list)
+            total_pages += count
             # show keyword
             if kw in blocked_list:
                 text += '* %s, count = %d (BLOCKED)\n' % (kw, count)
@@ -110,7 +112,7 @@ class VideoResponse(Logging):
                         else:
                             text += '  %d. %s\n' % (pos, name)
         text += '\n----\n'
-        text += 'Total %d keyword(s)' % len(keywords)
+        text += 'Total %d keyword(s), %d result(s).' % (len(keywords), total_pages)
         return await self.box.respond_markdown(text=text, request=self.request)
 
     async def respond_blocked_list(self, keywords: List[str]):
