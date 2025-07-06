@@ -78,6 +78,7 @@ class ChatStorage(Logging):
             return False
         info = {
             'ID': str(identifier),
+            'did': str(identifier),
             'name': name,
             'time': str(now),
             'prompt': question,

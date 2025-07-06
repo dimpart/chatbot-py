@@ -33,7 +33,7 @@ from dimples import CommonArchivist
 from dimples import CommonFacebook
 from dimples import CommonMessenger
 
-from dimples.common.compat import CommonLoader as ExtensionLoader
+from dimples.common.compat import LibraryLoader
 
 from .dbi import *
 
@@ -44,7 +44,7 @@ __all__ = [
     'CommonFacebook',
     'CommonMessenger',
 
-    'ExtensionLoader',
+    'LibraryLoader',
 
     #
     #   Database Interface

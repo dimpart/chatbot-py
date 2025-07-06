@@ -126,6 +126,9 @@ class SearchClient(ChatClient):
     async def process_text_content(self, content: TextContent, envelope: Envelope):
         request = ChatRequest(content=content, envelope=envelope, facebook=self.facebook)
         text = await request.build()
+        if text is None:
+            self.warning(msg='ignore this request: %s' % request)
+            return
         text = text.strip()
         if text in self.ADMIN_COMMANDS:
             # system command
