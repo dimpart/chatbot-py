@@ -87,30 +87,50 @@ class VideoResponse(Logging):
         for kw in keywords:
             # get video list
             page_list = results.page_list(keyword=kw)
-            count = 0 if page_list is None else len(page_list)
+            if page_list is None:
+                page_list = []
+                count = 0
+            else:
+                count = len(page_list)
             total_pages += count
             # show keyword
             if kw in blocked_list:
-                text += '* %s, count = %d (BLOCKED)\n' % (kw, count)
+                text += '* %s (BLOCKED)\n' % kw
             else:
-                text += '* %s, count = %d\n' % (kw, count)
+                text += '* %s\n' % kw
             # show video names
-            if count > 0:
-                pos = 0
-                for url in page_list:
-                    pos += 1
-                    if pos > 10:
-                        text += '  %d. ...\n' % pos
-                        break
-                    season = await self.box.load_season(url=url)
-                    if season is None:
-                        text += '  %d. %s\n' % (pos, url)
+            pos = 0
+            for url in page_list:
+                pos += 1
+                season = await self.box.load_season(url=url)
+                if season is None:
+                    text += '  %d. %s\n' % (pos, url)
+                else:
+                    name = season.name
+                    if name in blocked_list:
+                        text += '  %d. %s (BLOCKED)\n' % (pos, name)
                     else:
-                        name = season.name
-                        if name in blocked_list:
-                            text += '  %d. %s (BLOCKED)\n' % (pos, name)
-                        else:
-                            text += '  %d. %s\n' % (pos, name)
+                        text += '  %d. %s\n' % (pos, name)
+                if count > 10:
+                    if pos >= 8:
+                        break
+                elif pos >= 10:
+                    break
+            if count > 10:
+                # show more
+                text += '\n  ...\n'
+                # show last
+                url = page_list[count - 1]
+                pos = count
+                season = await self.box.load_season(url=url)
+                if season is None:
+                    text += '  %d. %s\n' % (pos, url)
+                else:
+                    name = season.name
+                    if name in blocked_list:
+                        text += '  %d. %s (BLOCKED)\n' % (pos, name)
+                    else:
+                        text += '  %d. %s\n' % (pos, name)
         text += '\n----\n'
         text += 'Total %d keyword(s), %d result(s).' % (len(keywords), total_pages)
         return await self.box.respond_markdown(text=text, request=self.request)

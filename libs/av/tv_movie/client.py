@@ -163,7 +163,16 @@ class SearchClient(ChatClient):
             #
             #  usages
             #
-            await box.respond_markdown(text=self.HELP_PROMPT, request=request)
+            facebook = self.facebook
+            text = '## Supervisors\n'
+            for did in supervisors:
+                name = await facebook.get_name(identifier=did)
+                if name is None:
+                    text += '* %s\n' % did
+                    continue
+                text += '* "%s" - %s\n' % (name, did)
+            text = '%s\n%s' % (self.HELP_PROMPT, text)
+            await box.respond_markdown(text=text, request=request)
         elif cmd == 'show history':
             #
             #  search history
