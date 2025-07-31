@@ -258,7 +258,7 @@ class TranslateRequest(Request, Logging):
         })
         prompt = self.__config.dictionary.get('translate_prompt')
         if prompt is None:
-            self.error(msg='failed to get template for greeting prompt')
+            self.error(msg='failed to get template for translate prompt')
             return None
         else:
             prompt = template_replace(template=prompt, key='LANG_CODE', value=code)
