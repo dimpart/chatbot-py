@@ -30,7 +30,7 @@ from dimples import Dictionary
 from dimples import ID
 from dimples import Content, TextContent
 
-from .base import Request
+from .base import Request, ChatRequest
 
 
 class ChatContext(Dictionary, ABC):
@@ -102,18 +102,18 @@ class ChatContext(Dictionary, ABC):
     #   Responses
     #
 
-    async def respond_markdown(self, text: str, request: Request, extra: Dict = None,
-                               sn: int = 0, muted: str = None) -> TextContent:
-        if extra is None:
-            extra = {}
-        else:
-            extra = extra.copy()
+    async def respond_markdown(self, text: str, request: Request, extra: Dict = None, sn: int = 0) -> TextContent:
+        extra = {} if extra is None else extra.copy()
         # extra info
         extra['format'] = 'markdown'
+        extra['muted'] = 'yes'
         if sn > 0:
             extra['sn'] = sn
-        if muted is not None:
-            extra['muted'] = muted
+        if isinstance(request, ChatRequest):
+            content = request.content
+            hidden = content.get_bool(key='hidden')
+            if hidden:
+                extra['hidden'] = hidden
         return await self.respond_text(text=text, request=request, extra=extra)
 
     async def respond_text(self, text: str, request: Request, extra: Dict = None) -> TextContent:

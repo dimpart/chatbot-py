@@ -147,7 +147,7 @@ class CommonEngine(BaseEngine):
         """ respond text with sn, return the sn """
         request = task.request
         box = task.box
-        content = await box.respond_markdown(text=text, request=request, sn=sn, muted='yes')
+        content = await box.respond_markdown(text=text, request=request, sn=sn)
         return content['sn']
 
     # Override
