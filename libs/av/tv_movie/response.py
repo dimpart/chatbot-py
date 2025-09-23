@@ -29,6 +29,7 @@ from dimples import DateTime
 from dimples import ID
 from dimples import CustomizedContent
 
+from ...utils import md_user_url
 from ...utils import Logging
 from ...common import Season, VideoTree
 from ...chat import ChatRequest
@@ -145,6 +146,8 @@ class VideoResponse(Logging):
         return await self.box.respond_markdown(text=text, request=self.request)
 
     async def respond_history(self, history: List[Dict]):
+        box = self.box
+        facebook = box.facebook
         text = 'Search history:\n'
         text += '| From | Keyword | Time |\n'
         text += '|------|---------|------|\n'
@@ -154,13 +157,19 @@ class VideoResponse(Logging):
             when = his.get('when')
             cmd = his.get('cmd')
             assert sender is not None and cmd is not None, 'history error: %s' % his
-            sender = ID.parse(identifier=sender)
+            visa = await facebook.get_visa(user=sender)
+            if visa is None:
+                title = '**%s**' % sender
+            else:
+                title = md_user_url(visa=visa)
             group = ID.parse(identifier=group)
-            user = '**"%s"**' % await self.box.get_name(identifier=sender)
             if group is not None:
-                user += ' (%s)' % await self.box.get_name(identifier=group)
-            text += '| %s | %s | %s |\n' % (user, cmd, when)
-        return await self.box.respond_markdown(text=text, request=self.request)
+                title += ' (%s)' % await box.get_name(identifier=group)
+            when = str(when)
+            if len(when) == 19:
+                when = when[5:-3]
+            text += '| %s | %s | %s |\n' % (title, cmd, when)
+        return await box.respond_markdown(text=text, request=self.request)
 
     #
     #   Playlist

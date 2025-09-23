@@ -25,7 +25,7 @@
 
 import getopt
 import sys
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from dimples import ID
 from dimples import Document
@@ -284,6 +284,8 @@ async def update_services(config: Config, section: str) -> bool:
         return False
     Log.info(msg='updating services: %s' % file_path)
     array = await Storage.read_json(path=file_path)
+    if isinstance(array, Dict):
+        array = array['services']
     if not isinstance(array, List):
         Log.warning(msg='failed to load services: %s, %s' % (file_path, array))
         return False
