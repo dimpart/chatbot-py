@@ -107,7 +107,8 @@ class GenerativeAI(Logging):
             return None
         data = utf8_encode(string=json_encode(obj=info))
         # url = '/v1beta/models/gemini-pro:generateContent?key=%s' % self.__auth_token
-        url = '/v1beta/models/gemini-1.5-flash:generateContent?key=%s' % self.__auth_token
+        # url = '/v1beta/models/gemini-1.5-flash:generateContent?key=%s' % self.__auth_token
+        url = '/v1beta/models/gemini-2.5-flash:generateContent?key=%s' % self.__auth_token
         response = self.http_post(url=url, headers={
             'Content-Type': 'application/json',
             # 'Authorization': self.__auth_token,
@@ -129,6 +130,19 @@ class GenerativeAI(Logging):
             if isinstance(parts, List):
                 return get_text(parts=parts)
         self.error(msg='failed to parse content: %s' % info)
+        return get_error(info=info)
+
+
+def get_error(info: Dict) -> Optional[str]:
+    error = info.get('error')
+    if isinstance(error, Dict):
+        code = error.get('code')
+        msg = error.get('message')
+        status = error.get('status')
+        return '## Server Error\n' \
+               '* Code: %s\n' \
+               '* Status: %s\n' \
+               '> %s' % (code, status, msg)
 
 
 def get_text(parts: List) -> str:
@@ -151,7 +165,7 @@ def get_content(info: Dict) -> Optional[Dict]:
                 return content
 
 
-def parse_response(text: str) -> Optional[dict]:
+def parse_response(text: str) -> Optional[Dict]:
     try:
         return json_decode(string=text)
     except Exception as e:
