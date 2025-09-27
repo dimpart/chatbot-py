@@ -107,24 +107,26 @@ class ChatContext(Dictionary, ABC):
         # extra info
         extra['format'] = 'markdown'
         extra['muted'] = 'yes'
-        if sn > 0:
-            extra['sn'] = sn
-        if isinstance(request, ChatRequest):
-            content = request.content
-            hidden = content.get_bool(key='hidden')
-            if hidden:
-                extra['hidden'] = hidden
-        return await self.respond_text(text=text, request=request, extra=extra)
+        return await self.respond_text(text=text, request=request, extra=extra, sn=sn)
 
-    async def respond_text(self, text: str, request: Request, extra: Dict = None) -> TextContent:
+    async def respond_text(self, text: str, request: Request, extra: Dict = None, sn: int = 0) -> TextContent:
         content = TextContent.create(text=text)
+        # replace serial number
+        if sn > 0:
+            content['sn'] = sn
         await self.respond_content(content=content, request=request, extra=extra)
         return content
 
     async def respond_content(self, content: Content, request: Request, extra: Dict = None) -> Content:
+        if isinstance(request, ChatRequest):
+            hidden = request.content.get_bool(key='hidden')
+            if hidden:
+                content['hidden'] = hidden
+        # copy extra values
         if extra is not None:
             for key in extra:
                 content[key] = extra[key]
+        # update message time
         calibrate_time(content=content, request=request)
         await self._send_content(content=content, receiver=self.identifier)
         return content

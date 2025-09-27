@@ -29,8 +29,9 @@ from requests import Response
 
 from ...utils import utf8_encode, json_encode, json_decode
 from ...utils import Log, Logging
+from ...utils import Config
 from ...utils import HttpClient
-from ...chat import Request
+from ...chat import Request, ChatRequest
 from ...chat import ChatContext, ChatProcessor
 
 from .queue import MessageQueue
@@ -39,9 +40,15 @@ from .client import GeminiChatBox
 
 class GeminiHandler(ChatProcessor):
 
-    def __init__(self, agent: str, auth_token: str):
+    def __init__(self, agent: str, config: Config):
         super().__init__(agent=agent)
-        self.__api = GenerativeAI(auth_token=auth_token)
+        self.__api = GenerativeAI(config=config)
+
+    # Override
+    def needs_waiting(self, request: Request) -> bool:
+        if isinstance(request, ChatRequest):
+            hidden = request.content.get_bool(key='hidden', default=False)
+            return not hidden
 
     # Override
     async def _query(self, prompt: str, request: Request, context: ChatContext) -> Optional[str]:
@@ -64,10 +71,34 @@ class GenerativeAI(Logging):
     BASE_URL = 'https://generativelanguage.googleapis.com'
     REFERER_URL = 'https://generativelanguage.googleapis.com/'
 
-    def __init__(self, auth_token: str):
+    def __init__(self, config: Config):
         super().__init__()
-        self.__auth_token = auth_token
+        self.__config = config
+        self.__model = None
+        self.__api_key = None
         self.__http_client = HttpClient(long_connection=True, base_url=self.BASE_URL)
+
+    @property
+    def config(self) -> Config:
+        return self.__config
+
+    @property
+    def model(self) -> str:
+        llm = self.__model
+        if llm is None:
+            llm = self.config.get_string(section='gemini', option='model')
+            if llm is None or len(llm) == 0:
+                llm = 'gemini-pro'
+            self.__model = llm
+        return llm
+
+    @property
+    def auth_token(self) -> str:
+        api_key = self.__api_key
+        if api_key is None:
+            api_key = self.config.get_string(section='gemini', option='google_api_key')
+            self.__api_key = api_key
+        return api_key
 
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
         return self.__http_client.http_post(url=url, data=data, headers=headers)
@@ -106,9 +137,9 @@ class GenerativeAI(Logging):
         if info is None:
             return None
         data = utf8_encode(string=json_encode(obj=info))
-        # url = '/v1beta/models/gemini-pro:generateContent?key=%s' % self.__auth_token
-        # url = '/v1beta/models/gemini-1.5-flash:generateContent?key=%s' % self.__auth_token
-        url = '/v1beta/models/gemini-2.5-flash:generateContent?key=%s' % self.__auth_token
+        model = self.model
+        api_key = self.auth_token
+        url = '/v1beta/models/%s:generateContent?key=%s' % (model, api_key)
         response = self.http_post(url=url, headers={
             'Content-Type': 'application/json',
             # 'Authorization': self.__auth_token,
@@ -130,19 +161,19 @@ class GenerativeAI(Logging):
             if isinstance(parts, List):
                 return get_text(parts=parts)
         self.error(msg='failed to parse content: %s' % info)
-        return get_error(info=info)
+        return get_error(model=model, info=info)
 
 
-def get_error(info: Dict) -> Optional[str]:
+def get_error(model: str, info: Dict) -> Optional[str]:
     error = info.get('error')
     if isinstance(error, Dict):
         code = error.get('code')
         msg = error.get('message')
         status = error.get('status')
-        return '## Server Error\n' \
+        return '## Model "%s" Error\n' \
                '* Code: %s\n' \
                '* Status: %s\n' \
-               '> %s' % (code, status, msg)
+               '> %s' % (model, code, status, msg)
 
 
 def get_text(parts: List) -> str:

@@ -56,11 +56,11 @@ class BotMessageProcessor(ClientProcessor):
     # Override
     def _create_chat_client(self) -> ChatClient:
         shared = GlobalVariable()
-        client = GeminiChatClient(facebook=self.facebook, config=shared.config)
-        api_key = shared.config.get_string(section='gemini', option='google_api_key')
+        config = shared.config
+        client = GeminiChatClient(facebook=self.facebook, config=config)
         # TODO: add GPT handler(s)
-        client.add_processor(processor=GeminiHandler(agent='API', auth_token=api_key))
-        client.add_processor(processor=GeminiHandler(agent='BAK', auth_token=api_key))
+        client.add_processor(processor=GeminiHandler(agent='API', config=config))
+        client.add_processor(processor=GeminiHandler(agent='BAK', config=config))
         # Runner.async_task(coro=client.start())
         # Runner.thread_run(runner=client)
         thr = Runner.async_thread(coro=client.run())

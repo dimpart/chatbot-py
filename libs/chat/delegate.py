@@ -57,6 +57,11 @@ class ChatProcessor(Logging, ABC):
     def agent(self) -> str:
         return self.__agent  # 'OpenAI'
 
+    # protected
+    def needs_waiting(self, request: Request) -> bool:
+        """ check for streaming response"""
+        pass
+
     async def process_request(self, request: Request, context: ChatContext) -> bool:
         if isinstance(request, TranslateRequest):
             # translate
@@ -139,21 +144,28 @@ class ChatProcessor(Logging, ABC):
         return True
 
     async def _handle_text(self, prompt: str, request: Request, context: ChatContext) -> bool:
+        sn = 0
+        if self.needs_waiting(request=request):
+            text = 'Thinking...\n' \
+                   'Please wait a moment.'
+            content = await context.respond_text(text=text, request=request, sn=sn)
+            if content is not None:
+                sn = content.sn
         # query AI server
         answer = await self._query(prompt=prompt, request=request, context=context)
         record = '[%s] %s' % (self.agent, answer)
         await context.save_response(text=record, prompt=prompt, request=request)
-        if answer is None:
-            self.error(msg='response error: "%s" => "%s"' % (prompt, record))
-            return False
-        else:
+        if answer is not None:
             answer = answer.strip()
-            if len(answer) == 0:
-                self.info(msg='respond nothing: "%s" => "%s"' % (prompt, record))
+            if len(answer) > 0:
+                # OK
+                await context.respond_markdown(text=answer, request=request, sn=sn)
                 return True
-        # OK
-        await context.respond_markdown(text=answer, request=request)
-        return True
+        self.error(msg='response error: "%s" => "%s"' % (prompt, record))
+        if sn > 0:
+            text = 'Agent "%s" responds nothing.' % self.agent
+            await context.respond_text(text=text, request=request, sn=sn)
+        return answer is not None
 
     @abstractmethod
     async def _query(self, prompt: str, request: Request, context: ChatContext) -> Optional[str]:
