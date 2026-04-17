@@ -66,7 +66,8 @@ class SearchClient(ChatClient):
 
     # Override
     async def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
-        app = content.application
+        # app = content.application
+        app = content.get_str(key='app')
         act = content.action
         if app == 'chat.dim.video':
             if act == 'request':

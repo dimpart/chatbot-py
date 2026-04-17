@@ -25,8 +25,7 @@
 
 from typing import Optional, Tuple, Dict
 
-from dimples import EncodeAlgorithms
-from dimples import TransportableData
+from dimples import EmbedData
 from dimples import EncryptKey, ID
 from dimples import InstantMessage, ReliableMessage
 from dimples import Envelope, Content
@@ -159,7 +158,7 @@ class Emitter(Logging):
         data = content.data
         filename = content.filename
         assert data is not None and filename is not None, 'file content error: %s' % content
-        size = await cache_file_data(data=data, filename=filename)
+        size = await cache_file_data(data=data.binary, filename=filename)
         if size != len(data):
             self.error(msg='failed to save file data (len=%d): %s' % (len(data), filename))
             return
@@ -167,7 +166,7 @@ class Emitter(Logging):
         content.data = None
         await self._save_instant_message(msg=msg)
         # 3. add upload task with encrypted data
-        encrypted = password.encrypt(data=data, extra=msg.dictionary)
+        encrypted = password.encrypt(plaintext=data.binary, extra=msg.dictionary)
         filename = filename_from_data(data=encrypted, filename=filename)
         sender = msg.sender
         url = await upload_encrypted_data(data=encrypted, filename=filename, sender=sender)
@@ -190,7 +189,7 @@ class Emitter(Logging):
         :param receiver:  destination
         """
         filename = '%s.jpeg' % hex_encode(data=md5(data=image))
-        ted = TransportableData.create(data=image, algorithm=EncodeAlgorithms.DEFAULT)
+        ted = EmbedData.image(jpeg=image)
         content = FileContent.image(filename=filename, data=ted)
         content['length'] = len(image)
         content.thumbnail = thumbnail

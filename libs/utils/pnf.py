@@ -33,7 +33,8 @@
 import re
 from typing import Optional, Dict
 
-from dimples import md5, hex_encode, utf8_encode
+from dimples.utils import md5
+from dimples import hex_encode, utf8_encode
 from dimples import URI
 from dimples import PortableNetworkFile
 

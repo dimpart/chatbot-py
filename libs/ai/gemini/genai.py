@@ -136,7 +136,7 @@ class GenerativeAI(Logging):
         self.info(msg='sending message: %s' % info)
         if info is None:
             return None
-        data = utf8_encode(string=json_encode(obj=info))
+        data = utf8_encode(string=json_encode(container=info))
         model = self.model
         api_key = self.auth_token
         url = '/v1beta/models/%s:generateContent?key=%s' % (model, api_key)

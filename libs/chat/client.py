@@ -148,7 +148,8 @@ class ChatClient(Runner, Logging, ABC):
         self._append_request(request=request)
 
     async def process_customized_content(self, content: CustomizedContent, envelope: Envelope):
-        app = content.application
+        # app = content.application
+        app = content.get_str(key='app')
         mod = content.module
         if mod == Translator.MOD or app == Translator.APP:
             await self._process_translate_content(content=content, envelope=envelope)

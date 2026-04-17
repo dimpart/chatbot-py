@@ -84,13 +84,13 @@ class MessageQueue:
             return False
         # append to tail
         self.__messages.append(msg)
-        self.__size += len(json_encode(obj=msg))
+        self.__size += len(json_encode(container=msg))
         # check data size of the queue
         while self.__size > self.MAX_SIZE:
             if len(self.__messages) < self.MAX_COUNT:
                 break
             first = self.__messages.pop(0)
-            self.__size -= len(json_encode(obj=first))
+            self.__size -= len(json_encode(container=first))
 
     # noinspection PyMethodMayBeStatic
     def _trim(self, msg: Dict) -> Dict:

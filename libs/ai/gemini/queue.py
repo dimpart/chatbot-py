@@ -102,13 +102,13 @@ class MessageQueue:
         msg = self.__check_conflict(msg=msg)
         # append to tail
         self.__messages.append(msg)
-        self.__size += len(json_encode(obj=msg))
+        self.__size += len(json_encode(container=msg))
         # check data size of the queue
         while self.__size > self.MAX_SIZE:
             if len(self.__messages) < self.MAX_COUNT:
                 break
             first = self.__messages.pop(0)
-            self.__size -= len(json_encode(obj=first))
+            self.__size -= len(json_encode(container=first))
 
     # noinspection PyMethodMayBeStatic
     def _trim(self, msg: dict) -> dict:
@@ -131,7 +131,7 @@ class MessageQueue:
             if last.get('role') != msg.get('role'):
                 break
             self.__messages.pop(pos)
-            self.__size -= len(json_encode(obj=last))
+            self.__size -= len(json_encode(container=last))
         return msg
 
     @classmethod

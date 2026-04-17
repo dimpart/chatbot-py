@@ -72,7 +72,7 @@ def md_user_url(visa: Visa) -> str:
 def md_user_info(visa: Visa) -> str:
     lines = [
         '## **%s**' % get_name(visa=visa),
-        '- ID - %s' % visa.identifier,
+        '- ID - %s' % visa.get('did'),
     ]
     # avatar
     avatar = visa.get_property(name='avatar')

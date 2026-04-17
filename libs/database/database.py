@@ -127,7 +127,7 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
 
     # Override
     async def save_meta(self, meta: Meta, identifier: ID) -> bool:
-        if not MetaUtils.match_identifier(identifier=identifier, meta=meta):
+        if not MetaUtils.match_id(identifier=identifier, meta=meta):
             raise AssertionError('meta not match ID: %s' % identifier)
         return await self.__meta_table.save_meta(meta=meta, identifier=identifier)
 
@@ -145,13 +145,13 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
     """
 
     # Override
-    async def save_document(self, document: Document) -> bool:
+    async def save_document(self, document: Document, identifier: ID) -> bool:
         # check with meta first
-        meta = await self.get_meta(identifier=document.identifier)
+        meta = await self.get_meta(identifier=identifier)
         assert meta is not None, 'meta not exists: %s' % document
         # check document valid before saving it
         if document.valid or document.verify(public_key=meta.public_key):
-            return await self.__document_table.save_document(document=document)
+            return await self.__document_table.save_document(document=document, identifier=identifier)
 
     # Override
     async def get_documents(self, identifier: ID) -> List[Document]:
@@ -264,14 +264,6 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
     # Override
     async def save_members(self, members: List[ID], group: ID) -> bool:
         return await self.__group_table.save_members(members=members, group=group)
-
-    # Override
-    async def get_assistants(self, group: ID) -> List[ID]:
-        return await self.__group_table.get_assistants(group=group)
-
-    # Override
-    async def save_assistants(self, assistants: List[ID], group: ID) -> bool:
-        return await self.__group_table.save_assistants(assistants=assistants, group=group)
 
     # Override
     async def get_administrators(self, group: ID) -> List[ID]:

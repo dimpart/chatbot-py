@@ -362,7 +362,7 @@ class ChatRequest(Request, Logging):
 async def get_nickname(identifier: ID, facebook: CommonFacebook) -> Optional[str]:
     visa = await facebook.get_document(identifier=identifier)
     if visa is not None:
-        return visa.name
+        return visa.get_property(name='name')
 
 
 #

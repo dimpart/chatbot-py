@@ -32,13 +32,15 @@
 
 from typing import Optional, Dict
 
+from dimples import ID
 from dimples import Visa
 
 
 def get_name(visa: Visa) -> str:
     name = visa.name
     if name is None or len(name) == 0:
-        identifier = visa.identifier
+        did = visa.get('did')
+        identifier = ID.parse(identifier=did)
         name = identifier.name
         if name is None or len(name) == 0:
             name = str(identifier.address)
