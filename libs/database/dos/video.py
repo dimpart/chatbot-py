@@ -73,7 +73,8 @@ class SeasonStorage(Storage):
         url = season.page
         path = self.__season_path(url=url, identifier=identifier)
         self.info(msg='saving season "%s" (%s) into %s' % (season.name, url, path))
-        return await self.write_json(container=season.dictionary, path=path)
+        info = season.to_dict()
+        return await self.write_json(container=info, path=path)
 
 
 class VideoStorage(Storage):
@@ -126,7 +127,7 @@ class VideoStorage(Storage):
         return VideoTree(dictionary=info)
 
     async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
-        info = results.dictionary
+        info = results.to_dict()
         path = self.__results_path(identifier=identifier)
         self.info(msg='saving %d video result(s) to path: %s' % (len(results), path))
         return await self.write_json(container=info, path=path)

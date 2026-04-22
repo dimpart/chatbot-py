@@ -48,6 +48,7 @@ from libs.common import LibraryLoader
 
 from libs.client import ClientArchivist, ClientFacebook
 from libs.client import ClientSession, ClientMessenger
+from libs.client import ClientPacker
 from libs.client import Terminal
 from libs.client import Emitter, Monitor
 
@@ -152,7 +153,7 @@ class GlobalVariable:
         visa = DocumentUtils.last_visa(documents=docs)
         if visa is not None:
             # refresh visa
-            visa = Document.parse(document=visa.copy_dictionary())
+            visa = Document.parse(document=visa.copy_dict())
             visa.sign(private_key=sign_key)
             await archivist.save_document(document=visa, identifier=current_user)
         await facebook.set_current_user(user=user)
@@ -263,21 +264,24 @@ async def update_prompts(config: Config, section: str):
         Log.info(msg='updating system prompt: %s' % system_prompt)
         text = await Storage.read_text(path=system_prompt)
         if text is not None and len(text) > 0:
-            config.dictionary['system_prompt'] = text
+            info = config.to_dict()
+            info['system_prompt'] = text
     # greeting
     greeting_prompt = config.get_string(section=section, option='greeting_prompt')
     if greeting_prompt is not None:  # and greeting_prompt.startswith('/'):
         Log.info(msg='updating greeting prompt: %s' % greeting_prompt)
         text = await Storage.read_text(path=greeting_prompt)
         if text is not None and len(text) > 0:
-            config.dictionary['greeting_prompt'] = text
+            info = config.to_dict()
+            info['greeting_prompt'] = text
     # translation
     translate_prompt = config.get_string(section=section, option='translate_prompt')
     if translate_prompt is not None:  # and translate_prompt.startswith('/'):
         Log.info(msg='updating translate prompt: %s' % translate_prompt)
         text = await Storage.read_text(path=translate_prompt)
         if text is not None and len(text) > 0:
-            config.dictionary['translate_prompt'] = text
+            info = config.to_dict()
+            info['translate_prompt'] = text
 
 
 async def update_services(config: Config, section: str) -> bool:
@@ -306,7 +310,7 @@ async def update_services(config: Config, section: str) -> bool:
     else:
         Log.info(msg='updating services for bot: %s, %s' % (user.identifier, array))
         # clone for modifying
-        visa = Document.parse(document=visa.copy_dictionary())
+        visa = Document.parse(document=visa.copy_dict())
     # sign with services
     visa.set_property(name='services', value=array)
     visa.sign(private_key=sign_key)
@@ -319,6 +323,10 @@ class BotClient(Terminal):
     def __init__(self, facebook: ClientFacebook, database: SessionDBI, processor_class):
         super().__init__(facebook=facebook, database=database)
         self.__processor_class = processor_class
+
+    # Override
+    def _create_packer(self, facebook: ClientFacebook, messenger: ClientMessenger) -> ClientPacker:
+        return ClientPacker(facebook=facebook, messenger=messenger)
 
     # Override
     def _create_processor(self, facebook: ClientFacebook, messenger: ClientMessenger):

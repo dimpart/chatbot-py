@@ -131,7 +131,7 @@ class EpisodeCache(RedisCache, Logging):
 
 def encode_map(info: Union[Dict, Mapper]) -> bytes:
     if isinstance(info, Mapper):
-        info = info.dictionary
+        info = info.to_dict()
     js = json_encode(container=info)
     return utf8_encode(string=js)
 

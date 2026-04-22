@@ -238,6 +238,6 @@ class VideoResponse(Logging):
                 'time': time.timestamp,
             }
         else:
-            response['season'] = season.dictionary
+            response['season'] = season.to_dict()
         # OK
         await self.box.respond_content(content=response, request=self.request)

@@ -150,7 +150,7 @@ class Database(AccountDBI, MessageDBI, SessionDBI, VideoDBI):
         meta = await self.get_meta(identifier=identifier)
         assert meta is not None, 'meta not exists: %s' % document
         # check document valid before saving it
-        if document.valid or document.verify(public_key=meta.public_key):
+        if document.is_valid or document.verify(public_key=meta.public_key):
             return await self.__document_table.save_document(document=document, identifier=identifier)
 
     # Override

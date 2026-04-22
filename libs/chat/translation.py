@@ -80,7 +80,7 @@ class TranslateResult(Dictionary):
         return self.get_str(key='translation', default=None)
 
     @property
-    def valid(self) -> bool:
+    def is_valid(self) -> bool:
         if self.from_lang is None:
             return False
         elif self.to_lang is None:
@@ -120,7 +120,7 @@ class TranslateContent(AppCustomizedContent):
     def success(self) -> bool:
         result = self.result
         if result is not None:
-            return result.valid
+            return result.is_valid
 
     @classmethod
     def respond(cls, result: TranslateResult, query: Content):
@@ -135,7 +135,7 @@ class TranslateContent(AppCustomizedContent):
                 text = None
         if text is not None and len(text) > 0:
             response['text'] = text
-            response['result'] = result.dictionary
+            response['result'] = result.to_dict()
         #
         #  extra param: serial number
         #

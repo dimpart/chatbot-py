@@ -92,11 +92,13 @@ class Setting(Request):
 
     @property  # Override
     def text(self) -> Optional[str]:
-        return self.__config.dictionary.get('system_prompt')
+        info = self.__config.to_dict()
+        return info.get('system_prompt')
 
     # Override
     async def build(self) -> Optional[str]:
-        return self.__config.dictionary.get('system_prompt')
+        info = self.__config.to_dict()
+        return info.get('system_prompt')
 
 
 class Greeting(Request, Logging):
@@ -145,7 +147,8 @@ class Greeting(Request, Logging):
             self.error(msg='failed to get nickname for sender: %s' % sender)
             return None
         language = await get_language(identifier=sender, facebook=self.facebook)
-        prompt = self.__config.dictionary.get('greeting_prompt')
+        info = self.__config.to_dict()
+        prompt = info.get('greeting_prompt')
         if prompt is None:
             self.error(msg='failed to get template for greeting prompt')
             return None
@@ -256,7 +259,8 @@ class TranslateRequest(Request, Logging):
             'text': text,
             'code': code,
         })
-        prompt = self.__config.dictionary.get('translate_prompt')
+        info = self.__config.to_dict()
+        prompt = info.get('translate_prompt')
         if prompt is None:
             self.error(msg='failed to get template for translate prompt')
             return None

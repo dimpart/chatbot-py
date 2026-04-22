@@ -126,7 +126,7 @@ class ChatProcessor(Logging, ABC):
             # else:
             #     assert isinstance(info, Dict), 'response error: %s' % answer
             result = TranslateResult(dictionary=info)
-            if result.valid:
+            if result.is_valid:
                 translator.cache(request=request, response=answer)
         #
         #  2. respond

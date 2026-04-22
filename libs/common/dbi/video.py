@@ -91,7 +91,7 @@ class Episode(Dictionary):
         elif isinstance(episode, Episode):
             return episode
         elif isinstance(episode, Mapper):
-            episode = episode.dictionary
+            episode = episode.to_dict()
         return Episode(info=episode)
 
     @classmethod
@@ -109,7 +109,8 @@ class Episode(Dictionary):
     def revert_episodes(cls, array: List[Mapper]) -> List[Dict]:
         results = []
         for item in array:
-            results.append(item.dictionary)
+            info = item.to_dict()
+            results.append(info)
         return results
 
 
@@ -175,7 +176,7 @@ class Tube(Dictionary):
         elif isinstance(tube, Tube):
             return tube
         elif isinstance(tube, Mapper):
-            tube = tube.dictionary
+            tube = tube.to_dict()
         return Tube(info=tube)
 
     @classmethod
@@ -193,7 +194,8 @@ class Tube(Dictionary):
     def revert_tubes(cls, array: List[Mapper]) -> List[Dict]:
         results = []
         for item in array:
-            results.append(item.dictionary)
+            info = item.to_dict()
+            results.append(info)
         return results
 
 
@@ -296,7 +298,7 @@ class Season(Dictionary):
         elif isinstance(season, Season):
             return season
         elif isinstance(season, Mapper):
-            season = season.dictionary
+            season = season.to_dict()
         return Season(info=season)
 
 
