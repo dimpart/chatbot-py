@@ -30,6 +30,7 @@ from dimples import Envelope
 from dimples import TextContent, CustomizedContent
 from dimples import CommonFacebook
 
+from ...utils import get_supervisors, md_supervisors
 from ...utils import Config
 from ...chat import ChatRequest
 from ...chat import ChatBox, ChatClient
@@ -131,15 +132,37 @@ class SearchClient(ChatClient):
             self.warning(msg='ignore this request: %s' % request)
             return
         text = text.strip()
-        if text in self.ADMIN_COMMANDS:
-            # system command
+        if text == 'help':
+            #
+            #  usages
+            #
+            await self._show_usages(request=request)
+        elif text in self.ADMIN_COMMANDS:
+            #
+            #  system commands
+            #
             await self._process_admin_command(cmd=text, request=request)
         elif text.startswith('block: ') or text.startswith('allow: '):
-            # block / unblock
+            #
+            #  system commands: block / unblock
+            #
             await self._process_admin_command(cmd=text, request=request)
         else:
-            # others
+            #
+            #  others
+            #
             return await super().process_text_content(content=content, envelope=envelope)
+
+    async def _show_usages(self, request: ChatRequest):
+        box = self._get_box(identifier=request.identifier)
+        if isinstance(box, SearchBox):
+            box.cancel_task()
+        else:
+            assert False, 'search box error: %s' % box
+            # self.error(msg='search box error: %s' % box)
+        text = await md_supervisors(config=self.config, facebook=self.facebook, section='movie')
+        text = '%s\n\n## Supervisors\n%s' % (self.HELP_PROMPT, text)
+        await box.respond_markdown(text=text, request=request)
 
     async def _process_admin_command(self, cmd: str, request: ChatRequest):
         box = self._get_box(identifier=request.identifier)
@@ -156,24 +179,10 @@ class SearchClient(ChatClient):
         his_man = HistoryManager()
         his_man.add_command(cmd=cmd, when=request.time, sender=sender, group=group)
         # check permissions before executing command
-        supervisors = await self.config.get_supervisors(facebook=self.facebook)
+        supervisors = await get_supervisors(config=self.config, facebook=self.facebook, section='movie')
         if sender not in supervisors:
             self.warning(msg='permission denied: "%s", sender: %s' % (cmd, sender))
-            await vr.respond_403()
-        elif cmd == 'help':
-            #
-            #  usages
-            #
-            facebook = self.facebook
-            text = '## Supervisors\n'
-            for did in supervisors:
-                name = await facebook.get_name(identifier=did)
-                if name is None:
-                    text += '* %s\n' % did
-                    continue
-                text += '* "%s" - %s\n' % (name, did)
-            text = '%s\n%s' % (self.HELP_PROMPT, text)
-            await box.respond_markdown(text=text, request=request)
+            return await vr.respond_403()
         elif cmd == 'show history':
             #
             #  search history

@@ -24,16 +24,19 @@
 # ==============================================================================
 
 import threading
-from typing import Optional, ValuesView, List
+from typing import Optional, Set
+from typing import ValuesView
 
-from dimples.utils import Config
 from dimples import DateTime
 from dimples import ID
 from dimples import TextContent
+from dimples import Facebook
 
+from ..utils import get_supervisors
 from ..utils import Runner
 from ..utils import Singleton
 from ..utils import Log, Logging
+from ..utils import Config
 from .emitter import Emitter
 
 
@@ -148,6 +151,7 @@ class Monitor(Runner, Logging):
         self.__barrels = {}  # service -> Barrel
         self.__lock = threading.Lock()
         self.__config = None
+        self.__facebook = None
         # start ticking
         self.__report_time = None
         # auto start
@@ -160,6 +164,14 @@ class Monitor(Runner, Logging):
     @config.setter
     def config(self, conf: Config):
         self.__config = conf
+
+    @property
+    def facebook(self) -> Optional[Facebook]:
+        return self.facebook
+
+    @facebook.setter
+    def facebook(self, db: Facebook):
+        self.__facebook = db
 
     def _update_report_time(self):
         if self.__report_time is None:
@@ -223,7 +235,7 @@ class Monitor(Runner, Logging):
         if config is None:
             return False
         # check admins
-        admins = await config.get_supervisors()
+        admins = await get_supervisors(config=config, facebook=self.facebook, section='monitor')
         barrels = self._get_barrels()
         self.info(msg='reporting %d service(s) to supervisor: %s' % (len(barrels), admins))
         # try to report one by one
@@ -235,7 +247,7 @@ class Monitor(Runner, Logging):
         return False
 
 
-async def _report(barrel: Barrel, now: DateTime, supervisors: List[ID]):
+async def _report(barrel: Barrel, now: DateTime, supervisors: Set[ID]):
     # build report
     text = '[%s] -> [%s]\n' % (barrel.time, now)
     text += '## **%s**:\n' % barrel.service

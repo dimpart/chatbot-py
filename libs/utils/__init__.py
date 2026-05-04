@@ -47,6 +47,7 @@ from .md import md_esc
 from .md import md_user_url
 
 from .visa import get_name, get_locale
+from .admin import get_supervisors, md_supervisors
 
 from .zigzag import zigzag_reduce
 
@@ -110,6 +111,7 @@ __all__ = [
     'md_user_url',
 
     'get_name', 'get_locale',
+    'get_supervisors', 'md_supervisors',
 
     'zigzag_reduce',
 

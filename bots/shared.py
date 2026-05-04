@@ -137,6 +137,7 @@ class GlobalVariable:
         #
         monitor = Monitor()
         monitor.config = config
+        monitor.facebook = facebook
 
     async def login(self, current_user: ID):
         facebook = self.facebook
