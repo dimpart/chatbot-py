@@ -94,7 +94,9 @@ class Parser(ABC):
 
     @abstractmethod
     def full_url(self, path: Optional[str]) -> Optional[str]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.full_url()'
+        )
 
     #
     #   Search Result Page
@@ -103,12 +105,16 @@ class Parser(ABC):
     @abstractmethod
     def fetch_total_seasons(self, html: str) -> int:
         """ parse for total count """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fetch_total_seasons()'
+        )
 
     @abstractmethod
     def parse_seasons(self, html: str) -> List[SeasonInfo]:
         """ parse season for page URL, name and cover URL """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_seasons()'
+        )
 
     #
     #   Season Detail Page
@@ -117,27 +123,37 @@ class Parser(ABC):
     @abstractmethod
     def fetch_season_name(self, html: str) -> Optional[str]:
         """ parse for season name """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fetch_season_name()'
+        )
 
     @abstractmethod
     def fetch_season_cover(self, html: str) -> Optional[URI]:
         """ parse for season cover """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fetch_season_cover()'
+        )
 
     @abstractmethod
     def fetch_season_description(self, html: str) -> Optional[str]:
         """ parse for season details """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fetch_season_description()'
+        )
 
     @abstractmethod
     def parse_tubes(self, html: str) -> List[TubeInfo]:
         """ parse tube for title and episodes """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_tubes()'
+        )
 
     @abstractmethod
     def parse_episodes(self, tube_html: str) -> List[EpisodeInfo]:
         """ parse episodes for page URL and title """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_episodes()'
+        )
 
     #
     #   Episode Play Page
@@ -146,9 +162,13 @@ class Parser(ABC):
     @abstractmethod
     def fetch_episode_title(self, html: str) -> Optional[str]:
         """ parse for episode title """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fetch_episode_title()'
+        )
 
     @abstractmethod
     def fetch_m3u8(self, html: str) -> Optional[URI]:
         """ parse for m3u8 URL """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fetch_m3u8()'
+        )

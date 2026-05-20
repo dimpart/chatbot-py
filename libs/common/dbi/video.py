@@ -65,12 +65,12 @@ class Episode(Dictionary):
     # Override
     def __str__(self) -> str:
         cname = self.__class__.__name__
-        return '<%s title="%s" url="%s" />' % (cname, self.title, self.url)
+        return f'<{cname} title="{self.title}" url="{self.url}" />'
 
     # Override
     def __repr__(self) -> str:
         cname = self.__class__.__name__
-        return '<%s title="%s" url="%s" />' % (cname, self.title, self.url)
+        return f'<{cname} title="{self.title}" url="{self.url}" />'
 
     @property
     def title(self) -> str:
@@ -327,11 +327,11 @@ class VideoTree(Dictionary, Logging):
         for kw in keys:
             pages = self.page_list(keyword=kw)
             if pages is None or len(pages) == 0:
-                self.warning(msg='skip empty keyword: %s' % kw)
+                self.warning('skip empty keyword: %s', kw)
                 continue
             last = self.last_time(keyword=kw)
             if last is None:
-                self.error(msg='last update time lost: %s, %d' % (kw, len(pages)))
+                self.error('last update time lost: %s, %d', kw, len(pages))
                 continue
             array.append((kw, last.timestamp))
         # sort with last update time
@@ -371,19 +371,27 @@ class VideoDBI(ABC):
 
     @abstractmethod
     async def save_episode(self, episode: Episode, url: URI, identifier: ID) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.save_episode()'
+        )
 
     @abstractmethod
     async def load_episode(self, url: URI, identifier: ID) -> Optional[Episode]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.load_episode()'
+        )
 
     @abstractmethod
     async def save_season(self, season: Season, identifier: ID) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.save_season()'
+        )
 
     @abstractmethod
     async def load_season(self, url: URI, identifier: ID) -> Optional[Season]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.load_season()'
+        )
 
     #
     #   Video List
@@ -391,16 +399,24 @@ class VideoDBI(ABC):
 
     @abstractmethod
     async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.save_video_results()'
+        )
 
     @abstractmethod
     async def load_video_results(self, identifier: ID) -> Optional[VideoTree]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.load_video_results()'
+        )
 
     @abstractmethod
     async def save_blocked_list(self, array: List[str], identifier: ID) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.save_blocked_list()'
+        )
 
     @abstractmethod
     async def load_blocked_list(self, identifier: ID) -> Optional[List[str]]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.load_blocked_list()'
+        )

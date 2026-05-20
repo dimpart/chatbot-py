@@ -84,7 +84,9 @@ class ChatClient(Runner, Logging, ABC):
     @abstractmethod
     def _new_box(self, identifier: ID) -> Optional[ChatBox]:
         """ create chat box """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._new_box()'
+        )
 
     def _get_box(self, identifier: ID) -> Optional[ChatBox]:
         with self.__lock:
@@ -118,7 +120,7 @@ class ChatClient(Runner, Logging, ABC):
         if request is not None:
             text = await request.build()
             if text is None:
-                self.warning(msg='ignore this request: %s' % request)
+                self.warning('ignore this request: %s', request)
                 return True
             box = self._get_box(identifier=request.identifier)
             if box is not None:
@@ -126,10 +128,10 @@ class ChatClient(Runner, Logging, ABC):
                 try:
                     await box.process_request(request=request)
                 except Exception as error:
-                    self.error(msg='failed to process request: %s, error: %s' % (request, error))
+                    self.error('failed to process request: %s, error: %s', request, error)
                     return False
             # else:
-            #     assert False, 'failed to get chat box, drop request: %s' % request
+            #     assert False, f'failed to get chat box, drop request: {request}'
             return True
         # nothing to do now
         self._purge()
@@ -161,28 +163,28 @@ class ChatClient(Runner, Logging, ABC):
         act = content.action
         if act == 'request':
             if mod == 'test':
-                self.info(msg='say hi to translator: "%s" for "%s"' % (content.get('text'), envelope.sender))
+                self.info('say hi to translator: "%s" for "%s"', content.get('text'), envelope.sender)
             else:
-                self.info(msg='translate "%s" for "%s"' % (content.get('text'), envelope.sender))
+                self.info('translate "%s" for "%s"', content.get('text'), envelope.sender)
             trans = TranslateRequest(content=content, envelope=envelope,
                                      facebook=self.facebook, config=self.config)
             self._append_request(request=trans)
         else:
-            self.error(msg='translate content error: %s' % content)
+            self.error('translate content error: %s', content)
 
     async def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
         users = content.get('users')
         if isinstance(users, List):
-            self.info(msg='received users: %s' % users)
+            self.info('received users: %s', users)
         else:
-            self.error(msg='users content error: %s, %s' % (content, envelope))
+            self.error('users content error: %s, %s', content, envelope)
             return
         for item in users:
             identifier = ID.parse(identifier=item.get('U'))
             if identifier is None or identifier.type != EntityType.USER:
-                self.warning(msg='ignore user: %s' % item)
+                self.warning('ignore user: %s', item)
                 continue
-            self.info(msg='say hi for %s' % identifier)
+            self.info('say hi for %s', identifier)
             greeting = Greeting(identifier=identifier, content=content, envelope=envelope,
                                 facebook=self.facebook, config=self.config)
             self._append_request(request=greeting)

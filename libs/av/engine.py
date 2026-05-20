@@ -56,26 +56,30 @@ class Engine(Logging, ABC):
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.base_url, cname, mod)
+        return f'<{cname}>{self.base_url}</{cname} module="{mod}">'
 
     # Override
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.base_url, cname, mod)
+        return f'<{cname}>{self.base_url}</{cname} module="{mod}">'
 
     @property
     @abstractmethod
     def base_url(self) -> str:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.base_url getter'
+        )
 
     @property
     @abstractmethod
     def referer_url(self) -> str:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.referer_url getter'
+        )
 
     def _clear_cookies(self):
-        self.info(msg='clearing cookies')
+        self.info('clearing cookies')
         self.http_client.clear_cookies()
 
     async def _http_get(self, url: str, headers: dict = None) -> Optional[str]:
@@ -98,7 +102,7 @@ class Engine(Logging, ABC):
             if response.status_code == 200:
                 return response.text
         except Exception as error:
-            self.error(msg='failed to query url: %s, error: %s' % (url, error))
+            self.error('failed to query url: %s, error: %s', url, error)
 
     #
     #   Searching
@@ -106,7 +110,9 @@ class Engine(Logging, ABC):
 
     @abstractmethod
     async def search(self, task: Task) -> int:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.search()'
+        )
 
     #
     #   Seasons
@@ -118,14 +124,14 @@ class Engine(Logging, ABC):
         if season is None:
             season = await self._query_season(url=url, task=task)
             if season is not None:
-                self.info(msg='saving new season: %s' % season)
+                self.info('saving new season: %s', season)
                 await self._save_season(season=season, task=task)
         return season
 
     async def _save_season(self, season: Season, task: Task) -> bool:
         ok = await task.box.save_season(season=season)
         if not ok:
-            self.error(msg='failed to save season: %s' % season)
+            self.error('failed to save season: %s', season)
         return ok
 
     async def _load_season(self, url: URI, task: Task) -> Optional[Season]:
@@ -140,7 +146,9 @@ class Engine(Logging, ABC):
 
     @abstractmethod
     async def _query_season(self, url: URI, task: Task) -> Optional[Season]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._query_season()'
+        )
 
     #
     #   Episodes
@@ -152,14 +160,14 @@ class Engine(Logging, ABC):
         if episode is None:
             episode = await self._query_episode(url=url, title=title, task=task)
             if episode is not None:
-                self.info(msg='saving new episode: "%s" %s -> %s' % (title, url, episode))
+                self.info('saving new episode: "%s" %s -> %s', title, url, episode)
                 await self._save_episode(episode=episode, url=url, task=task)
         return episode
 
     async def _save_episode(self, episode: Episode, url: URI, task: Task) -> bool:
         ok = await task.box.save_episode(episode=episode, url=url)
         if not ok:
-            self.error(msg='failed to save episode: %s' % episode)
+            self.error('failed to save episode: %s', episode)
         return ok
 
     async def _load_episode(self, url: URI, task: Task) -> Optional[Episode]:
@@ -174,4 +182,6 @@ class Engine(Logging, ABC):
 
     @abstractmethod
     async def _query_episode(self, url: URI, title: Optional[str], task: Task) -> Optional[Episode]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._query_episode()'
+        )

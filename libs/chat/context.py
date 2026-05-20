@@ -134,18 +134,22 @@ class ChatContext(Dictionary, ABC):
     @abstractmethod
     async def _send_content(self, content: Content, receiver: ID) -> bool:
         """ Send message to DIM station """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._send_content()'
+        )
 
     @abstractmethod
     async def save_response(self, text: str, prompt: str, request: Request) -> bool:
         """ Save response text with prompt """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.save_response()'
+        )
 
 
 def calibrate_time(content: Content, request: Request, period: float = 1.0):
     res_time = content.time
     req_time = request.time
     if req_time is None:
-        assert False, 'request error: %s' % req_time
+        assert False, f'request error: {req_time}'
     elif res_time is None or res_time <= req_time:
         content['time'] = req_time + period

@@ -54,7 +54,7 @@ class CommonEngine(BaseEngine):
             # it's update task, don't check cache
             # and no need to respond
             code = await super().search(task=task)
-            self.info(msg='update task "%s", code: %d' % (keywords, code))
+            self.info('update task "%s", code: %d', keywords, code)
             return code
         # load search results from database
         total = await self._check_cached_results(task=task)
@@ -63,7 +63,7 @@ class CommonEngine(BaseEngine):
         # do search
         code = await super().search(task=task)
         if code == -205:
-            self.warning(msg='task cancelled: %s' % task)
+            self.warning('task cancelled: %s', task)
             vr = VideoResponse(request=request, box=box)
             await vr.respond_205(keywords=keywords)
         elif code < 0:  # -404
@@ -81,11 +81,11 @@ class CommonEngine(BaseEngine):
         tree = await box.load_video_results()
         results = tree.page_list(keyword=keywords)
         if results is None:
-            self.info(msg='cached for keyword: "%s" not found' % keywords)
+            self.info('cached for keyword: "%s" not found', keywords)
             return 0
         total = len(results)
         if total > 0:
-            self.info(msg='load %d result(s) for "%s"' % (total, keywords))
+            self.info('load %d result(s) for "%s"', total, keywords)
             await self._respond_results(results=results, task=task)
             #
             #  check update time
@@ -96,16 +96,18 @@ class CommonEngine(BaseEngine):
             if update_time is not None:
                 now = DateTime.now()
                 if now < (update_time + self.UPDATE_EXPIRES):
-                    self.info(msg='last update time: %s, "%s", total: %d' % (update_time, keywords, total))
+                    self.info('last update time: %s, "%s", total: %d', update_time, keywords, total)
                     return total
             # cache expired, update for new results
-            self.info(msg='update for keywords: "%s", %s' % (keywords, request.envelope.sender))
+            self.info('update for keywords: "%s", %s', keywords, request.envelope.sender)
             await self._update_keyword(task=task)
         return total
 
     @abstractmethod
     async def _update_keyword(self, task: Task):
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._update_keyword()'
+        )
 
     async def _respond_results(self, results: List[URI], task: Task):
         total = len(results)
@@ -115,10 +117,10 @@ class CommonEngine(BaseEngine):
             page_url = results[index]
             season = await self.get_season(url=page_url, task=task)
             if season is None:
-                self.warning(msg='failed to load season: %s => %s' % (keywords, page_url))
+                self.warning('failed to load season: %s => %s', keywords, page_url)
                 text = '(%d/%d) [%s](%s "")' % (index + 1, total, keywords, page_url)
             else:
-                self.info(msg='got season: "%s", %s' % (season.name, page_url))
+                self.info('got season: "%s", %s', season.name, page_url)
                 text = build_season(season=season, index=index, total=total)
             # await box.respond_markdown(text=text, request=request)
             await self._respond_markdown(text=text, sn=0, task=task)
@@ -132,10 +134,10 @@ class CommonEngine(BaseEngine):
                 page_url = results[index]
                 season = await self.get_season(url=page_url, task=task)
                 if season is None:
-                    self.warning(msg='failed to load season: %s => %s' % (keywords, page_url))
+                    self.warning('failed to load season: %s => %s', keywords, page_url)
                     text = '(%d/%d) [%s](%s "")' % (index + 1, total, keywords, page_url)
                 else:
-                    self.info(msg='got season: "%s", %s' % (season.name, page_url))
+                    self.info('got season: "%s", %s', season.name, page_url)
                     text = build_season(season=season, index=index, total=total)
                 batch_text += '%s\n\n' % text
                 index += 1
@@ -164,9 +166,9 @@ class CommonEngine(BaseEngine):
             season_items = self.parser.parse_seasons(html=html)
             count = len(season_items)
             if count == 0:
-                self.error(msg='failed to parse seasons: "%s", page %d' % (keywords, page + 1))
+                self.error('failed to parse seasons: "%s", page %d', keywords, page + 1)
                 break
-            self.info(msg='got %d/%d seasons for "%s", page %d' % (count, total, keywords, page + 1))
+            self.info('got %d/%d seasons for "%s", page %d', count, total, keywords, page + 1)
             # check items
             for i in range(count):
                 item = season_items[i]
@@ -174,7 +176,7 @@ class CommonEngine(BaseEngine):
                     # exactly!!
                     accurate = await self.get_season(url=item.page, task=task)
                     if accurate is not None:
-                        self.info(msg='got accurate season (%d/%d): %s' % (index, total, accurate))
+                        self.info('got accurate season (%d/%d): %s', index, total, accurate)
                         acc_text = build_season_full(season=accurate, index=index, total=total)
                         await self._respond_markdown(text=acc_text, sn=0, task=task)
                         # add to candidates
@@ -183,7 +185,7 @@ class CommonEngine(BaseEngine):
                         accurate.index = index
                         accurate.total = total
                         accurate_seasons.append(accurate)
-                    self.info(msg='got accurate season "%s" (%d/%d): %s' % (keywords, index, total, accurate))
+                    self.info('got accurate season "%s" (%d/%d): %s', keywords, index, total, accurate)
                 index += 1
             # respond partially
             text += _build_partial_seasons(season_items=season_items, start=0, total=total, candidates=accurate_seasons)
@@ -196,13 +198,13 @@ class CommonEngine(BaseEngine):
                 # done
                 break
             elif index > 100 and total > 200:
-                self.warning(msg='too many results: %d, %d' % (index, total))
+                self.warning('too many results: %d, %d', index, total)
                 break
             # next page
             page += 1
             html = await self.get_search_page(keywords=keywords, page=page, task=task)
             if html is None:
-                self.error(msg='failed to get page %d for keywords: "%s"' % (page + 1, keywords))
+                self.error('failed to get page %d for keywords: "%s"', page + 1, keywords)
                 break
         if task.cancelled:
             text += '\n\n----\n\n'
@@ -217,7 +219,7 @@ class CommonEngine(BaseEngine):
             # copy non-cancelable task to continue the searching
             await self._seek_accurate_season(keywords=keywords, page=page, index=index, total=total, task=task.copy())
         elif len(accurate_seasons) == 0:
-            self.warning(msg='searching task "%s" failed.' % keywords)
+            self.warning('searching task "%s" failed.', keywords)
 
     # private
     async def _seek_accurate_season(self, keywords: str, page: int, index: int, total: int, task: Task):
@@ -227,15 +229,15 @@ class CommonEngine(BaseEngine):
             page += 1
             html = await self.get_search_page(keywords=keywords, page=page, task=task)
             if html is None:
-                self.error(msg='failed to get page %d for keywords: "%s"' % (page + 1, keywords))
+                self.error('failed to get page %d for keywords: "%s"', page + 1, keywords)
                 break
             # parse seasons
             season_items = self.parser.parse_seasons(html=html)
             count = len(season_items)
             if count == 0:
-                self.error(msg='failed to seek accurate season: "%s", page %d' % (keywords, page + 1))
+                self.error('failed to seek accurate season: "%s", page %d', keywords, page + 1)
                 break
-            self.info(msg='got %d/%d seasons for "%s", page %d' % (count, total, keywords, page + 1))
+            self.info('got %d/%d seasons for "%s", page %d', count, total, keywords, page + 1)
             # check items
             for i in range(count):
                 item = season_items[i]
@@ -243,14 +245,14 @@ class CommonEngine(BaseEngine):
                     # exactly!!
                     accurate = await self.get_season(url=item.page, task=task)
                     if accurate is not None:
-                        self.info(msg='got accurate season (%d/%d): %s' % (index, total, accurate))
+                        self.info('got accurate season (%d/%d): %s', index, total, accurate)
                         text = build_season_full(season=accurate, index=index, total=total)
                         await self._respond_markdown(text=text, sn=0, task=task)
-                    self.info(msg='got accurate season "%s" (%d/%d): %s' % (keywords, index, total, accurate))
+                    self.info('got accurate season "%s" (%d/%d): %s', keywords, index, total, accurate)
                 index += 1
         # check accurate result
         if accurate is None:
-            self.warning(msg='bg searching task "%s" failed.' % keywords)
+            self.warning('bg searching task "%s" failed.', keywords)
 
 
 def _build_partial_seasons(season_items: List[SeasonInfo], start: int, total: int, candidates: List[Season]) -> str:
@@ -294,6 +296,6 @@ def _build_partial_seasons(season_items: List[SeasonInfo], start: int, total: in
 
 def _fetch_season_link(page: URI, candidates: List) -> Optional[str]:
     for item in candidates:
-        Log.info(msg='comparing season page: %s, %s' % (item.page, page))
+        Log.info('comparing season page: %s, %s', item.page, page)
         if item.page == page:
             return build_season_link(season=item, index=item.index, total=item.total)

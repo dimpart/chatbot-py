@@ -23,23 +23,22 @@
 # SOFTWARE.
 # ==============================================================================
 
-import getopt
-import sys
 from typing import Optional, List, Dict
 
 from dimples import ID
 from dimples import Document
 from dimples import CommonFacebook
 from dimples import AccountDBI, MessageDBI, SessionDBI
-from dimples.utils import Config
-from dimples.database import Storage
+
 from dimples.common import DocumentUtils
+from dimples.database import Storage
 from dimples.group import SharedGroupManager
 from dimples.client import ClientChecker
 
+from libs.utils import SysArgvParser
 from libs.utils import Log
-from libs.utils import Path
 from libs.utils import Singleton
+from libs.utils import Path, Config
 from libs.database import Database
 
 from libs.chat import ChatStorage
@@ -147,7 +146,7 @@ class GlobalVariable:
         msg_keys = await facebook.private_keys_for_decryption(identifier=current_user)
         assert sign_key is not None, 'failed to get sign key for current user: %s' % current_user
         assert len(msg_keys) > 0, 'failed to get msg keys: %s' % current_user
-        print('set current user: %s' % current_user)
+        Log.warning('set current user: %s', current_user)
         user = await facebook.get_user(identifier=current_user)
         assert user is not None, 'failed to get current user: %s' % current_user
         docs = await user.documents
@@ -184,8 +183,7 @@ async def create_facebook(database: AccountDBI) -> CommonFacebook:
     return facebook
 
 
-def show_help(app_name: str, default_config: str):
-    cmd = sys.argv[0]
+def show_help(app_name: str, cmd: str, default_config: str):
     print('')
     print('    %s' % app_name)
     print('')
@@ -199,36 +197,25 @@ def show_help(app_name: str, default_config: str):
     print('')
 
 
-async def create_config(app_name: str, default_config: str) -> Config:
+async def create_config(sys_argv: SysArgvParser, default_config: str) -> Optional[Config]:
     """ load config """
-    try:
-        opts, args = getopt.getopt(args=sys.argv[1:],
-                                   shortopts='hf:',
-                                   longopts=['help', 'config='])
-    except getopt.GetoptError:
-        show_help(app_name=app_name, default_config=default_config)
-        sys.exit(1)
-    # check options
-    ini_file = None
-    for opt, arg in opts:
-        if opt == '--config':
-            ini_file = arg
-        else:
-            show_help(app_name=app_name, default_config=default_config)
-            sys.exit(0)
-    # check config filepath
+    #
+    #  get INI file
+    #
+    ini_file = sys_argv.get_opt(opt='config')
     if ini_file is None:
         ini_file = default_config
     if not await Path.exists(path=ini_file):
-        show_help(app_name=app_name, default_config=default_config)
-        print('')
-        print('!!! config file not exists: %s' % ini_file)
-        print('')
-        sys.exit(0)
-    # load config from file
+        Log.error('!!! config file not exists: %s', ini_file)
+        return None
+    shared = GlobalVariable()
+    #
+    #  load config
+    #
     config = Config()
     await config.load(path=ini_file)
-    print('>>> config loaded: %s => %s' % (ini_file, config))
+    Log.warning('>>> config loaded: %s => %s', ini_file, config)
+    await shared.prepare(config=config)
     return config
 
 
@@ -262,7 +249,7 @@ async def update_prompts(config: Config, section: str):
     # system
     system_prompt = config.get_string(section=section, option='system_prompt')
     if system_prompt is not None:  # and system_prompt.startswith('/'):
-        Log.info(msg='updating system prompt: %s' % system_prompt)
+        Log.info('updating system prompt: %s', system_prompt)
         text = await Storage.read_text(path=system_prompt)
         if text is not None and len(text) > 0:
             info = config.to_dict()
@@ -270,7 +257,7 @@ async def update_prompts(config: Config, section: str):
     # greeting
     greeting_prompt = config.get_string(section=section, option='greeting_prompt')
     if greeting_prompt is not None:  # and greeting_prompt.startswith('/'):
-        Log.info(msg='updating greeting prompt: %s' % greeting_prompt)
+        Log.info('updating greeting prompt: %s', greeting_prompt)
         text = await Storage.read_text(path=greeting_prompt)
         if text is not None and len(text) > 0:
             info = config.to_dict()
@@ -278,7 +265,7 @@ async def update_prompts(config: Config, section: str):
     # translation
     translate_prompt = config.get_string(section=section, option='translate_prompt')
     if translate_prompt is not None:  # and translate_prompt.startswith('/'):
-        Log.info(msg='updating translate prompt: %s' % translate_prompt)
+        Log.info('updating translate prompt: %s', translate_prompt)
         text = await Storage.read_text(path=translate_prompt)
         if text is not None and len(text) > 0:
             info = config.to_dict()
@@ -289,27 +276,27 @@ async def update_services(config: Config, section: str) -> bool:
     file_path = config.get_string(section=section, option='services')
     if file_path is None:
         return False
-    Log.info(msg='updating services: %s' % file_path)
+    Log.info('updating services: %s', file_path)
     array = await Storage.read_json(path=file_path)
     if isinstance(array, Dict):
         array = array['services']
     if not isinstance(array, List):
-        Log.warning(msg='failed to load services: %s, %s' % (file_path, array))
+        Log.warning('failed to load services: %s, %s', file_path, array)
         return False
     shared = GlobalVariable()
     facebook = shared.facebook
     user = await facebook.current_user
     if user is None:
-        Log.error(msg='current user not found')
+        Log.error('current user not found')
         return False
     docs = await user.documents
     visa = DocumentUtils.last_visa(documents=docs)
     sign_key = await facebook.private_key_for_visa_signature(identifier=user.identifier)
     if visa is None or sign_key is None:
-        Log.error(msg='current user error: %s' % user)
+        Log.error('current user error: %s', user)
         return False
     else:
-        Log.info(msg='updating services for bot: %s, %s' % (user.identifier, array))
+        Log.info('updating services for bot: %s, %s', user.identifier, array)
         # clone for modifying
         visa = Document.parse(document=visa.copy_dict())
     # sign with services

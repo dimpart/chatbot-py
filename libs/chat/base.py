@@ -28,6 +28,8 @@ from typing import Optional, Dict
 
 from dimples import DateTime
 from dimples import EntityType, ID
+from dimples import DocumentUtils
+
 from dimples import Envelope, Content
 from dimples import CommonFacebook
 
@@ -44,35 +46,41 @@ class Request(ABC):
     @abstractmethod
     def identifier(self) -> ID:
         """ Sender, or group ID """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.identifier getter'
+        )
 
     @property
     @abstractmethod
     def time(self) -> Optional[DateTime]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.time getter'
+        )
 
     @property
     @abstractmethod
     def text(self) -> Optional[str]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.text getter'
+        )
 
     # Override
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s identifier="%s">\n\t[%s] %s\n</%s module="%s">' \
-               % (cname, self.identifier, self.time, self.text, cname, mod)
+        return f'<{cname} identifier="{self.identifier}">\n\t[{self.time}] {self.text}\n</{cname} module="{mod}">'
 
     # Override
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s identifier="%s">\n\t[%s] %s\n</%s module="%s">' \
-               % (cname, self.identifier, self.time, self.text, cname, mod)
+        return f'<{cname} identifier="{self.identifier}">\n\t[{self.time}] {self.text}\n</{cname} module="{mod}">'
 
     @abstractmethod
     async def build(self) -> Optional[str]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.build()'
+        )
 
 
 class Setting(Request):
@@ -141,16 +149,16 @@ class Greeting(Request, Logging):
     # Override
     async def build(self) -> Optional[str]:
         sender = self.identifier
-        assert sender.is_user, 'greeting sender error: %s' % sender
+        assert sender.is_user, f'greeting sender error: {sender}'
         name = await get_nickname(identifier=sender, facebook=self.facebook)
         if name is None or len(name) == 0:
-            self.error(msg='failed to get nickname for sender: %s' % sender)
+            self.error('failed to get nickname for sender: %s', sender)
             return None
         language = await get_language(identifier=sender, facebook=self.facebook)
         info = self.__config.to_dict()
         prompt = info.get('greeting_prompt')
         if prompt is None:
-            self.error(msg='failed to get template for greeting prompt')
+            self.error('failed to get template for greeting prompt')
             return None
         else:
             prompt = template_replace(template=prompt, key='NAME', value=name)
@@ -240,19 +248,19 @@ class TranslateRequest(Request, Logging):
         if mod == 'test':
             text = self.WARNING
             content['text'] = text
-            self.info(msg='building warning message for translator: "%s" %s' % (text, sender))
+            self.info('building warning message for translator: "%s" %s', text, sender)
         elif text is None:
-            self.error(msg='no text to translate: %s, %s' % (content, sender))
+            self.error('no text to translate: %s, %s', content, sender)
             return None
         else:
             text = text.strip()
             if len(text) == 0:
-                self.error(msg='no text to translate: %s, %s' % (content, sender))
+                self.error('no text to translate: %s, %s', content, sender)
                 return None
         # check language code
         code = content.get('code')
         if code is None:
-            assert sender.is_user, 'sender error: %s' % sender
+            assert sender.is_user, f'sender error: {sender}'
             code = await get_language(identifier=sender, facebook=self.facebook)
         # build prompt
         req = json_encode({
@@ -262,7 +270,7 @@ class TranslateRequest(Request, Logging):
         info = self.__config.to_dict()
         prompt = info.get('translate_prompt')
         if prompt is None:
-            self.error(msg='failed to get template for translate prompt')
+            self.error('failed to get template for translate prompt')
             return None
         else:
             prompt = template_replace(template=prompt, key='LANG_CODE', value=code)
@@ -327,18 +335,18 @@ class ChatRequest(Request, Logging):
         if EntityType.BOT == sender.type:
             if len(text) > 128:
                 text = '%s ... %s' % (text[:100], text[-22:])
-            self.info('ignore message from another bot: %s, "%s"' % (sender, text))
+            self.info('ignore message from another bot: %s, "%s"', sender, text)
             return None
         elif EntityType.STATION == sender.type:
-            self.info('ignore message from station: %s, "%s"' % (sender, text))
+            self.info('ignore message from station: %s, "%s"', sender, text)
             return None
         # check request time
         req_time = self.time
-        assert req_time is not None, 'request error: %s' % self
+        assert req_time is not None, f'request error: {self}'
         dt = DateTime.now() - req_time
         if dt > 600:
             # Old message, ignore it
-            self.warning(msg='ignore expired message from %s: %s' % (sender, req_time))
+            self.warning('ignore expired message from %s: %s', sender, req_time)
             return None
         # check group message
         content = self.content
@@ -349,7 +357,7 @@ class ChatRequest(Request, Logging):
         receiver = self.envelope.receiver
         facebook = self.facebook
         bot_name = await get_nickname(identifier=receiver, facebook=facebook)
-        assert bot_name is not None and len(bot_name) > 0, 'receiver error: %s' % receiver
+        assert bot_name is not None and len(bot_name) > 0, f'receiver error: {receiver}'
         at = '@%s ' % bot_name
         naked = text.replace(at, '')
         at = '@%s' % bot_name
@@ -357,7 +365,7 @@ class ChatRequest(Request, Logging):
             naked = naked[:-len(at)]
         if naked != text:
             return naked
-        self.info('ignore group message that not querying me(%s): %s' % (at, text))
+        self.info('ignore group message that not querying me(%s): %s', at, text)
 
 
 #
@@ -366,7 +374,7 @@ class ChatRequest(Request, Logging):
 async def get_nickname(identifier: ID, facebook: CommonFacebook) -> Optional[str]:
     visa = await facebook.get_document(identifier=identifier)
     if visa is not None:
-        return visa.get_property(name='name')
+        return DocumentUtils.get_document_name(document=visa)
 
 
 #

@@ -46,12 +46,12 @@ class ChatProcessor(Logging, ABC):
     # Override
     def __str__(self) -> str:
         cname = self.__class__.__name__
-        return '<%s agent="%s" />' % (cname, self.agent)
+        return f'<{cname} agent="{self.agent}" />'
 
     # Override
     def __repr__(self) -> str:
         cname = self.__class__.__name__
-        return '<%s agent="%s" />' % (cname, self.agent)
+        return f'<{cname} agent="{self.agent}" />'
 
     @property
     def agent(self) -> str:
@@ -68,7 +68,7 @@ class ChatProcessor(Logging, ABC):
             prompt = request.text
             prompt = prompt.strip()
             if prompt is None or len(prompt) == 0:
-                self.error(msg='translate content error: %s, envelope: %s' % (request.content, request.envelope))
+                self.error('translate content error: %s, envelope: %s', request.content, request.envelope)
                 return False
             return await self._handle_translate(prompt=prompt, request=request, context=context)
         elif isinstance(request, Greeting):
@@ -76,7 +76,7 @@ class ChatProcessor(Logging, ABC):
             prompt = request.text
             prompt = prompt.strip()
             if prompt is None or len(prompt) == 0:
-                self.error(msg='greeting content error: %s, envelope: %s' % (request.content, request.envelope))
+                self.error('greeting content error: %s, envelope: %s', request.content, request.envelope)
                 return False
             return await self._handle_text(prompt=prompt, request=request, context=context)
         elif isinstance(request, ChatRequest):
@@ -88,11 +88,11 @@ class ChatProcessor(Logging, ABC):
                     prompt = content.text
                 prompt = prompt.strip()
                 if prompt is None or len(prompt) == 0:
-                    self.error(msg='text content error: %s, envelope: %s' % (content, request.envelope))
+                    self.error('text content error: %s, envelope: %s', content, request.envelope)
                     return False
                 return await self._handle_text(prompt=prompt, request=request, context=context)
         # error
-        self.error(msg='unsupported request: %s' % request)
+        self.error('unsupported request: %s', request)
 
     async def _handle_translate(self, prompt: str, request: TranslateRequest, context: ChatContext) -> bool:
         #
@@ -113,12 +113,12 @@ class ChatProcessor(Logging, ABC):
             record = '[%s] %s' % (self.agent, answer)
             await context.save_response(text=record, prompt=prompt, request=request)
             if answer is None:
-                self.error(msg='response error: "%s" => "%s"' % (prompt, record))
+                self.error('response error: "%s" => "%s"', prompt, record)
                 return False
             else:
                 answer = answer.strip()
                 if len(answer) == 0:
-                    self.warning(msg='respond nothing: "%s" => "%s"' % (prompt, record))
+                    self.warning('respond nothing: "%s" => "%s"', prompt, record)
                     return False
             info = _fetch_json_result(text=answer)
             if info is None:
@@ -140,7 +140,7 @@ class ChatProcessor(Logging, ABC):
         await context.respond_content(content=res, request=request)
         # clear expired responses
         cnt = translator.purge()
-        self.debug(msg='purged %d response(s)' % cnt)
+        self.debug('purged %d response(s)', cnt)
         return True
 
     async def _handle_text(self, prompt: str, request: Request, context: ChatContext) -> bool:
@@ -161,7 +161,7 @@ class ChatProcessor(Logging, ABC):
                 # OK
                 await context.respond_markdown(text=answer, request=request, sn=sn)
                 return True
-        self.error(msg='response error: "%s" => "%s"' % (prompt, record))
+        self.error('response error: "%s" => "%s"', prompt, record)
         if sn > 0:
             text = 'Agent "%s" responds nothing.' % self.agent
             await context.respond_text(text=text, request=request, sn=sn)
@@ -170,7 +170,9 @@ class ChatProcessor(Logging, ABC):
     @abstractmethod
     async def _query(self, prompt: str, request: Request, context: ChatContext) -> Optional[str]:
         """ Build message(s) & query the server """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._query()'
+        )
 
 
 def _fetch_json_result(text: str) -> Optional[Dict]:
@@ -196,7 +198,7 @@ def _fetch_json_result(text: str) -> Optional[Dict]:
     try:
         return json_decode(string=code)
     except Exception as error:
-        Log.error(msg='translate result error: %s, %s' % (error, text))
+        Log.error('translate result error: %s, %s', error, text)
 
 
 class ChatProxy(Logging):
@@ -211,13 +213,13 @@ class ChatProxy(Logging):
     def __str__(self) -> str:
         cname = self.__class__.__name__
         count = len(self.__processors)
-        return '<%s service="%s" count=%d />' % (cname, self.service, count)
+        return f'<{cname} service="{self.service}" count={count} />'
 
     # Override
     def __repr__(self) -> str:
         cname = self.__class__.__name__
         count = len(self.__processors)
-        return '<%s service="%s" count=%d />' % (cname, self.service, count)
+        return f'<{cname} service="{self.service}" count={count} />'
 
     @property
     def service(self) -> str:
@@ -230,14 +232,14 @@ class ChatProxy(Logging):
     # protected
     def _move_processor(self, index: int, processor: ChatProcessor):
         if index > 0:
-            self.warning(msg='move processor position: %d, %s' % (index, processor))
+            self.warning('move processor position: %d, %s', index, processor)
             self.__processors.pop(index)
             self.__processors.insert(0, processor)
 
     async def process_request(self, request: Request, context: ChatContext) -> Optional[ChatProcessor]:
         all_handlers = self.processors
         if len(all_handlers) == 0:
-            self.error(msg='gpt handlers not set')
+            self.error('gpt handlers not set')
             return None
         index = -1
         for handler in all_handlers:
@@ -246,7 +248,7 @@ class ChatProxy(Logging):
             try:
                 ok = await handler.process_request(request=request, context=context)
             except Exception as error:
-                self.error(msg='handler error: %s, %s' % (error, handler))
+                self.error('handler error: %s, %s', error, handler)
                 ok = False
             if ok:
                 # move this handler to the front
@@ -255,6 +257,6 @@ class ChatProxy(Logging):
                 return handler
             else:
                 context.report_failure(service=self.service, agent=handler.agent)
-                self.warning(msg='failed to query handler: %s' % handler)
+                self.warning('failed to query handler: %s', handler)
         # failed to get answer
         context.report_crash(service=self.service)

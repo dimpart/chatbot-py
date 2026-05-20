@@ -44,13 +44,15 @@ class ClientProcessor(ClientMessageProcessor):
     @property
     def facebook(self) -> CommonFacebook:
         barrack = super().facebook
-        assert isinstance(barrack, CommonFacebook), 'facebook error: %s' % barrack
+        assert isinstance(barrack, CommonFacebook), f'facebook error: {barrack}'
         return barrack
 
     @abstractmethod
     def _create_chat_client(self) -> ChatClient:
         """ Create Chat Client """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._create_chat_client()'
+        )
 
     # Override
     async def process_content(self, content: Content, r_msg: ReliableMessage) -> List[Content]:
