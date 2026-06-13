@@ -34,7 +34,7 @@ from ...utils import Logging
 from ...common import Season, VideoTree
 from ...chat import ChatRequest
 
-from ..video import build_season_link
+from ..video import build_season_link, build_season_full
 from ..video import VideoBox
 
 
@@ -219,7 +219,11 @@ class VideoResponse(Logging):
         query = self.request.content
         txt_fmt = query.get('format')  # markdown
         if txt_fmt == 'markdown':
-            link = build_season_link(season=season, index=0, total=1)
+            season_content = build_season_full(season=season, index=0, total=1)
+            # TODO: after all clients are upgraded to v1.6.*
+            #       move the 'details.text' to override this 'text' field;
+            #       move the 'details.cover' into 'season' info.
+            link = build_season_link(season=season, index=0, total=1, text=season_content)
             cover = season.cover
             if cover is None or cover.find('://') < 0:
                 self.warning(msg='season cover not found: %s' % season)
@@ -236,6 +240,12 @@ class VideoResponse(Logging):
                 'page': season.page,
                 'name': season.name,
                 'time': time.timestamp,
+            }
+            response['details'] = {
+                'cover': cover,
+                'name': season.name,
+                'text': season_content,
+                'format': 'markdown',
             }
         else:
             response['season'] = season.to_dict()

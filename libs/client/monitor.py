@@ -167,7 +167,7 @@ class Monitor(Runner, Logging):
 
     @property
     def facebook(self) -> Optional[Facebook]:
-        return self.facebook
+        return self.__facebook
 
     @facebook.setter
     def facebook(self, db: Facebook):
@@ -233,17 +233,22 @@ class Monitor(Runner, Logging):
             return False
         config = self.config
         if config is None:
+            self.error('config not found')
+            return False
+        facebook = self.facebook
+        if facebook is None:
+            self.error('facebook not ready')
             return False
         # check admins
-        admins = await get_supervisors(config=config, facebook=self.facebook, section='monitor')
+        admins = await get_supervisors(config=config, facebook=facebook, section='monitor')
         barrels = self._get_barrels()
-        self.info(msg='reporting %d service(s) to supervisor: %s' % (len(barrels), admins))
+        self.info('reporting %d service(s) to supervisor: %s', len(barrels), admins)
         # try to report one by one
         for bar in barrels:
             try:
                 await _report(barrel=bar, now=now, supervisors=admins)
             except Exception as error:
-                self.error(msg='failed to report barrel: %s, error: %s' % (bar, error))
+                self.error('failed to report barrel: %s, error: %s', bar, error)
         return False
 
 
@@ -261,5 +266,5 @@ async def _report(barrel: Barrel, now: DateTime, supervisors: Set[ID]):
     content['format'] = 'markdown'
     emitter = Emitter()
     for receiver in supervisors:
-        Log.info(msg='[Monitor] sending report to supervisor: %s, %s' % (receiver, text))
+        Log.info('[Monitor] sending report to supervisor: %s, %s', receiver, text)
         await emitter.send_content(content=content, receiver=receiver)

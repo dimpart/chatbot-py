@@ -168,8 +168,9 @@ def build_season(season: Season, index: int, total: int) -> str:
     return text
 
 
-def build_season_link(season: Season, index: int, total: int) -> str:
-    text = build_season_full(season=season, index=index, total=total)
+def build_season_link(season: Season, index: int, total: int, text: str = None) -> str:
+    if text is None:
+        text = build_season_full(season=season, index=index, total=total)
     # "data:text/plain;charset=UTF-8;base64,"
     base64 = base64_encode(data=utf8_encode(string=text))
     href = 'data:text/plain;charset=UTF-8;base64,%s' % base64
