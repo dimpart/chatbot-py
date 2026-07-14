@@ -33,6 +33,7 @@
 from typing import Dict
 
 from dimples import utf8_encode, base64_encode
+from dimples import DateTime
 from dimples import Visa
 
 from .visa import get_name
@@ -103,6 +104,13 @@ def md_user_info(visa: Visa) -> str:
             lines.append(
                 '| %s | %s |' % (key, sys[key])
             )
+    # times
+    created_time = visa.get_property(name='created_time')
+    created_time = DateTime.parse(created_time)
+    updated_time = visa.time
+    lines.append('')
+    lines.append('* created: %s' % created_time)
+    lines.append('* updated: %s' % updated_time)
     return '\n'.join(lines)
 
 

@@ -37,7 +37,6 @@ from dimples.utils import *
 from dimples.utils.http import Response, fetch_cookies
 
 from dimples.group.manager import find
-from dimples.database.dos.document import parse_document
 
 from .pnf import get_filename, get_extension
 from .pnf import get_cache_name
@@ -88,8 +87,6 @@ __all__ = [
     'template_replace',
 
     'find',
-
-    'parse_document',
 
     #
     #   PNF
