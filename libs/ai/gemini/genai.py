@@ -23,7 +23,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List
+from typing import Mapping
 
 from requests import Response
 
@@ -103,7 +104,7 @@ class GenerativeAI(Logging):
     def http_post(self, url: str, data: Union[dict, bytes], headers: dict = None) -> Response:
         return self.__http_client.http_post(url=url, data=data, headers=headers)
 
-    def build_message_info(self, question: str, message_queue: MessageQueue) -> Optional[Dict]:
+    def build_message_info(self, question: str, message_queue: MessageQueue) -> Optional[Mapping]:
         messages = message_queue.build_messages(prompt=question)
         count = len(messages)
         if count <= 0:
@@ -158,15 +159,15 @@ class GenerativeAI(Logging):
         if msg is not None:
             message_queue.push(msg=msg, trim=True)
             parts = msg.get('parts')
-            if isinstance(parts, List):
+            if isinstance(parts, list):
                 return get_text(parts=parts)
         self.error(msg='failed to parse content: %s' % info)
         return get_error(model=model, info=info)
 
 
-def get_error(model: str, info: Dict) -> Optional[str]:
+def get_error(model: str, info: Mapping) -> Optional[str]:
     error = info.get('error')
-    if isinstance(error, Dict):
+    if isinstance(error, dict):
         code = error.get('code')
         msg = error.get('message')
         status = error.get('status')
@@ -179,24 +180,24 @@ def get_error(model: str, info: Dict) -> Optional[str]:
 def get_text(parts: List) -> str:
     lines = []
     for item in parts:
-        if isinstance(item, Dict):
+        if isinstance(item, dict):
             text = item.get('text')
             if isinstance(text, str):
                 lines.append(text)
     return '\n'.join(lines)
 
 
-def get_content(info: Dict) -> Optional[Dict]:
+def get_content(info: Mapping) -> Optional[Mapping]:
     candidates = info.get('candidates')
-    if isinstance(candidates, List) and len(candidates) > 0:
+    if isinstance(candidates, list) and len(candidates) > 0:
         first = candidates[0]
-        if isinstance(first, Dict):
+        if isinstance(first, dict):
             content = first.get('content')
-            if isinstance(content, Dict):
+            if isinstance(content, dict):
                 return content
 
 
-def parse_response(text: str) -> Optional[Dict]:
+def parse_response(text: str) -> Optional[Mapping]:
     try:
         return json_decode(string=text)
     except Exception as e:

@@ -24,7 +24,8 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Any, List, Dict
+from typing import Optional, Any, List
+from typing import Mapping
 
 from dimples import DateTime
 from dimples import Converter
@@ -32,6 +33,7 @@ from dimples import Mapper, Dictionary
 from dimples import URI
 from dimples import ID
 
+from ...utils import StrMap
 from ...utils import Logging
 
 
@@ -39,7 +41,7 @@ class Episode(Dictionary):
 
     EXPIRES = 3600 * 24 * 3  # seconds
 
-    def __init__(self, info: Dict[str, Any] = None,
+    def __init__(self, info: StrMap = None,
                  title: str = None, url: URI = None):
         super().__init__(dictionary=info)
         if info is None:
@@ -91,11 +93,11 @@ class Episode(Dictionary):
         elif isinstance(episode, Episode):
             return episode
         elif isinstance(episode, Mapper):
-            episode = episode.to_dict()
+            episode = episode.to_map()
         return Episode(info=episode)
 
     @classmethod
-    def convert_episodes(cls, array: List[Dict]):  # -> List[Episode]:
+    def convert_episodes(cls, array: List[Mapping]):  # -> List[Episode]:
         results = []
         for item in array:
             episode = cls.parse_episode(episode=item)
@@ -106,17 +108,17 @@ class Episode(Dictionary):
         return results
 
     @classmethod
-    def revert_episodes(cls, array: List[Mapper]) -> List[Dict]:
+    def revert_episodes(cls, array: List[Mapper]) -> List[Mapping]:
         results = []
         for item in array:
-            info = item.to_dict()
+            info = item.to_map()
             results.append(info)
         return results
 
 
 class Tube(Dictionary):
 
-    def __init__(self, info: Dict[str, Any] = None,
+    def __init__(self, info: StrMap = None,
                  title: str = None, episodes: List[Episode] = None):
         super().__init__(dictionary=info)
         if title is not None:
@@ -176,11 +178,11 @@ class Tube(Dictionary):
         elif isinstance(tube, Tube):
             return tube
         elif isinstance(tube, Mapper):
-            tube = tube.to_dict()
+            tube = tube.to_map()
         return Tube(info=tube)
 
     @classmethod
-    def convert_tubes(cls, array: List[Dict]):  # -> List[Tube]:
+    def convert_tubes(cls, array: List[Mapping]):  # -> List[Tube]:
         results = []
         for item in array:
             tube = cls.parse_tube(tube=item)
@@ -191,10 +193,10 @@ class Tube(Dictionary):
         return results
 
     @classmethod
-    def revert_tubes(cls, array: List[Mapper]) -> List[Dict]:
+    def revert_tubes(cls, array: List[Mapper]) -> List[Mapping]:
         results = []
         for item in array:
-            info = item.to_dict()
+            info = item.to_map()
             results.append(info)
         return results
 
@@ -203,7 +205,7 @@ class Season(Dictionary):
 
     EXPIRES = 3600 * 10  # seconds
 
-    def __init__(self, info: Dict[str, Any] = None,
+    def __init__(self, info: StrMap = None,
                  page: URI = None,
                  name: str = None, cover: str = None, details: Optional[str] = None,
                  tubes: List[Tube] = None):
@@ -298,7 +300,7 @@ class Season(Dictionary):
         elif isinstance(season, Season):
             return season
         elif isinstance(season, Mapper):
-            season = season.to_dict()
+            season = season.to_map()
         return Season(info=season)
 
 

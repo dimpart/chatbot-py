@@ -74,6 +74,9 @@ __all__ = [
     'Runnable', 'Runner',
     'Daemon',
 
+    'StrMap', 'MutableStrMap',
+    'StringPairing',
+
     'Singleton',
     'Path', 'File', 'TextFile', 'JSONFile',
     'FrequencyChecker', 'RecentTimeChecker',

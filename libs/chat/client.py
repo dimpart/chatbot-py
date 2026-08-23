@@ -26,7 +26,7 @@
 import threading
 import weakref
 from abc import ABC, abstractmethod
-from typing import Optional, Set, List
+from typing import Optional, Set
 
 from dimples import DateTime
 from dimples import EntityType, ID
@@ -174,7 +174,7 @@ class ChatClient(Runner, Logging, ABC):
 
     async def _process_users_content(self, content: CustomizedContent, envelope: Envelope):
         users = content.get('users')
-        if isinstance(users, List):
+        if isinstance(users, list):
             self.info('received users: %s', users)
         else:
             self.error('users content error: %s, %s', content, envelope)

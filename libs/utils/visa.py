@@ -30,7 +30,7 @@
 
 """
 
-from typing import Optional, Dict
+from typing import Optional
 
 from dimples import Visa
 from dimples import DocumentUtils
@@ -52,12 +52,12 @@ def get_name(visa: Visa) -> str:
 
 def get_locale(visa: Visa) -> Optional[str]:
     app = visa.get_property(name='app')
-    if isinstance(app, Dict):
+    if isinstance(app, dict):
         language = app.get('language')
     else:
         language = None
     sys = visa.get_property(name='sys')
-    if isinstance(sys, Dict):
+    if isinstance(sys, dict):
         locale = sys.get('locale')
     else:
         locale = None

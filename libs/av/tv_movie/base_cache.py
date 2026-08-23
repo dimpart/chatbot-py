@@ -180,7 +180,7 @@ class CommonEngine(BaseEngine):
                         acc_text = build_season_full(season=accurate, index=index, total=total)
                         await self._respond_markdown(text=acc_text, sn=0, task=task)
                         # add to candidates
-                        info = accurate.to_dict()
+                        info = accurate.to_map()
                         accurate = Season(info=info)
                         accurate.index = index
                         accurate.total = total

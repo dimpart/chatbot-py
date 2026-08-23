@@ -23,7 +23,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union, Dict
+from typing import Optional, Union
+from typing import Mapping
 
 from dimples import json_encode, json_decode, utf8_encode, utf8_decode
 from dimples import URI
@@ -77,7 +78,7 @@ class SeasonCache(RedisCache, Logging):
         else:
             self.info(msg='loaded season from cache: %s url: %s' % (key, url))
         info = decode_map(data=value)
-        assert isinstance(info, Dict), 'season error: %s -> %s' % (key, info)
+        assert isinstance(info, dict), 'season error: %s -> %s' % (key, info)
         return Season.parse_season(season=info)
 
 
@@ -125,18 +126,18 @@ class EpisodeCache(RedisCache, Logging):
         else:
             self.info(msg='loaded episode from cache: %s url: %s' % (key, url))
         info = decode_map(data=value)
-        assert isinstance(info, Dict), 'episode error: %s -> %s' % (key, info)
+        assert isinstance(info, dict), 'episode error: %s -> %s' % (key, info)
         return Episode.parse_episode(episode=info)
 
 
-def encode_map(info: Union[Dict, Mapper]) -> bytes:
+def encode_map(info: Union[Mapping, Mapper]) -> bytes:
     if isinstance(info, Mapper):
-        info = info.to_dict()
+        info = info.to_map()
     js = json_encode(container=info)
     return utf8_encode(string=js)
 
 
-def decode_map(data: bytes) -> Dict:
+def decode_map(data: bytes) -> Mapping:
     js = utf8_decode(data=data)
     assert js is not None, 'failed to decode string: %s' % data
     return json_decode(string=js)

@@ -22,16 +22,16 @@ async-timeout # 4.0.3
 # aiohttp     # 3.8.6
 # charset-normalizer # 3.3.2
 
-# aiou==1.1.0
+# aiou==1.1.1
 #
-# startrek==2.3.1
-# tcp==2.3.1
-# udp==2.3.1
+# startrek==2.3.2
+# tcp==2.3.2
+# udp==2.3.2
 
-# mkm==2.4.2
-# dkd==2.4.2
-# dimp==2.4.2
-# dimsdk==2.4.2
-# dimplugins==2.4.2
+# mkm==2.4.3
+# dkd==2.4.3
+# dimp==2.4.3
+# dimsdk==2.4.3
+# dimplugins==2.4.3
 
-dimples==1.7.0
+dimples==1.7.6

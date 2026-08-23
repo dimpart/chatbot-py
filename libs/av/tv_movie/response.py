@@ -248,6 +248,6 @@ class VideoResponse(Logging):
                 'format': 'markdown',
             }
         else:
-            response['season'] = season.to_dict()
+            response['season'] = season.to_map()
         # OK
         await self.box.respond_content(content=response, request=self.request)

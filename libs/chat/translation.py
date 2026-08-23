@@ -135,7 +135,7 @@ class TranslateContent(AppCustomizedContent):
                 text = None
         if text is not None and len(text) > 0:
             response['text'] = text
-            response['result'] = result.to_dict()
+            response['result'] = result.to_map()
         #
         #  extra param: serial number
         #
@@ -206,19 +206,17 @@ class TranslateCache:
 
     def purge(self):
         count = 0
-        for code in self.__table:
-            dictionary = self.__table.get(code)
-            if dictionary is None:
+        for code, table in self.__table.items():
+            if table is None:
                 continue
             empties = []
-            for text in dictionary:
-                response = dictionary.get(text)
+            for text, response in table.items():
                 if response is None:
                     empties.append(text)
                 elif response.expired:
                     empties.append(text)
             for text in empties:
-                dictionary.pop(text, None)
+                table.pop(text, None)
                 count += 1
         return count
 

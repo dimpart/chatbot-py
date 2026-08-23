@@ -30,8 +30,6 @@
 
 """
 
-from typing import Dict
-
 from dimples import utf8_encode, base64_encode
 from dimples import DateTime
 from dimples import Visa
@@ -84,25 +82,25 @@ def md_user_info(visa: Visa) -> str:
         )
     # app info
     app = visa.get_property(name='app')
-    if isinstance(app, Dict):
+    if isinstance(app, dict):
         lines.append('')
         lines.append('### visa.app')
         lines.append('| Key | Value |')
         lines.append('|-----|-------|')
-        for key in app:
+        for key, value in app.items():
             lines.append(
-                '| %s | %s |' % (key, app[key])
+                '| %s | %s |' % (key, value)
             )
     # sys info
     sys = visa.get_property(name='sys')
-    if isinstance(sys, Dict):
+    if isinstance(sys, dict):
         lines.append('')
         lines.append('### visa.sys')
         lines.append('| Key | Value |')
         lines.append('|-----|-------|')
-        for key in sys:
+        for key, value in sys.items():
             lines.append(
-                '| %s | %s |' % (key, sys[key])
+                '| %s | %s |' % (key, value)
             )
     # times
     created_time = visa.get_property(name='created_time')

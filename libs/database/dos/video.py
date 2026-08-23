@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from dimples import URI
 from dimples import ID
@@ -66,14 +66,14 @@ class SeasonStorage(Storage):
             self.info(msg='season not exists: %s url: %s' % (path, url))
             return None
         self.info(msg='loaded season from: %s url: %s' % (path, url))
-        assert isinstance(info, Dict), 'season error: %s -> %s' % (path, info)
+        assert isinstance(info, dict), 'season error: %s -> %s' % (path, info)
         return Season.parse_season(season=info)
 
     async def save_season(self, season: Season, identifier: ID) -> bool:
         url = season.page
         path = self.__season_path(url=url, identifier=identifier)
         self.info(msg='saving season "%s" (%s) into %s' % (season.name, url, path))
-        info = season.to_dict()
+        info = season.to_map()
         return await self.write_json(container=info, path=path)
 
 
@@ -127,7 +127,7 @@ class VideoStorage(Storage):
         return VideoTree(dictionary=info)
 
     async def save_video_results(self, results: VideoTree, identifier: ID) -> bool:
-        info = results.to_dict()
+        info = results.to_map()
         path = self.__results_path(identifier=identifier)
         self.info(msg='saving %d video result(s) to path: %s' % (len(results), path))
         return await self.write_json(container=info, path=path)

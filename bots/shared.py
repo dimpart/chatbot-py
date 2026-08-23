@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, List, Dict
+from typing import Optional
 
 from dimples import ID
 from dimples import Document
@@ -153,7 +153,7 @@ class GlobalVariable:
         visa = DocumentUtils.last_visa(documents=docs)
         if visa is not None:
             # refresh visa
-            visa = Document.parse(document=visa.copy_dict())
+            visa = Document.parse(document=visa.copy_map())
             visa.sign(private_key=sign_key)
             await archivist.save_document(document=visa, identifier=current_user)
         await facebook.set_current_user(user=user)
@@ -252,7 +252,7 @@ async def update_prompts(config: Config, section: str):
         Log.info('updating system prompt: %s', system_prompt)
         text = await Storage.read_text(path=system_prompt)
         if text is not None and len(text) > 0:
-            info = config.to_dict()
+            info = config.to_map()
             info['system_prompt'] = text
     # greeting
     greeting_prompt = config.get_string(section=section, option='greeting_prompt')
@@ -260,7 +260,7 @@ async def update_prompts(config: Config, section: str):
         Log.info('updating greeting prompt: %s', greeting_prompt)
         text = await Storage.read_text(path=greeting_prompt)
         if text is not None and len(text) > 0:
-            info = config.to_dict()
+            info = config.to_map()
             info['greeting_prompt'] = text
     # translation
     translate_prompt = config.get_string(section=section, option='translate_prompt')
@@ -268,7 +268,7 @@ async def update_prompts(config: Config, section: str):
         Log.info('updating translate prompt: %s', translate_prompt)
         text = await Storage.read_text(path=translate_prompt)
         if text is not None and len(text) > 0:
-            info = config.to_dict()
+            info = config.to_map()
             info['translate_prompt'] = text
 
 
@@ -278,9 +278,9 @@ async def update_services(config: Config, section: str) -> bool:
         return False
     Log.info('updating services: %s', file_path)
     array = await Storage.read_json(path=file_path)
-    if isinstance(array, Dict):
+    if isinstance(array, dict):
         array = array['services']
-    if not isinstance(array, List):
+    if not isinstance(array, list):
         Log.warning('failed to load services: %s, %s', file_path, array)
         return False
     shared = GlobalVariable()
@@ -298,7 +298,7 @@ async def update_services(config: Config, section: str) -> bool:
     else:
         Log.info('updating services for bot: %s, %s', user.identifier, array)
         # clone for modifying
-        visa = Document.parse(document=visa.copy_dict())
+        visa = Document.parse(document=visa.copy_map())
     # sign with services
     visa.set_property(name='services', value=array)
     visa.sign(private_key=sign_key)

@@ -166,7 +166,7 @@ class Emitter(Logging):
         content.data = None
         await self._save_instant_message(msg=msg)
         # 3. add upload task with encrypted data
-        encrypted = password.encrypt(plaintext=data.to_bytes(), extra=msg.to_dict())
+        encrypted = password.encrypt(plaintext=data.to_bytes(), extra=msg.to_map())
         filename = filename_from_data(data=encrypted, filename=filename)
         sender = msg.sender
         url = await upload_encrypted_data(data=encrypted, filename=filename, sender=sender)

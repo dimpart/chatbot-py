@@ -24,7 +24,7 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict
+from typing import Optional
 
 from dimples import DateTime
 from dimples import EntityType, ID
@@ -100,12 +100,12 @@ class Setting(Request):
 
     @property  # Override
     def text(self) -> Optional[str]:
-        info = self.__config.to_dict()
+        info = self.__config.to_map()
         return info.get('system_prompt')
 
     # Override
     async def build(self) -> Optional[str]:
-        info = self.__config.to_dict()
+        info = self.__config.to_map()
         return info.get('system_prompt')
 
 
@@ -155,7 +155,7 @@ class Greeting(Request, Logging):
             self.error('failed to get nickname for sender: %s', sender)
             return None
         language = await get_language(identifier=sender, facebook=self.facebook)
-        info = self.__config.to_dict()
+        info = self.__config.to_map()
         prompt = info.get('greeting_prompt')
         if prompt is None:
             self.error('failed to get template for greeting prompt')
@@ -267,7 +267,7 @@ class TranslateRequest(Request, Logging):
             'text': text,
             'code': code,
         })
-        info = self.__config.to_dict()
+        info = self.__config.to_map()
         prompt = info.get('translate_prompt')
         if prompt is None:
             self.error('failed to get template for translate prompt')
@@ -386,13 +386,13 @@ async def get_language(identifier: ID, facebook: CommonFacebook) -> str:
         return 'en'
     # check 'app:language'
     app = visa.get_property(name='app')
-    if isinstance(app, Dict):
+    if isinstance(app, dict):
         language = app.get('language')
     else:
         language = None
     # check 'sys:locale'
     sys = visa.get_property(name='sys')
-    if isinstance(sys, Dict):
+    if isinstance(sys, dict):
         locale = sys.get('locale')
     else:
         locale = None

@@ -24,7 +24,8 @@
 # ==============================================================================
 
 import threading
-from typing import Optional, List, Dict
+from typing import Optional, List
+from typing import Mapping
 
 from ...utils import json_encode
 from ...chat import Setting
@@ -42,7 +43,7 @@ class MessageQueue:
         self.__setting = setting
 
     @property
-    def system_setting(self) -> Optional[Dict]:
+    def system_setting(self) -> Optional[Mapping]:
         setting = self.__setting
         if setting is None:
             return None
@@ -60,7 +61,7 @@ class MessageQueue:
             'role': 'user',
         }
 
-    def build_messages(self, prompt: str) -> List[dict]:
+    def build_messages(self, prompt: str) -> List[Mapping]:
         # 1. get all messages after appended
         self.push(msg={
             'parts': [
@@ -88,10 +89,10 @@ class MessageQueue:
         return messages
 
     @property
-    def messages(self) -> List[dict]:
+    def messages(self) -> List[Mapping]:
         return self.__messages.copy()
 
-    def push(self, msg: dict, trim: bool = False):
+    def push(self, msg: Mapping, trim: bool = False):
         # simplify message data
         if trim:
             msg = self._trim(msg=msg)
@@ -111,7 +112,7 @@ class MessageQueue:
             self.__size -= len(json_encode(container=first))
 
     # noinspection PyMethodMayBeStatic
-    def _trim(self, msg: dict) -> dict:
+    def _trim(self, msg: Mapping) -> Mapping:
         # content = msg.get('content')
         # role = msg.get('role')
         # return {
@@ -123,7 +124,7 @@ class MessageQueue:
     # FIX: INVALID_ARGUMENT
     #   ensure that multiturn requests alternate between user and model;
     #   ensure that multiturn requests ends with a user role or a function response.
-    def __check_conflict(self, msg: dict) -> dict:
+    def __check_conflict(self, msg: Mapping) -> Mapping:
         pos = len(self.__messages)
         while pos > 0:
             pos -= 1
@@ -146,7 +147,7 @@ class LockedQueue(MessageQueue):
         self.__lock = threading.Lock()
 
     @property  # Override
-    def messages(self) -> List[dict]:
+    def messages(self) -> List[Mapping]:
         with self.__lock:
             return super().messages
 
