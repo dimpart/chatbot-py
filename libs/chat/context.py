@@ -77,11 +77,11 @@ class ChatContext(Dictionary, ABC):
 
     # Override
     def get(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
-        return super().get(key=key, default=default)
+        return super().get(key, default=default)
 
     def set(self, key: str, value: Optional[Any]):
         if value is None:
-            self.pop(key=key, default=None)
+            self.pop(key, default=None)
         else:
             self[key] = value
 
@@ -124,8 +124,7 @@ class ChatContext(Dictionary, ABC):
                 content['hidden'] = hidden
         # copy extra values
         if extra is not None:
-            for key in extra:
-                content[key] = extra[key]
+            content.update(extra)
         # update message time
         calibrate_time(content=content, request=request)
         await self._send_content(content=content, receiver=self.identifier)

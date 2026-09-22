@@ -156,7 +156,7 @@ class Tube(Dictionary):
     def episodes(self) -> List[Episode]:
         array = self.__episodes
         if array is None:
-            array = self.get(key='episodes', default=None)
+            array = self.get('episodes', default=None)
             if array is None:
                 self['episodes'] = array = []
             self.__episodes = array = Episode.convert_episodes(array=array)
@@ -278,7 +278,7 @@ class Season(Dictionary):
     def tubes(self) -> List[Tube]:
         array = self.__tubes
         if array is None:
-            array = self.get(key='tubes', default=None)
+            array = self.get('tubes', default=None)
             if array is None:
                 self['tubes'] = array = []
             self.__tubes = array = Tube.convert_tubes(array=array)
@@ -343,20 +343,20 @@ class VideoTree(Dictionary, Logging):
 
     def page_list(self, keyword: str) -> Optional[List[URI]]:
         """ Get season page list for this keyword """
-        results = self.get(key=keyword)
+        results = self.get(keyword)
         if results is not None:
             return results.get('page_list')
 
     def last_time(self, keyword: str) -> Optional[DateTime]:
         """ Get last update time for this keyword """
-        results = self.get(key=keyword)
+        results = self.get(keyword)
         if results is not None:
             timestamp = results.get('time')
             return Converter.get_datetime(value=timestamp, default=None)
 
     def touch(self, keyword: str) -> bool:
         """ Refresh last update time """
-        results = self.get(key=keyword)
+        results = self.get(keyword)
         if results is not None:
             results['time'] = DateTime.current_timestamp()
             return True

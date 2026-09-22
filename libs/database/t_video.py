@@ -28,10 +28,10 @@ from typing import Optional
 
 from dimples import URI
 from dimples import ID
-from dimples.utils import CachePool
-from dimples.utils import Config
-from dimples.database import DbTask
-from dimples.database.t_base import DataCache
+from dimples import CachePool
+from dimples import Config
+from dimples import DbTask
+from dimples import DataCache
 
 from ..common import Episode, Season
 
@@ -118,7 +118,7 @@ class EpisodeTable(DataCache):
 
     # noinspection PyMethodMayBeStatic
     def show_info(self):
-        print('!!!  episode cached in memory only !!!')
+        print('!!!    episode cached in memory only !!!')
 
     def _new_task(self, url: URI, identifier: ID) -> EpiTask:
         return EpiTask(url=url, identifier=identifier,
