@@ -26,14 +26,14 @@ async-timeout # 4.0.3
 # aiou==1.2.0
 #
 # startrek==2.3.3
-# tcp==2.3.3
+# tcp==2.3.4
 # udp==2.3.3
 
 # mkm==2.5.0
-# dkd==2.5.0
+# dkd==2.5.1
 # dimp==2.5.0
 # dimap==2.5.0
 # dimax==2.5.0
 # dimsdk==2.5.0
 
-dimples==2.0.0
+dimples==2.0.2

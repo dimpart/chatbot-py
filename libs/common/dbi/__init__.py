@@ -29,7 +29,7 @@
 
 """
 
-from .video import Episode, Tube, Season
+from .episode import Episode, Tube, Season
 
 from .video import VideoTree
 

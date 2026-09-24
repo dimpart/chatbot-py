@@ -76,8 +76,8 @@ class ChatContext(Dictionary, ABC):
     #
 
     # Override
-    def get(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
-        return super().get(key, default=default)
+    def get(self, k: str, default: Optional[Any] = None) -> Optional[Any]:
+        return super().get(k, default=default)
 
     def set(self, key: str, value: Optional[Any]):
         if value is None:

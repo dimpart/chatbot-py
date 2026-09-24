@@ -37,6 +37,7 @@ from ...chat import ChatBox, ChatClient
 from ...chat import ChatProxy
 
 from ..engine import Engine
+from ..engine import eng_env
 
 from .box import SearchBox
 from .response import VideoResponse
@@ -112,6 +113,7 @@ class SearchClient(ChatClient):
 
     ADMIN_COMMANDS = [
         'help',
+        'show env',
         'show history',
         'show keywords',
         'show blocked list',
@@ -140,6 +142,11 @@ class SearchClient(ChatClient):
         elif text in self.ADMIN_COMMANDS:
             #
             #  system commands
+            #
+            await self._process_admin_command(cmd=text, request=request)
+        elif text.startswith('set env: '):
+            #
+            #  system commands: env
             #
             await self._process_admin_command(cmd=text, request=request)
         elif text.startswith('block: ') or text.startswith('allow: '):
@@ -220,6 +227,29 @@ class SearchClient(ChatClient):
             text = await self._allow_keyword(keyword=blocked, box=box)
             if text is not None:
                 await box.respond_text(text=text, request=request)
+        elif cmd.startswith('set env: '):
+            #
+            #  set engine environment
+            #
+            pos = cmd.find(':') + 1
+            pair = cmd[pos:].split('=')
+            if len(pair) == 2:
+                key = pair[0].strip()
+                val = pair[1].strip()
+                eng_env[key] = val
+            await self._respond_eng_env(request=request, box=box)
+        elif cmd == 'show env':
+            await self._respond_eng_env(request=request, box=box)
+
+    # noinspection PyMethodMayBeStatic
+    async def _respond_eng_env(self, request: ChatRequest, box: ChatBox):
+        text = '## Eng Env\n'
+        text += '\n'
+        text += '| Key | Value |\n'
+        text += '|-----|-------|\n'
+        for key, val in eng_env.items():
+            text += f'| {key} | {val} |\n'
+        await box.respond_markdown(text=text, request=request)
 
     async def _block_keyword(self, keyword: str, box: SearchBox) -> Optional[str]:
         # trim keyword

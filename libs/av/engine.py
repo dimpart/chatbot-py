@@ -35,6 +35,10 @@ from ..common import Episode, Season
 from .task import Task
 
 
+# global environments
+eng_env = {}
+
+
 class Engine(Logging, ABC):
     """ Search Engine """
 
@@ -42,11 +46,15 @@ class Engine(Logging, ABC):
 
     def __init__(self):
         super().__init__()
-        self.__http_client = HttpClient(long_connection=True, verify=True, base_url=self.base_url)
+        self.__http_client: Optional[HttpClient] = None
 
     @property  # protected
     def http_client(self) -> HttpClient:
-        return self.__http_client
+        http = self.__http_client
+        if http is None or http.base_url != self.base_url:
+            http = HttpClient(long_connection=True, verify=True, base_url=self.base_url)
+            self.__http_client = http
+        return http
 
     @property
     def agent(self) -> str:
