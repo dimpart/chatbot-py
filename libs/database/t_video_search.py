@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
+from small.lock import AsyncLock
 from typing import Optional, List
 
 from dimples import ID
@@ -43,7 +43,7 @@ class BlkTask(DbTask[str, List[str]]):
 
     def __init__(self, identifier: ID,
                  storage: VideoStorage,
-                 mutex_lock: threading.Lock, cache_pool: CachePool):
+                 mutex_lock: AsyncLock, cache_pool: CachePool):
         super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
                          cache_refresh=self.MEM_CACHE_REFRESH)
@@ -70,7 +70,7 @@ class VidTask(DbTask[str, VideoTree]):
 
     def __init__(self, identifier: ID,
                  storage: VideoStorage,
-                 mutex_lock: threading.Lock, cache_pool: CachePool):
+                 mutex_lock: AsyncLock, cache_pool: CachePool):
         super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
                          cache_refresh=self.MEM_CACHE_REFRESH)

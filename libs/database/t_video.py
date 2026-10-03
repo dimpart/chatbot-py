@@ -23,7 +23,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
+from small.lock import AsyncLock
 from typing import Optional
 
 from dimples import URI
@@ -46,7 +46,7 @@ class EpiTask(DbTask[URI, Episode]):
 
     def __init__(self, identifier: ID, url: URI,
                  redis: EpisodeCache,
-                 mutex_lock: threading.Lock, cache_pool: CachePool):
+                 mutex_lock: AsyncLock, cache_pool: CachePool):
         super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
                          cache_refresh=self.MEM_CACHE_REFRESH)
@@ -74,7 +74,7 @@ class SeaTask(DbTask[URI, Season]):
 
     def __init__(self, identifier: ID, url: URI,
                  redis: SeasonCache, storage: SeasonStorage,
-                 mutex_lock: threading.Lock, cache_pool: CachePool):
+                 mutex_lock: AsyncLock, cache_pool: CachePool):
         super().__init__(mutex_lock=mutex_lock, cache_pool=cache_pool,
                          cache_expires=self.MEM_CACHE_EXPIRES,
                          cache_refresh=self.MEM_CACHE_REFRESH)

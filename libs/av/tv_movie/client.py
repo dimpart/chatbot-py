@@ -120,6 +120,7 @@ class SearchClient(ChatClient):
     ]
 
     HELP_PROMPT = '## Admin Commands\n' \
+                  '* show env\n' \
                   '* show history\n' \
                   '* show keywords\n' \
                   '* show blocked list\n' \
